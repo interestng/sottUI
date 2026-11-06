@@ -827,6 +827,13 @@ function window.new(options: { [string]: any }): any
 			item.TextSize = size
 		end
 		navFade.Visible = navList.AbsoluteSize.X / current > width - left - right
+		-- a page you cannot reach is worse than a wider window: a saved or dragged width never cuts the words off
+		local needed = math.ceil(left + navList.AbsoluteSize.X / current + right)
+		if size == NAV_SIZE_NARROW and width < needed and needed * current <= gui.AbsoluteSize.X then
+			self.size = Vector2.new(needed, self.size.Y)
+			root.Size = UDim2.fromOffset(needed, math.floor(self.size.Y))
+			self:_clamp()
+		end
 		self:_syncMarker(true)
 	end
 	self._fitBar = fitBar

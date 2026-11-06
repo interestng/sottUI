@@ -1516,9 +1516,12 @@ aj.AbsoluteSize.X/az local aD=176+ay.AbsoluteSize.X/az+20 ay.Visible=K.subtitle
 ~=nil and aB+aC+aD<=aA local aE=if ay.Visible then aD else 176 ah.Position=UDim2
 .fromOffset(aB,0)ah.Size=UDim2.new(1,-(aB+aE),0,u)local aF=if aA<x then w else v
 for aG,aH in at._navItems do aH.TextSize=aF end ak.Visible=aj.AbsoluteSize.X/az>
-aA-aB-aE at:_syncMarker(true)end at._fitBar=fitBar ag:GetPropertyChangedSignal(
-'AbsoluteSize'):Connect(fitBar)ay:GetPropertyChangedSignal('AbsoluteSize'):
-Connect(fitBar)_:GetPropertyChangedSignal('AbsoluteSize'):Connect(fitBar)aj:
+aA-aB-aE local aG=math.ceil(aB+aj.AbsoluteSize.X/az+aE)if aF==w and aA<aG and aG
+*az<=R.AbsoluteSize.X then at.size=Vector2.new(aG,at.size.Y)_.Size=UDim2.
+fromOffset(aG,math.floor(at.size.Y))at:_clamp()end at:_syncMarker(true)end at.
+_fitBar=fitBar ag:GetPropertyChangedSignal('AbsoluteSize'):Connect(fitBar)ay:
+GetPropertyChangedSignal('AbsoluteSize'):Connect(fitBar)_:
+GetPropertyChangedSignal('AbsoluteSize'):Connect(fitBar)aj:
 GetPropertyChangedSignal('AbsoluteSize'):Connect(fitBar)task.defer(fitBar)af.
 InputBegan:Connect(function(az)local aA=az.UserInputType if aA~=Enum.
 UserInputType.MouseButton1 and aA~=Enum.UserInputType.Touch then return end
@@ -1566,7 +1569,7 @@ setFonts(aC.text,aC.display)end end))end if K.autoShow~=false then task.defer(
 function()at:setOpen(true)end)end return at end function r.setVersion(ab)s=ab
 end return r end function a.C()local aa=a.cache.C if not aa then aa={c=
 __modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.C()local ae='0.1.5'local function registry()local af=
+)local ac=a.e()local ad=a.C()local ae='0.1.6'local function registry()local af=
 aa.global('getgenv')local ag=if type(af)=='function'then af()else _G local ah=ag
 .__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end return ah
 end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.window(ag)
