@@ -23,9 +23,9 @@ local DRAG_START = 3
 local READOUT_GAP = 12
 local VALUE_SIZE = 17
 local CHEVRON = 22
-local MARK = 12
 local MASTER_MARK = 16
-local TRACK = 2
+local TRACK = 1
+local BAR = 3
 local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local STAT_VALUE = 34
@@ -82,11 +82,67 @@ local function reserveRight(view: any, width: number)
 	view.name.Size = UDim2.new(1, -(2 * PAD + width), 1, 0)
 end
 
+-- every setting is a name over one line: a slider's line fills to its value, a toggle's is empty or full, a list's only
+-- marks the cell. the line is at the very bottom and thin, so nothing ever runs through the words
+local function baseline(view: any, ctx: any, ratio: number): any
+	local track = make("Frame", {
+		Name = "Track",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, TRACK),
+		BackgroundTransparency = 0,
+		ZIndex = 2,
+		Parent = view.root,
+	})
+	ctx.theme:paint(track, "BackgroundColor3", "lineStrong")
+	local fill = make("Frame", {
+		Name = "Fill",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(ratio, 0, 0, BAR),
+		BackgroundTransparency = 0,
+		ZIndex = 2,
+		Parent = view.root,
+	})
+	ctx.theme:paint(fill, "BackgroundColor3", "accent")
+	return fill
+end
+
 function builders.toggle(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el)
-	local theme = ctx.theme
 	local master = el.spec.primary == true
-	local markSize = if master then MASTER_MARK else MARK
+	local view: any = tileModule.new(ctx, el, { quiet = not master })
+	local theme = ctx.theme
+	if not master then
+		local fill = baseline(view, ctx, if el.value == true then 1 else 0)
+		local fillSize: any = view:own(motion.prop(fill, "Size", FILL_SPEED))
+		reserveRight(view, addons(view, ctx, el, 0))
+		local function draw(instant: boolean)
+			local on = el.value == true
+			view:tint(on, instant)
+			view:ink(view.name, if el.disabled then "faint" elseif on then "text" else "muted", instant)
+			local target = UDim2.new(if on then 1 else 0, 0, 0, BAR)
+			if instant or not ctx.isShowing(el) then
+				fillSize:snap(target)
+			else
+				fillSize:to(target)
+			end
+			for _, chip in view.chips do
+				chip.setInk(false)
+			end
+		end
+		view.root.Activated:Connect(function()
+			if not el.disabled then
+				el:set(not el.value)
+			end
+		end)
+		view.refresh = function()
+			view:refreshName()
+			draw(false)
+		end
+		draw(true)
+		return view
+	end
+	local markSize = MASTER_MARK
 	if master then
 		theme:type(view.name, "display")
 		view.name.TextSize = if el.value == true then MASTER_NAME_ON else MASTER_NAME_OFF
@@ -205,7 +261,7 @@ function kinds.readoutWidth(el: any): number
 end
 
 function builders.slider(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el)
+	local view: any = tileModule.new(ctx, el, { quiet = true })
 	local theme = ctx.theme
 	local spec = el.spec
 	local root = view.root
@@ -229,35 +285,7 @@ function builders.slider(ctx: any, el: any): any
 	})
 	theme:type(readout, "display")
 
-	-- full mint is reserved for "on": the fill stays dim and the bright part is a line along the bottom, where it marks
-	-- the value without ever crossing the words. the track is always there, so a slider at zero is still a slider
-	local track = make("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, TRACK),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = root,
-	})
-	theme:paint(track, "BackgroundColor3", "lineStrong")
-	local fill = make("Frame", {
-		Name = "Fill",
-		Size = UDim2.new(ratio(), 0, 1, 0),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = root,
-	})
-	theme:paint(fill, "BackgroundColor3", "accentDim")
-	local bar = make("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, TRACK),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = fill,
-	})
-	theme:paint(bar, "BackgroundColor3", "accent")
-
+	local fill = baseline(view, ctx, ratio())
 	local fillSize: any = view:own(motion.prop(fill, "Size", FILL_SPEED))
 
 	local function typedEntry()
@@ -355,7 +383,7 @@ function builders.slider(ctx: any, el: any): any
 	view.refresh = function()
 		view:refreshName()
 		paintText()
-		fillSize:to(UDim2.new(ratio(), 0, 1, 0))
+		fillSize:to(UDim2.new(ratio(), 0, 0, BAR))
 	end
 	paintText()
 	return view
@@ -391,9 +419,10 @@ local function pickText(el: any): (string, boolean)
 end
 
 function builders.dropdown(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el)
+	local view: any = tileModule.new(ctx, el, { quiet = true })
 	local theme = ctx.theme
 	local root = view.root
+	baseline(view, ctx, 0)
 	theme:paint(view.name, "TextColor3", "muted")
 
 	local text = make("TextLabel", {
@@ -443,7 +472,7 @@ function builders.dropdown(ctx: any, el: any): any
 end
 
 function builders.input(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el)
+	local view: any = tileModule.new(ctx, el, { quiet = true })
 	local theme = ctx.theme
 	local spec = el.spec
 	view.name.Size = UDim2.new(0.35, -PAD, 1, 0)

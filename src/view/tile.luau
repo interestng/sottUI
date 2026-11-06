@@ -22,6 +22,7 @@ local PRESS_SCALE = 0.965
 -- overshoot also sets how quickly the wave clears the tile
 local FLOOD_REACH = 2.6
 local LONG_PRESS = 0.45
+local HOVER_TINT = 0.14
 
 export type Ctx = {
 	theme: any,
@@ -47,6 +48,7 @@ export type Tile = {
 	onHover: (self: Tile, on: boolean) -> (),
 	pressed: (self: Tile, on: boolean) -> (),
 	flood: (self: Tile, on: boolean, instant: boolean?) -> (),
+	tint: (self: Tile, on: boolean, instant: boolean?) -> (),
 	ink: (self: Tile, instance: any, token: string, instant: boolean?) -> (),
 	flash: (self: Tile) -> (),
 	refreshName: (self: Tile) -> (),
@@ -74,6 +76,13 @@ local function baseColor(self: any): Color3
 	local tokens = self.ctx.theme.tokens
 	if self._lit then
 		return if self._hover then tokens.accentHover else tokens.accent
+	end
+	if self._tinted then
+		return if self._hover then tokens.accentDim:Lerp(tokens.accent, HOVER_TINT) else tokens.accentDim
+	end
+	-- a setting sits on the page over its baseline; only what acts when pressed stands up as a block
+	if self._quiet then
+		return if self._hover then tokens.surface else tokens.base
 	end
 	return if self._hover then tokens.raised else tokens.surface
 end
@@ -180,6 +189,19 @@ function Tile.flood(self: any, on: boolean, instant: boolean?)
 	end
 end
 
+-- a lit child: the flood's quiet form, so on reads the same at every level without competing with its master
+function Tile.tint(self: any, on: boolean, instant: boolean?)
+	if self._tinted == on then
+		return
+	end
+	self._tinted = on
+	if instant or not self.ctx.isShowing(self.el) then
+		snapBase(self)
+	else
+		washTo(self)
+	end
+end
+
 -- a brief wave for "this one": a config action ran, the palette brought you here
 function Tile.flash(self: any)
 	if self._floodOn then
@@ -234,7 +256,7 @@ function Tile.refreshName(self: any)
 	end
 end
 
-function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean? }?): Tile
+function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?, quiet: boolean? }?): Tile
 	local settings: any = options or {}
 	local root = make("TextButton", {
 		Name = el.kind,
@@ -268,6 +290,8 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 		_hover = false,
 		_lit = false,
 		_floodOn = false,
+		_tinted = false,
+		_quiet = settings.quiet == true,
 	}, Tile)
 	root.BackgroundColor3 = baseColor(self)
 	self:refreshName()

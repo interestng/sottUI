@@ -14,7 +14,8 @@ local page = {}
 
 local GRID = 12
 local NARROW_AT = 600
-local GAP = 3
+local GAP = 8
+local TEXT_GAP = 2
 local SIDE = 20
 local TOP = 14
 local BOTTOM = 28
@@ -24,8 +25,8 @@ local HERO = 148
 -- a master is a modest word until it is on, then it takes the page: the size change is half of what makes on feel on
 local MASTER_OFF = 60
 local MASTER_ON = 84
-local MASTER_GAP = 5
-local AFTER_MASTER = 5
+local MASTER_GAP = 0
+local AFTER_MASTER = 0
 local STAT_HEIGHT = 66
 local NEAR = 360
 local WHEEL_STEP = 110
@@ -318,12 +319,10 @@ function Page.layout(self: any, live: boolean?)
 					return
 				end
 				local x, tallest = SIDE, 0
-				for index, entry in line do
-					local span = entry.span
-					-- no holes: the last tile in a row takes what is left, the sheet keeps both its edges
-					if index == #line then
-						span += GRID - used
-					end
+				-- no holes: a short row shares what is left, so it keeps both edges without one stretched tile beside a stub
+				local spare = (GRID - used) / #line
+				for _, entry in line do
+					local span = entry.span + spare
 					local w = span * column + (span - 1) * GAP
 					local height = entry.height
 					tallest = math.max(tallest, height)
@@ -343,7 +342,7 @@ function Page.layout(self: any, live: boolean?)
 					end
 					local height = textHeight(el, inner)
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
-					y += height + GAP
+					y += height + TEXT_GAP
 				elseif el.spec.primary then
 					flush()
 					local height = if el.value == true then MASTER_ON else MASTER_OFF

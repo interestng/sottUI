@@ -243,7 +243,6 @@ function colorpicker.swatch(ctx: any, el: any): any
 		ZIndex = 4,
 		Parent = root,
 	})
-	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = band })
 	local chip: any = { root = root, width = colorpicker.DOT_SPACE }
 	chip.refresh = function()
 		band.BackgroundColor3 = el.value.color
