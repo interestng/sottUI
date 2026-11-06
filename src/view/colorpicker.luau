@@ -230,6 +230,7 @@ colorpicker.DOT_SPACE = 30
 -- wider than tall: a colour bar, where a small square would read as a checkbox
 local DOT = 10
 local SWATCH_WIDTH = 18
+local MUTED_SWATCH = 0.72
 
 function colorpicker.swatch(ctx: any, el: any): any
 	local root = make("TextButton", {
@@ -246,9 +247,15 @@ function colorpicker.swatch(ctx: any, el: any): any
 		Parent = root,
 	})
 	local chip: any = { root = root, width = colorpicker.DOT_SPACE }
+	local muted = false
 	chip.refresh = function()
 		band.BackgroundColor3 = el.value.color
-		band.BackgroundTransparency = el.value.alpha * 0.8
+		local transparency = el.value.alpha * 0.8
+		band.BackgroundTransparency = if muted then math.max(transparency, MUTED_SWATCH) else transparency
+	end
+	chip.setMuted = function(on: boolean)
+		muted = on
+		chip.refresh()
 	end
 	chip.refresh()
 	chip.open = function()

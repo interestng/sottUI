@@ -39,7 +39,7 @@ local CHIP_GAP = 4
 local MORE_ROOM = 64
 local SEARCH = 124
 local SEARCH_HEIGHT = 40
-local CLOSE = 44
+local CLOSE = 30
 local FADE = 34
 local EDGE = 12
 local MAX_PANEL = 600
@@ -275,6 +275,7 @@ function Window._syncMarker(self: any, instant: boolean?)
 		self._markerSize:to(UDim2.fromOffset(0, MARKER))
 		return
 	end
+	self.ctx.theme:paint(self._marker, "BackgroundColor3", if active == self._homeAvatar then "text" else "accent")
 	local scale = self._scale.Scale
 	local x = (active.AbsolutePosition.X - self._dock.AbsolutePosition.X) / scale
 	local position = UDim2.fromOffset(x, 0)
@@ -776,6 +777,7 @@ function window.new(options: { [string]: any }): any
 		_panel = panel,
 		_dock = dock,
 		_row = row,
+		_marker = marker,
 		_sheetFade = fade,
 		_chipRow = chipRow,
 		_homeAvatar = avatar,
