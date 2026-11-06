@@ -17,6 +17,7 @@ local overlay = require("./overlay")
 local pageModule = require("./page")
 local paletteModule = require("./palette")
 local sectionModule = require("./section")
+local openerModule = require("./opener")
 local signal = require("../core/signal")
 local themeModule = require("../core/theme")
 local tintModule = require("../core/tint")
@@ -332,6 +333,9 @@ function Window.setOpen(self: any, open: boolean)
 		return
 	end
 	self.isOpen = open
+	if self._opener then
+		self._opener.Visible = not open
+	end
 	self.ctx.hover.clear()
 	self.ctx.popover:close()
 	self._palette.close()
@@ -1051,6 +1055,12 @@ function window.new(options: { [string]: any }): any
 				theme.changed:fire()
 			end
 		end))
+	end
+
+	if touch then
+		self._opener = openerModule(gui, theme, function()
+			self:setOpen(true)
+		end)
 	end
 
 	if options.autoShow ~= false then
