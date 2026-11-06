@@ -1443,14 +1443,14 @@ ai.menuKey=an:key('__menu',{label='Menu',default=K.key or'RightShift',mode=
 'Toggle',saved=false,onPress=function()ai:toggle()end})local ao=c.service(
 'RunService')k.setAttach(function(ap)return ao.PreRender:Connect(ap)end)if K.
 fonts~=false and S then M:add(task.defer(function()local ap=K.fontTag or u local
-aq=string.format(v,ap)local ar=T..'/fonts'local as=d.load(ar,aq,encode)if not ai
-.destroyed and(as.text or as.display)then N:setFonts(as.text,as.display)end
-local at=d.image(ar,aq,'ticks.png')if at and not ai.destroyed then aj.assets.
-ticks=at N.changed:fire()end end))end if K.autoShow~=false then task.defer(
+aq=string.format(v,ap)local ar=T..'/fonts-'..ap local as=d.load(ar,aq,encode)if
+not ai.destroyed and(as.text or as.display)then N:setFonts(as.text,as.display)
+end local at=d.image(ar,aq,'ticks.png')if at and not ai.destroyed then aj.assets
+.ticks=at N.changed:fire()end end))end if K.autoShow~=false then task.defer(
 function()ai:setOpen(true)end)end return ai end function t.setVersion(aa)u=aa
 end return t end function a.B()local aa=a.cache.B if not aa then aa={c=
 __modImpl()}a.cache.B=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.B()local ae='0.1.3-command'local function registry()
+)local ac=a.e()local ad=a.B()local ae='0.1.4-command'local function registry()
 local af=aa.global('getgenv')local ag=if type(af)=='function'then af()else _G
 local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end
 return ah end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.
