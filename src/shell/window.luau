@@ -45,6 +45,7 @@ local RULE_HEIGHT = 28
 local FADE = 34
 local EDGE = 12
 local MAX_PANEL = 600
+local MAX_SHEET = 560
 local PANEL_SPEED = 30
 local OPEN_SPEED = 28
 local MARKER_SPEED = 30
@@ -200,7 +201,7 @@ function Window._contentChanged(self: any, content: number, live: boolean?)
 	local scale = self._scale.Scale
 	local available = self._sheetRoom / scale - EDGE
 	local height = math.min(content, MAX_PANEL, available)
-	local size = UDim2.new(0, WIDTH, 0, height)
+	local size = UDim2.new(0, self._sheetWidth, 0, height)
 	self._sheetFade.Visible = content > height
 	if live or self._sheetRise then
 		self._panelSize:to(size)
@@ -295,7 +296,7 @@ function Window._hideSheet(self: any)
 	self.keys:cancel()
 	self._showing = nil
 	self._leaving = previous
-	self._panelSize:to(UDim2.new(0, WIDTH, 0, 0), function()
+	self._panelSize:to(UDim2.new(0, self._sheetWidth, 0, 0), function()
 		if self._leaving == previous then
 			self._leaving = nil
 			previous:setActive(false)
@@ -833,6 +834,7 @@ function window.new(options: { [string]: any }): any
 		_homeAvatar = avatar,
 		_chips = {},
 		_sheetRoom = 600,
+		_sheetWidth = WIDTH,
 		_dockAt = if tonumber(saved.dockX) and tonumber(saved.dockY)
 			then Vector2.new(saved.dockX, saved.dockY)
 			else nil,
@@ -997,6 +999,10 @@ function window.new(options: { [string]: any }): any
 		self:_drawChips()
 		task.defer(function()
 			if not self.destroyed then
+				-- the sheet ends where search begins, so its edge lines up with something on the strip
+				local fit = (box.AbsolutePosition.X - dock.AbsolutePosition.X) / scale.Scale
+				self._sheetWidth = math.clamp(math.floor(fit), WIDTH, MAX_SHEET)
+				panel.Size = UDim2.new(0, self._sheetWidth, 0, panel.Size.Y.Offset)
 				self:_syncMarker(true)
 			end
 		end)
