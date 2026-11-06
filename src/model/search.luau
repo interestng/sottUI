@@ -39,8 +39,8 @@ function search.score(query: string, text: string): number?
 	return score
 end
 
--- a setting's name may match loosely; its page, section and tooltip only literally. a long tooltip contains most short
--- queries as a scattered subsequence, which floods results with things that have nothing to do with what was typed
+-- a setting's name may match loosely; its page and section only literally. tooltips are out: they brought up things that
+-- merely mention the word
 function search.setting(query: string, el: any): number?
 	local named = search.score(query, el.label)
 	if named then
@@ -48,7 +48,7 @@ function search.setting(query: string, el: any): number?
 	end
 	local needle = string.lower(query)
 	local section = el.section and el.section.title or ""
-	local context = string.lower((el._pageName or "") .. " " .. section .. " " .. (el.tip or ""))
+	local context = string.lower((el._pageName or "") .. " " .. section)
 	return if string.find(context, needle, 1, true) then 1 else nil
 end
 

@@ -13,7 +13,7 @@ local REACH = 5
 local STEP = 72
 local SQUEEZE = 0.05
 local SIZE_STEP = 0.13
-local SIZE_MIN = 0.56
+local SIZE_MIN = 0.4
 local FADE_START = 0.75
 local FADE_STEP = 0.22
 local FOCUS_SPEED = 20
@@ -236,7 +236,10 @@ function Page.place(self: any)
 			seen[el] = true
 			local y = d * STEP * (1 - SQUEEZE * math.min(distance, 5)) * scale
 			local size = math.max(1 - SIZE_STEP * distance, SIZE_MIN) * scale
-			local fade = math.clamp((distance - FADE_START) * FADE_STEP, 0, 1)
+			local fade = math.max(
+				math.clamp((distance - FADE_START) * FADE_STEP, 0, 0.4),
+				math.clamp(distance - (REACH - 1), 0, 1)
+			)
 			view.root.Visible = true
 			-- divided by its own scale so every row ends at the same right edge, whatever size it is drawn at
 			view.root.Size = UDim2.fromOffset(width / size, wheel.HEIGHT)
