@@ -1478,7 +1478,7 @@ display)then M:setFonts(ap.text,ap.display)end end))end if J.autoShow~=false
 then task.defer(function()ah:setOpen(true)end)end return ah end function t.
 setVersion(aa)u=aa end return t end function a.D()local aa=a.cache.D if not aa
 then aa={c=__modImpl()}a.cache.D=aa end return aa.c end end end local aa=a.a()
-local ab=a.b()local ac=a.e()local ad=a.D()local ae='0.1.1'local function 
+local ab=a.b()local ac=a.e()local ad=a.D()local ae='0.1.2-stage'local function 
 registry()local af=aa.global('getgenv')local ag=if type(af)=='function'then af()
 else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.
 __sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion('v'..
