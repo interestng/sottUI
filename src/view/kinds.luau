@@ -34,26 +34,35 @@ local HEAD_HEIGHT = 12
 local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local TEXT_ROW = 16
-local PEEK_WIDTH = 46
+local PEEK_WIDTH = 50
+local PEEK_HEIGHT = 44
+local POSTER_TOP = 8
+local POSTER_NAME = 36
 
 local builders: { [string]: (ctx: any, el: any) -> any } = {}
 
 -- colour dots then key chips, right to left from inner. returns the room taken
-local function addons(view: any, ctx: any, el: any, inner: number): number
+local function addons(view: any, ctx: any, el: any, inner: number, poster: boolean?): number
 	local used = inner
 	local placed: { any } = {}
 	-- a chip's width changes with what it shows ("Press a key"), which moves its neighbours and the name's limit
 	local function reflow()
 		local offset = inner
 		for _, chip in placed do
-			chip.root.Position = UDim2.new(1, -(PAD + offset), 0.5, 0)
+			if poster then
+				chip.root.Position = UDim2.new(0, PAD + offset, 1, 0)
+			else
+				chip.root.Position = UDim2.new(1, -(PAD + offset), 0.5, 0)
+			end
 			offset += chip.width + chip.gap
 		end
-		view.name.Size = UDim2.new(1, -(2 * PAD + offset), 1, 0)
+		if not poster then
+			view.name.Size = UDim2.new(1, -(2 * PAD + offset), 1, 0)
+		end
 	end
 	local function place(addon: any, chip: any)
-		chip.root.AnchorPoint = Vector2.new(1, 0.5)
-		chip.root.Position = UDim2.new(1, -(PAD + used), 0.5, 0)
+		chip.root.AnchorPoint = if poster then Vector2.new(0, 1) else Vector2.new(1, 0.5)
+		chip.root.Position = if poster then UDim2.new(0, PAD + used, 1, 0) else UDim2.new(1, -(PAD + used), 0.5, 0)
 		chip.root.ZIndex = 4
 		chip.root.Parent = view.root
 		chip.gap = if addon.kind == "key" then 6 else 0
@@ -175,9 +184,11 @@ function builders.toggle(ctx: any, el: any): any
 	end
 
 	-- colour alone is not enough on a dim tile: off must read as off, not as unavailable or as a button
+	view.name.Position = UDim2.fromOffset(PAD, POSTER_TOP)
+	view.name.Size = UDim2.new(1, -(2 * PAD + markSize + 8), 0, POSTER_NAME)
 	local mark = make("Frame", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -PAD, 0.5, 0),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -PAD, 0, POSTER_TOP + (POSTER_NAME - markSize) / 2),
 		Size = UDim2.fromOffset(markSize, markSize),
 		ZIndex = 3,
 		Parent = view.root,
@@ -193,9 +204,9 @@ function builders.toggle(ctx: any, el: any): any
 	local inner = markSize + 12
 	if master then
 		peek = make("TextButton", {
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -(PAD + markSize + 4), 0, 0),
-			Size = UDim2.new(0, PEEK_WIDTH, 1, 0),
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.fromScale(1, 1),
+			Size = UDim2.fromOffset(PEEK_WIDTH, PEEK_HEIGHT),
 			ZIndex = 4,
 			Parent = view.root,
 		})
@@ -211,7 +222,7 @@ function builders.toggle(ctx: any, el: any): any
 			view.refresh()
 		end)
 	end
-	reserveRight(view, addons(view, ctx, el, inner))
+	addons(view, ctx, el, 0, true)
 
 	local function draw(instant: boolean)
 		local on = el.value == true

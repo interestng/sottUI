@@ -22,14 +22,12 @@ local BOTTOM = 40
 local FLAT_BOTTOM = 16
 local EMPTY_HEIGHT = 60
 local FIT_PAD = 14
-local BOARD_TILE = 76
+local BOARD_TILE = 88
 local OPTIONS_GAP = 10
 local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
 -- a master is a modest word until it is on, then it takes the page: the size change is half of what makes on feel on
-local MASTER_OFF = 50
-local MASTER_ON = 64
 local AFTER_MASTER = 0
 local STAT_HEIGHT = 36
 local NEAR = 360
@@ -335,7 +333,7 @@ function Page.layout(self: any, live: boolean?)
 					y += height + TEXT_GAP
 				elseif el.spec.primary then
 					flush()
-					local height = if el.value == true then MASTER_ON else MASTER_OFF
+					local height = BOARD_TILE
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
 					y += height + GAP + AFTER_MASTER
 					previousMaster = true
