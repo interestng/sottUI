@@ -8,6 +8,8 @@ local droplist = require("./droplist")
 local make = require("../core/make")
 local motion = require("../core/motion")
 
+local ADDON_FROM_EDGE = 70
+
 local wheel = {}
 
 wheel.HEIGHT = 70
@@ -148,7 +150,7 @@ function wheel.build(ctx: any, el: any, page: any): any
 		if not addon.spec.chipless then
 			local chip = if addon.kind == "key" then keychip.build(ctx, addon) else colorpicker.swatch(ctx, addon)
 			chip.root.AnchorPoint = Vector2.new(1, 0.5)
-			chip.root.Position = UDim2.new(1, -(150 + used), 0.5, 0)
+			chip.root.Position = UDim2.new(1, -(ADDON_FROM_EDGE + used), 0.5, 0)
 			chip.root.Visible = false
 			chip.root.Parent = root
 			used += chip.width + 8

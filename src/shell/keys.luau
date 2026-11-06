@@ -88,6 +88,10 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 		listenerNoMouse = noMouse == true
 	end
 
+	function api.swallowed(_: any, name: string): boolean
+		return swallow == name
+	end
+
 	function api.cancel()
 		local fn = listener
 		listener = nil
