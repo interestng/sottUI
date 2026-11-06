@@ -44,6 +44,8 @@ local MARK_TEXT = 17
 local MARK_PAD = 18
 local SEARCH = 168
 local SEARCH_HEIGHT = 30
+local SEARCH_MIN = 96
+local BAR_GAP = 12
 local CLOSE = 30
 local RIGHT_PAD = 9
 local MARKER = 2
@@ -135,6 +137,18 @@ function Window._fit(self: any)
 	self._height = math.min(HEIGHT, screen.Y - 2 * EDGE)
 	self._body.Size = UDim2.new(1, 0, 0, self._height - TOP)
 	self._size:snap(UDim2.fromOffset(self._width, if self.isOpen then self._height else 0))
+	self:_fitBar()
+end
+
+-- page names always win: search takes what is left beside them, and goes away when that is too little to type in
+function Window._fitBar(self: any)
+	local tabs = self._rowLayout.AbsoluteContentSize.X / self._scale.Scale
+	local room = self._width - tabs - CLOSE - 6 - RIGHT_PAD - BAR_GAP
+	local width = math.min(room, SEARCH)
+	local shown = width >= SEARCH_MIN
+	self._field.Visible = shown
+	self._field.Size = UDim2.fromOffset(if shown then width else 0, SEARCH_HEIGHT)
+	self._right.Size = UDim2.new(0, (if shown then width else 0) + CLOSE + 6, 1, 0)
 end
 
 function Window._clamped(self: any, at: Vector2): Vector2
@@ -744,6 +758,9 @@ function window.new(options: { [string]: any }): any
 		_modal = modal,
 		_scale = scale,
 		_box = boxInput,
+		_field = field,
+		_right = right,
+		_rowLayout = rowLayout,
 		_body = body,
 		_top = top,
 		_row = row,
@@ -887,6 +904,7 @@ function window.new(options: { [string]: any }): any
 	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 		task.defer(function()
 			if not self.destroyed then
+				self:_fitBar()
 				self:_syncMarker(true)
 			end
 		end)
