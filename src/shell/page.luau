@@ -20,6 +20,7 @@ local SIDE = 20
 local TOP = 14
 local BOTTOM = 40
 local FLAT_BOTTOM = 16
+local EMPTY_HEIGHT = 60
 local THUMB_LINGER = 0.9
 local HEADER = 40
 local SECTION_GAP = 22
@@ -323,7 +324,7 @@ function Page.layout(self: any, live: boolean?)
 				local x, tallest = SIDE, 0
 				-- a short row keeps its columns: stretched cells put thirds over halves and no gutter lined up
 				for _, entry in line do
-					local span = entry.span
+					local span = if narrow and #line == 1 then GRID else entry.span
 					local w = span * column + (span - 1) * GAP
 					local height = entry.height
 					tallest = math.max(tallest, height)
@@ -352,7 +353,10 @@ function Page.layout(self: any, live: boolean?)
 					previousMaster = true
 				else
 					-- narrow is two columns: anything a third wide or less takes half, the rest a full row
-					local span = if narrow then (if base <= GRID / 3 then GRID / 2 else GRID) else base
+					local span = if section.flat
+						then GRID
+						elseif narrow then (if base <= GRID / 3 then GRID / 2 else GRID)
+						else base
 					-- a long name takes more columns instead of wrapping or shrinking beside its neighbours
 					while span < GRID and needs(el) > span * column + (span - 1) * GAP do
 						span += if narrow then GRID - span else 4
@@ -384,9 +388,20 @@ function Page.layout(self: any, live: boolean?)
 	-- a result list ends at its last row; only a page that can scroll needs room for the fade
 	local flat = self.sections[1] and self.sections[1].flat
 	local contentHeight = y - SECTION_GAP + (if flat then FLAT_BOTTOM else BOTTOM)
+	if self._emptyVisible then
+		contentHeight = math.max(contentHeight, EMPTY_HEIGHT)
+	end
 	frame.CanvasSize = UDim2.fromOffset(0, contentHeight)
 	self._contentHeight = contentHeight
-	self.window:_contentChanged(contentHeight, live)
+	-- a shorter page clamps the canvas at once; the scroll spring has to agree or the next wheel notch is swallowed
+	local limit = math.max(contentHeight - frame.AbsoluteSize.Y / self.window.ctx.uiScale(), 0)
+	if self._scrollTarget and self._scrollTarget > limit then
+		self._scrollTarget = limit
+	end
+	-- pages lay themselves out in the background too; only the one on show may size the sheet
+	if self.active then
+		self.window:_contentChanged(contentHeight, live)
+	end
 	self._placements = placements
 	self:_applyPlacements()
 	self:_materialize(true)
@@ -553,15 +568,19 @@ function Page._refreshThumb(self: any)
 		thumb.Visible = false
 		return
 	end
-	thumb.Visible = true
-	-- shows while something is moving, then gets out of the way
-	self._thumbStamp = (self._thumbStamp or 0) + 1
-	local stamp = self._thumbStamp
-	task.delay(THUMB_LINGER, function()
-		if self._thumbStamp == stamp and not self.destroyed then
-			thumb.Visible = false
-		end
-	end)
+	-- shows while the page is moving, then gets out of the way
+	local position = self.frame.CanvasPosition.Y
+	if position ~= self._thumbAt then
+		self._thumbAt = position
+		thumb.Visible = true
+		self._thumbStamp = (self._thumbStamp or 0) + 1
+		local stamp = self._thumbStamp
+		task.delay(THUMB_LINGER, function()
+			if self._thumbStamp == stamp and not self.destroyed then
+				thumb.Visible = false
+			end
+		end)
+	end
 	local height = math.max(viewport * viewport / content, 40)
 	local travel = viewport - height
 	local top = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)
@@ -675,6 +694,7 @@ function Page.showList(self: any, list: { any }, empty: string?)
 		end
 		self._empty.Text = empty or ""
 		self._empty.Visible = empty ~= nil
+		self._emptyVisible = empty ~= nil
 	end
 	self:_invalidate()
 end
@@ -687,6 +707,12 @@ function Page.adopt(self: any)
 		-- flipped while another page's view owned it
 		if view.refresh then
 			view.refresh()
+		end
+		for addon, chip in view.addonChips or {} do
+			addon._view = chip
+			if chip.refresh then
+				chip.refresh()
+			end
 		end
 	end
 end

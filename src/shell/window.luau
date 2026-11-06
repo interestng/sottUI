@@ -32,9 +32,9 @@ local DOCK = 64
 local AVATAR = 64
 -- clears the standard hotbar (measured live: its top is 65 above the screen edge); anything else, the strip can be dragged
 local BOTTOM = 76
-local WORD = 24
-local WORD_GAP = 24
-local CHIP = 20
+local WORD = 18
+local WORD_GAP = 26
+local CHIP = 17
 local CHIP_PAD = 16
 local CHIP_GAP = 1
 local MORE_ROOM = 64
@@ -99,6 +99,9 @@ function Window._registerElement(self: any, el: any, page: any, public: boolean)
 			end
 			if el.spec.primary then
 				self:_drawChips()
+				if self._showing == self._resultsPage then
+					self._resultsPage:_invalidate()
+				end
 			end
 		end)
 		if el.spec.primary then
@@ -136,7 +139,7 @@ function Window._drawChips(self: any)
 		local theme = self.ctx.theme
 		local chipWidth = 0
 		local function widthOf(text: string): number
-			return math.ceil(metrics.width("display", text, CHIP)) + 2 * CHIP_PAD
+			return math.ceil(metrics.width("textMedium", text, CHIP)) + 2 * CHIP_PAD
 		end
 		local function add(text: string, order: number, onPress: () -> ())
 			local width = widthOf(text)
@@ -151,7 +154,7 @@ function Window._drawChips(self: any)
 				Parent = self._chipRow,
 			})
 			chipWidth += width + CHIP_GAP
-			theme:type(chip, "display")
+			theme:type(chip, "text", true)
 			-- status at rest, a mint block only under the pointer: the blocks must not outshout the page you are on
 			theme:paint(chip, "BackgroundColor3", "surface")
 			theme:paint(chip, "TextColor3", "accent")
@@ -242,6 +245,11 @@ end
 
 function Window._away(self: any): UDim2
 	-- past the edge by a margin, or the spring's slow tail leaves a sliver hanging there
+	-- dragged up high, it leaves by the near edge instead of sliding across the screen
+	local at = self._dockAt
+	if at and at.Y < self._gui.AbsoluteSize.Y / 2 then
+		return UDim2.fromOffset(at.X, -EDGE)
+	end
 	return self:_home() + UDim2.fromOffset(0, DOCK * self._scale.Scale + BOTTOM + EDGE)
 end
 
@@ -356,7 +364,7 @@ end
 
 local function addWord(self: any, page: any, name: string, order: number)
 	local theme = self.ctx.theme
-	local width = math.ceil(metrics.width("display", name, WORD)) + 2
+	local width = math.ceil(metrics.width("textMedium", name, WORD)) + 2
 	local item = make("TextButton", {
 		Name = name,
 		Size = UDim2.new(0, width, 1, 0),
@@ -366,7 +374,7 @@ local function addWord(self: any, page: any, name: string, order: number)
 		ZIndex = 3,
 		Parent = self._row,
 	})
-	theme:type(item, "display")
+	theme:type(item, "text", true)
 	theme:paint(item, "TextColor3", "muted")
 	bindWord(self, page, item)
 	item.MouseEnter:Connect(function()
@@ -417,7 +425,14 @@ function Window._query(self: any, text: string)
 		self._resultsPage:showList({})
 		return
 	end
-	local hits = search.settings(text, self.ordered, MAX_RESULTS)
+	-- something a script hid stays hidden; things folded under a master still come up, that is what search is for
+	local listed = {}
+	for _, el in self.ordered do
+		if el.visible ~= false then
+			table.insert(listed, el)
+		end
+	end
+	local hits = search.settings(text, listed, MAX_RESULTS)
 	self._resultsPage:showList(hits, if #hits == 0 then "Nothing matches" else nil)
 	self:_show(self._resultsPage)
 end
@@ -760,7 +775,6 @@ function window.new(options: { [string]: any }): any
 		Text = "",
 		PlaceholderText = "Search",
 		ClearTextOnFocus = false,
-		ClipsDescendants = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = 300,
 		ZIndex = 3,
@@ -775,8 +789,18 @@ function window.new(options: { [string]: any }): any
 	box.FocusLost:Connect(function()
 		tintFocus(box, "surface")
 	end)
-	theme:type(box, "display")
+	theme:type(box, "text")
 	theme:paint(box, "TextColor3", "text")
+	-- search is a place to type, not one more page: set apart by the same hairline as close
+	local searchRule = make("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, -12, 0.5, 0),
+		Size = UDim2.fromOffset(1, 28),
+		BackgroundTransparency = 0,
+		ZIndex = 4,
+		Parent = box,
+	})
+	theme:paint(searchRule, "BackgroundColor3", "lineStrong")
 	theme:paint(box, "PlaceholderColor3", "muted")
 
 	local marker = make("Frame", {
@@ -880,10 +904,14 @@ function window.new(options: { [string]: any }): any
 			return UDim2.fromOffset(math.floor((viewport.X - width * scale.Scale) / 2), math.floor(viewport.Y * 0.2))
 		end,
 		isShowing = function(el: any): boolean
-			if not self.isOpen or self._showing == nil then
+			if not self.isOpen then
 				return false
 			end
-			return el._shownOn == self._showing or el._page == self._showing
+			-- a dialog's elements belong to no page and are always in view
+			if el._page == nil and el._shownOn == nil then
+				return true
+			end
+			return self._showing ~= nil and (el._shownOn == self._showing or el._page == self._showing)
 		end,
 		setScrollLocked = function(locked: boolean)
 			local page = self._showing
@@ -959,6 +987,10 @@ function window.new(options: { [string]: any }): any
 			self:_clampDock()
 			self._at:snap(self:_home())
 			self:_placeSheet()
+			local page = self._showing
+			if page then
+				page:_invalidate()
+			end
 		end, function()
 			self:_drawChips()
 			self:_syncMarker(true)
@@ -988,10 +1020,9 @@ function window.new(options: { [string]: any }): any
 		self:_drawChips()
 		task.defer(function()
 			if not self.destroyed then
-				-- the sheet spans the strip up to its divider, so strip and sheet read as one block
-				local fit = (close.AbsolutePosition.X - dock.AbsolutePosition.X) / scale.Scale
-				self._sheetWidth = math.clamp(math.floor(fit), WIDTH, MAX_SHEET)
-				panel.Size = UDim2.new(0, self._sheetWidth, 0, panel.Size.Y.Offset)
+				-- exactly the strip's width, so strip and sheet read as one block
+				self._sheetWidth = math.clamp(self._dockWidth, WIDTH, MAX_SHEET)
+				self._panelSize:snap(UDim2.new(0, self._sheetWidth, 0, panel.Size.Y.Offset))
 				self:_syncMarker(true)
 			end
 		end)
@@ -1059,7 +1090,10 @@ function window.new(options: { [string]: any }): any
 	end)
 
 	maid:add(theme.changed:connect(function()
-		for _, page in self.pages do
+		local all = table.clone(self.pages)
+		table.insert(all, self._onPage)
+		table.insert(all, self._resultsPage)
+		for _, page in all do
 			for _, view in page._views do
 				pcall(function()
 					view:retint()

@@ -26,6 +26,8 @@ local CHEVRON = 22
 local MASTER_MARK = 16
 local TRACK = 1
 local BAR = 4
+local HEAD_WIDTH = 4
+local HEAD_HEIGHT = 12
 local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local STAT_VALUE = 34
@@ -58,6 +60,8 @@ local function addons(view: any, ctx: any, el: any, inner: number): number
 		used += chip.width
 		table.insert(placed, chip)
 		addon._view = chip
+		view.addonChips = view.addonChips or {}
+		view.addonChips[addon] = chip
 		table.insert(view.chips, chip)
 		view:onCleanup(function()
 			addon._view = nil
@@ -119,7 +123,7 @@ function builders.toggle(ctx: any, el: any): any
 		local function draw(instant: boolean)
 			local on = el.value == true
 			view:tint(on, instant)
-			view:ink(view.name, if el.disabled then "faint" elseif on then "text" else "muted", instant)
+			view:ink(view.name, if el.disabled then "faint" elseif on then "accentHover" else "muted", instant)
 			local target = UDim2.new(if on then 1 else 0, 0, 0, BAR)
 			if instant or not ctx.isShowing(el) then
 				fillSize:snap(target)
@@ -223,7 +227,8 @@ function builders.toggle(ctx: any, el: any): any
 		end
 		if peek then
 			-- on means the options are out anyway; the chevron is only for looking before enabling
-			peek.Visible = not on and el.section.hasOptions == true
+			local listed = el._shownOn and el._shownOn.sections[1] and el._shownOn.sections[1].flat
+			peek.Visible = not on and el.section.hasOptions == true and not listed
 			chevronDown.Visible = not el.section.peeking
 			chevronUp.Visible = el.section.peeking == true
 		end
@@ -289,6 +294,16 @@ function builders.slider(ctx: any, el: any): any
 	theme:type(readout, "display")
 
 	local fill = baseline(view, ctx, ratio())
+	local head = make("Frame", {
+		Name = "Head",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.fromScale(1, 1),
+		Size = UDim2.fromOffset(HEAD_WIDTH, HEAD_HEIGHT),
+		BackgroundTransparency = 0,
+		ZIndex = 3,
+		Parent = fill,
+	})
+	theme:paint(head, "BackgroundColor3", "text")
 	local fillSize: any = view:own(motion.prop(fill, "Size", FILL_SPEED))
 
 	local function typedEntry()
@@ -547,7 +562,13 @@ end
 
 -- no mark and bright ink: a tile with nothing to report is one that does something when pressed
 function builders.button(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el)
+	local view: any = tileModule.new(ctx, el, { quiet = true })
+	local outline = make("UIStroke", {
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Thickness = 1,
+		Parent = view.root,
+	})
+	ctx.theme:paint(outline, "Color", "lineStrong")
 	local armed: thread? = nil
 
 	local function draw()
@@ -717,6 +738,18 @@ function kinds.build(ctx: any, el: any): any
 	local builder = builders[el.kind]
 	assert(builder, "sottUI: no view for " .. tostring(el.kind))
 	local view = builder(ctx, el)
+	local shownOn = el._shownOn
+	local flat = shownOn and shownOn.sections[1] and shownOn.sections[1].flat
+	local owner = el.section and (el.section._root or el.section)
+	local master = owner and owner.masterElement
+	if flat and master and master ~= el then
+		local refreshName = view.refreshName
+		view.refreshName = function(this: any)
+			refreshName(this)
+			this.name.Text = master.label .. " " .. el.label
+		end
+		view:refreshName()
+	end
 	el._view = view
 	return view
 end
