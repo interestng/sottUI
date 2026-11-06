@@ -91,8 +91,9 @@ function droplist.open(ctx: any, el: any, anchor: any)
 					item.text.Text = display(option)
 					local picked = isPicked(el, option)
 					theme:paint(item.text, "TextColor3", if picked then "accent" else "text")
-					theme:paint(item.root, "BackgroundColor3", if picked then "accentDim" else "lineStrong")
-					item.root.BackgroundTransparency = if picked or index == highlighted then 0 else 1
+					item.mark.Visible = picked
+					theme:paint(item.root, "BackgroundColor3", "lineStrong")
+					item.root.BackgroundTransparency = if index == highlighted then 0 else 1
 				end
 			end
 		end
@@ -149,13 +150,24 @@ function droplist.open(ctx: any, el: any, anchor: any)
 			make("UICorner", { CornerRadius = UDim.new(0, 7), Parent = root })
 			local text = make("TextLabel", {
 				Position = UDim2.fromOffset(10, 0),
-				Size = UDim2.new(1, -20, 1, 0),
+				Size = UDim2.new(1, -36, 1, 0),
 				TextSize = TEXT_SIZE,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Parent = root,
 			})
 			theme:type(text, "text", true)
-			local item = { root = root, text = text, index = 0, option = nil }
+			-- a small light rather than a filled row: three picks in a row read as three buttons
+			local mark = make("Frame", {
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, -12, 0.5, 0),
+				Size = UDim2.fromOffset(7, 7),
+				BackgroundTransparency = 0,
+				Visible = false,
+				Parent = root,
+			})
+			make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = mark })
+			theme:paint(mark, "BackgroundColor3", "accent")
+			local item = { root = root, text = text, mark = mark, index = 0, option = nil }
 			pool[i] = item
 			root.MouseEnter:Connect(function()
 				highlighted = item.index

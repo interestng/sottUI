@@ -461,22 +461,25 @@ function draw()local F=math.floor(A.CanvasPosition.Y/e)+1 for G=1,D do local H=C
 [G]local I=F+G-1 local J=u[I]if J==nil then H.root.Visible=false else H.index=I
 H.option=J H.root.Visible=true H.root.Position=UDim2.new(0,4,0,(I-1)*e+4)H.text.
 Text=q(J)local K=isPicked(m,J)p:paint(H.text,'TextColor3',if K then'accent'else
-'text')p:paint(H.root,'BackgroundColor3',if K then'accentDim'else'lineStrong')H.
-root.BackgroundTransparency=if K or I==v then 0 else 1 end end end local 
-function refit()A.CanvasSize=UDim2.fromOffset(0,#u*e+8)E.Visible=#u==0 z.resize(
-bodyHeight()+t)draw()end local function refilter()local F=o.options if w~=''then
-F=c.rank(w,F,q,500)end u=ordered(F)refit()end local F=nil local function choose(
-G)if o.multi then local H=table.clone(m.value)H[G]=if H[G]then nil else true m:
-set(H)if F and F.Text~=''then F.Text=''else refilter()end if F and not l.touch
-then F:CaptureFocus()end return end if m.value==G then if o.allowNull then m:
-set(nil)end else m:set(G)end z.close()end for G=1,D do local H=b('TextButton',{
-Size=UDim2.new(1,-8,0,e-2),BackgroundTransparency=1,Visible=false,Parent=B})b(
+'text')H.mark.Visible=K p:paint(H.root,'BackgroundColor3','lineStrong')H.root.
+BackgroundTransparency=if I==v then 0 else 1 end end end local function refit()A
+.CanvasSize=UDim2.fromOffset(0,#u*e+8)E.Visible=#u==0 z.resize(bodyHeight()+t)
+draw()end local function refilter()local F=o.options if w~=''then F=c.rank(w,F,q
+,500)end u=ordered(F)refit()end local F=nil local function choose(G)if o.multi
+then local H=table.clone(m.value)H[G]=if H[G]then nil else true m:set(H)if F and
+F.Text~=''then F.Text=''else refilter()end if F and not l.touch then F:
+CaptureFocus()end return end if m.value==G then if o.allowNull then m:set(nil)
+end else m:set(G)end z.close()end for G=1,D do local H=b('TextButton',{Size=
+UDim2.new(1,-8,0,e-2),BackgroundTransparency=1,Visible=false,Parent=B})b(
 'UICorner',{CornerRadius=UDim.new(0,7),Parent=H})local I=b('TextLabel',{Position
-=UDim2.fromOffset(10,0),Size=UDim2.new(1,-20,1,0),TextSize=k,TextTruncate=Enum.
-TextTruncate.AtEnd,Parent=H})p:type(I,'text',true)local J={root=H,text=I,index=0
-,option=nil}C[G]=J H.MouseEnter:Connect(function()v=J.index draw()end)H.
-MouseLeave:Connect(function()if v==J.index then v=0 draw()end end)H.Activated:
-Connect(function()if J.option~=nil then choose(J.option)end end)end A:
+=UDim2.fromOffset(10,0),Size=UDim2.new(1,-36,1,0),TextSize=k,TextTruncate=Enum.
+TextTruncate.AtEnd,Parent=H})p:type(I,'text',true)local J=b('Frame',{AnchorPoint
+=Vector2.new(1,0.5),Position=UDim2.new(1,-12,0.5,0),Size=UDim2.fromOffset(7,7),
+BackgroundTransparency=0,Visible=false,Parent=H})b('UICorner',{CornerRadius=UDim
+.new(1,0),Parent=J})p:paint(J,'BackgroundColor3','accent')local K={root=H,text=I
+,mark=J,index=0,option=nil}C[G]=K H.MouseEnter:Connect(function()v=K.index draw(
+)end)H.MouseLeave:Connect(function()if v==K.index then v=0 draw()end end)H.
+Activated:Connect(function()if K.option~=nil then choose(K.option)end end)end A:
 GetPropertyChangedSignal('CanvasPosition'):Connect(draw)local G=0 if r then F=b(
 'TextBox',{Position=UDim2.fromOffset(14,0),Size=UDim2.new(1,-28,0,h),TextSize=k+
 1,Text='',PlaceholderText='Search',Parent=y})p:type(F,'text',true)p:paint(F,
@@ -703,36 +706,39 @@ UserInputType if ai==Enum.UserInputType.MouseButton2 then typedEntry()elseif ai
 ==Enum.UserInputType.MouseButton1 then beginDrag(aa.input:pointer(),false)elseif
 ai==Enum.UserInputType.Touch then beginDrag(aa.input:at(ah),true,ah)end end)
 local ah=ownerOf(ab)local function resting()return ah~=nil and ah.value~=true
-end local function light(ai)local aj=resting()local ak=if aj then C else B local
-al=if aj then E else D if ai then X:snap(ak)Y:snap(al)else X:to(ak)Y:to(al)end
-end local function paintText()ad:paint(ac.name,'TextColor3',if ab.disabled then
-'faint'else'text')ad:paint(T,'TextColor3',if ab.disabled then'faint'else'text')T
-.Text=formatted(ab,ab.value)if listed(ab)then ac.name.Text=shownLabel(ab)end end
-ac.refresh=function()ac:refreshName()paintText()W:to(UDim2.fromScale(ratio(),1))
-light()end if ah then ac:onCleanup(ah:on(function()light()end))end light(true)
-paintText()return ac end local function pickText(aa)local ab=aa.spec.display or
-tostring local ac=aa.value if aa.spec.multi then local ad={}for ae,af in aa.spec
-.options do if ac[af]then table.insert(ad,ab(af))end end for ae,af in ac do if
-af and not table.find(aa.spec.options,ae)then table.insert(ad,ab(ae))end end if#
-ad==0 then return'None',false end if#ad<=2 then return table.concat(ad,', '),
-true end return string.format('%s, %s +%d',ad[1],ad[2],#ad-2),true end if ac==
-nil then return'None',false end return ab(ac),true end local function 
-refreshCaption(aa,ab)aa:refreshName()if listed(ab)then aa.name.Text=shownLabel(
-ab)end end local function segments(aa,ab)local ac=h.new(aa,ab,{inert=true})local
-ad=aa.theme ac.root.Active=true ac.root.MouseEnter:Connect(function()aa.hover:
-enter(ac)end)ad:paint(ac.name,'TextColor3','muted')refreshCaption(ac,ab)local ae
-=ab.spec.display or tostring local af=0 local ag={}for ah,ai in ab.spec.options
-do local aj=math.ceil(textWidth(ae(ai),J))+2*H table.insert(ag,{option=ai,x=af,
-width=aj})af+=aj end local ah=e('Frame',{AnchorPoint=Vector2.new(1,0.5),Position
-=UDim2.new(1,-4,0.5,0),Size=UDim2.fromOffset(af,G),BackgroundTransparency=0,
-ZIndex=2,Parent=ac.root})e('UICorner',{CornerRadius=UDim.new(0,k),Parent=ah})ad:
-paint(ah,'BackgroundColor3','raised')local ai=e('Frame',{BackgroundTransparency=
-0,ZIndex=2,Parent=ah})e('UICorner',{CornerRadius=UDim.new(0,k),Parent=ai})ad:
-paint(ai,'BackgroundColor3','accentDim')ac.name.Size=UDim2.new(1,-(j+af+L),1,0)
-local aj=ac:own(g.prop(ai,'Position',I))local ak=ac:own(g.prop(ai,'Size',I))for
-al,am in ag do local an=e('TextButton',{Position=UDim2.fromOffset(am.x,0),Size=
-UDim2.new(0,am.width,1,0),TextSize=J,Text=ae(am.option),ZIndex=3,TextXAlignment=
-Enum.TextXAlignment.Center,Parent=ah})ad:type(an,'text',true)am.button=an an.
+end local function overText()local ai=ab._rowWidth or 0 local aj=ratio()*ai
+local ak=j+textWidth(ac.name.Text,m)+6 local al=ai-j-ag-6 return(aj>j-6 and aj<
+ak)or(aj>al and aj<ai-j+4)end local function light(ai)local aj=resting()local ak
+=if aj then C else B local al=if overText()then 1 elseif aj then E else D if ai
+then X:snap(ak)Y:snap(al)else X:to(ak)Y:to(al)end end local function paintText()
+ad:paint(ac.name,'TextColor3',if ab.disabled then'faint'else'text')ad:paint(T,
+'TextColor3',if ab.disabled then'faint'else'text')T.Text=formatted(ab,ab.value)
+if listed(ab)then ac.name.Text=shownLabel(ab)end end ac.refresh=function()ac:
+refreshName()paintText()W:to(UDim2.fromScale(ratio(),1))light()end if ah then ac
+:onCleanup(ah:on(function()light()end))end light(true)paintText()return ac end
+local function pickText(aa)local ab=aa.spec.display or tostring local ac=aa.
+value if aa.spec.multi then local ad={}for ae,af in aa.spec.options do if ac[af]
+then table.insert(ad,ab(af))end end for ae,af in ac do if af and not table.find(
+aa.spec.options,ae)then table.insert(ad,ab(ae))end end if#ad==0 then return
+'None',false end if#ad<=2 then return table.concat(ad,', '),true end return
+string.format('%s, %s +%d',ad[1],ad[2],#ad-2),true end if ac==nil then return
+'None',false end return ab(ac),true end local function refreshCaption(aa,ab)aa:
+refreshName()if listed(ab)then aa.name.Text=shownLabel(ab)end end local function 
+segments(aa,ab)local ac=h.new(aa,ab,{inert=true})local ad=aa.theme ac.root.
+Active=true ac.root.MouseEnter:Connect(function()aa.hover:enter(ac)end)ad:paint(
+ac.name,'TextColor3','muted')refreshCaption(ac,ab)local ae=ab.spec.display or
+tostring local af=0 local ag={}for ah,ai in ab.spec.options do local aj=math.
+ceil(textWidth(ae(ai),J))+2*H table.insert(ag,{option=ai,x=af,width=aj})af+=aj
+end local ah=e('Frame',{AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,-4,
+0.5,0),Size=UDim2.fromOffset(af,G),BackgroundTransparency=0,ZIndex=2,Parent=ac.
+root})e('UICorner',{CornerRadius=UDim.new(0,k),Parent=ah})ad:paint(ah,
+'BackgroundColor3','raised')local ai=e('Frame',{BackgroundTransparency=0,ZIndex=
+2,Parent=ah})e('UICorner',{CornerRadius=UDim.new(0,k),Parent=ai})ad:paint(ai,
+'BackgroundColor3','accentDim')ac.name.Size=UDim2.new(1,-(j+af+L),1,0)local aj=
+ac:own(g.prop(ai,'Position',I))local ak=ac:own(g.prop(ai,'Size',I))for al,am in
+ag do local an=e('TextButton',{Position=UDim2.fromOffset(am.x,0),Size=UDim2.new(
+0,am.width,1,0),TextSize=J,Text=ae(am.option),ZIndex=3,TextXAlignment=Enum.
+TextXAlignment.Center,Parent=ah})ad:type(an,'text',true)am.button=an an.
 Activated:Connect(function()if not ab.disabled then ab:set(am.option)end end)end
 local function draw(al)for am,an in ag do local ao=ab.value==an.option ac:ink(an
 .button,if ab.disabled then'faint'elseif ao then'accent'else'muted',al)if ao
@@ -972,14 +978,14 @@ UDim2.fromOffset(0,r)local s=math.min(r,b)k.Size=UDim2.new(1,-40,0,s)local t=i+s
 +12 local u=ab('TextButton',{Position=UDim2.fromOffset(20,t),Size=UDim2.new(1,-
 40,0,44),BackgroundTransparency=0,TextSize=15,Text=aj.done or'Done',ZIndex=52,
 Parent=f})ab('UICorner',{CornerRadius=UDim.new(0,10),Parent=u})am:type(u,
-'display')am:paint(u,'BackgroundColor3','text')am:paint(u,'TextColor3','base')
-local v=t+44+20 local w=ad.prop(f,'Size',ag)w:to(UDim2.fromOffset(ao,v))local 
-function close()if l then return end l=true ai._dialogClose=nil d.Active=false
-for x,y in n.rows do if ai.elements[y.id]==y then ai.elements[y.id]=nil end for
-z,A in y.addons or{}do ai.keys:unregister(A)if ai.elements[A.id]==A then ai.
-elements[A.id]=nil end end end if aj.onClose then task.spawn(aj.onClose)end e:
-to(1,function()e:destroy()d:Destroy()end)w.speed=ah w:to(UDim2.fromOffset(ao,0),
-function()for x,y in q do y.destroy()end w:destroy()f:Destroy()end)end ai.
+'display')am:paint(u,'BackgroundColor3','accent')am:paint(u,'TextColor3',
+'onAccent')local v=t+44+20 local w=ad.prop(f,'Size',ag)w:to(UDim2.fromOffset(ao,
+v))local function close()if l then return end l=true ai._dialogClose=nil d.
+Active=false for x,y in n.rows do if ai.elements[y.id]==y then ai.elements[y.id]
+=nil end for z,A in y.addons or{}do ai.keys:unregister(A)if ai.elements[A.id]==A
+then ai.elements[A.id]=nil end end end if aj.onClose then task.spawn(aj.onClose)
+end e:to(1,function()e:destroy()d:Destroy()end)w.speed=ah w:to(UDim2.fromOffset(
+ao,0),function()for x,y in q do y.destroy()end w:destroy()f:Destroy()end)end ai.
 _dialogClose=close d.MouseButton1Down:Connect(close)u.Activated:Connect(close)
 end return af end function a.q()local aa=a.cache.q if not aa then aa={c=
 __modImpl()}a.cache.q=aa end return aa.c end end do local function __modImpl()
@@ -1624,7 +1630,7 @@ N,function()aG:setOpen(true)end)end if K.autoShow~=false then task.defer(
 function()aG:setOpen(true)end)end return aG end function f.setVersion(ap)g=ap
 end return f end function a.C()local aa=a.cache.C if not aa then aa={c=
 __modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.C()local ae='0.6.6-sections'local function registry()
+)local ac=a.e()local ad=a.C()local ae='0.6.7-sections'local function registry()
 local af=aa.global('getgenv')local ag=if type(af)=='function'then af()else _G
 local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end
 return ah end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.

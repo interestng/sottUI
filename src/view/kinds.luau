@@ -456,10 +456,18 @@ function builders.slider(ctx: any, el: any): any
 	local function resting(): boolean
 		return master ~= nil and master.value ~= true
 	end
+	-- the bright edge fades while it crosses the name or the value, or it reads as a stray stroke through the letters
+	local function overText(): boolean
+		local rowWidth = el._rowWidth or 0
+		local at = ratio() * rowWidth
+		local nameEnd = PAD + textWidth(view.name.Text, NAME) + 6
+		local valueStart = rowWidth - PAD - width - 6
+		return (at > PAD - 6 and at < nameEnd) or (at > valueStart and at < rowWidth - PAD + 4)
+	end
 	local function light(instant: boolean?)
 		local off = resting()
 		local fillAlpha = if off then FILL_OFF else FILL_ON
-		local edgeAlpha = if off then EDGE_OFF else EDGE_ON
+		local edgeAlpha = if overText() then 1 elseif off then EDGE_OFF else EDGE_ON
 		if instant then
 			fillLit:snap(fillAlpha)
 			edgeLit:snap(edgeAlpha)
