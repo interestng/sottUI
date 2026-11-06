@@ -390,7 +390,8 @@ function Element.attach(self: any, addon: any)
 end
 
 function Element.shown(self: any): boolean
-	if not self.visible then
+	-- a status line with nothing to say yet would still hold a blank row open
+	if not self.visible or (self.kind == "label" and self.label == "") then
 		return false
 	end
 	local guard = self.guard
