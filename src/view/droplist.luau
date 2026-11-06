@@ -65,8 +65,8 @@ function droplist.open(ctx: any, el: any, anchor: any)
 		local pool: { any } = {}
 		local poolSize = MAX_VISIBLE + 2
 		local empty = make("TextLabel", {
-			Position = UDim2.fromOffset(14, top + 4),
-			Size = UDim2.new(1, -28, 0, ITEM),
+			Position = UDim2.fromOffset(34, top + 4),
+			Size = UDim2.new(1, -52, 0, ITEM),
 			TextSize = TEXT_SIZE,
 			Text = "Nothing matches",
 			Visible = false,
@@ -87,12 +87,13 @@ function droplist.open(ctx: any, el: any, anchor: any)
 					item.index = index
 					item.option = option
 					item.root.Visible = true
-					item.root.Position = UDim2.new(0, 4, 0, (index - 1) * ITEM + 4)
+					item.root.Position = UDim2.new(0, 0, 0, (index - 1) * ITEM + 4)
 					item.text.Text = display(option)
 					local picked = isPicked(el, option)
-					theme:paint(item.text, "TextColor3", if picked then "onAccent" else "text")
-					theme:paint(item.root, "BackgroundColor3", if picked then "accent" else "line")
-					item.root.BackgroundTransparency = if picked or index == highlighted then 0 else 1
+					-- the rail's language rather than a filled bar: a mint mark and bright ink, nothing louder than the page
+					theme:paint(item.text, "TextColor3", if picked then "text" else "muted")
+					item.mark.Visible = picked
+					item.root.BackgroundTransparency = if index == highlighted then 0.4 else 1
 				end
 			end
 		end
@@ -141,20 +142,29 @@ function droplist.open(ctx: any, el: any, anchor: any)
 
 		for i = 1, poolSize do
 			local root = make("TextButton", {
-				Size = UDim2.new(1, -8, 0, ITEM - 2),
+				Size = UDim2.new(1, 0, 0, ITEM - 2),
 				BackgroundTransparency = 1,
 				Visible = false,
 				Parent = canvas,
 			})
 			local text = make("TextLabel", {
-				Position = UDim2.fromOffset(10, 0),
-				Size = UDim2.new(1, -20, 1, 0),
+				Position = UDim2.fromOffset(34, 0),
+				Size = UDim2.new(1, -52, 1, 0),
 				TextSize = TEXT_SIZE,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Parent = root,
 			})
 			theme:type(text, "text", true)
-			local item = { root = root, text = text, index = 0, option = nil }
+			theme:paint(root, "BackgroundColor3", "raised")
+			local mark = make("Frame", {
+				Position = UDim2.fromScale(0, 0),
+				Size = UDim2.new(0, 3, 1, 0),
+				BackgroundTransparency = 0,
+				Visible = false,
+				Parent = root,
+			})
+			theme:paint(mark, "BackgroundColor3", "accent")
+			local item: any = { root = root, text = text, mark = mark, index = 0, option = nil }
 			pool[i] = item
 			root.MouseEnter:Connect(function()
 				highlighted = item.index
@@ -178,8 +188,8 @@ function droplist.open(ctx: any, el: any, anchor: any)
 		local y = 0
 		if showSearch then
 			box = make("TextBox", {
-				Position = UDim2.fromOffset(14, 0),
-				Size = UDim2.new(1, -28, 0, SEARCH_HEIGHT),
+				Position = UDim2.fromOffset(34, 0),
+				Size = UDim2.new(1, -52, 0, SEARCH_HEIGHT),
 				TextSize = TEXT_SIZE + 1,
 				Text = "",
 				PlaceholderText = "Search",
@@ -205,14 +215,14 @@ function droplist.open(ctx: any, el: any, anchor: any)
 		end
 		if showClear then
 			local clear = make("TextButton", {
-				Position = UDim2.fromOffset(4, y),
-				Size = UDim2.new(1, -8, 0, CLEAR_HEIGHT),
+				Position = UDim2.fromOffset(0, y),
+				Size = UDim2.new(1, 0, 0, CLEAR_HEIGHT),
 				TextSize = TEXT_SIZE,
 				Text = "Clear all",
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Parent = content,
 			})
-			make("UIPadding", { PaddingLeft = UDim.new(0, 10), Parent = clear })
+			make("UIPadding", { PaddingLeft = UDim.new(0, 34), Parent = clear })
 			theme:type(clear, "text", true)
 			theme:paint(clear, "TextColor3", "muted")
 			clear.MouseEnter:Connect(function()

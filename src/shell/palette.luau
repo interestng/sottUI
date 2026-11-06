@@ -8,7 +8,7 @@ local search = require("../model/search")
 
 local palette = {}
 
-local WIDTH = 600
+local WIDTH = 420
 local ITEM = 46
 local INPUT = 68
 local MAX_ROWS = 7
@@ -119,18 +119,17 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 			return
 		end
 		open = true
-		local viewport = layer.AbsoluteSize
+		WIDTH = ctx.paletteWidth()
 		scrim = make("TextButton", {
 			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 0.45,
-			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 1,
 			ZIndex = 40,
 			Parent = layer,
 		})
 		scrim.MouseButton1Down:Connect(close)
 		panel = make("Frame", {
 			Name = "Palette",
-			Position = UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor(viewport.Y * 0.22)),
+			Position = ctx.paletteAt(),
 			Size = UDim2.fromOffset(WIDTH, 0),
 			BackgroundTransparency = 0,
 			ClipsDescendants = true,
@@ -145,7 +144,7 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 		box = make("TextBox", {
 			Position = UDim2.fromOffset(18, 0),
 			Size = UDim2.new(1, -36, 0, INPUT),
-			TextSize = 36,
+			TextSize = 22,
 			Text = "",
 			PlaceholderText = "Find a setting",
 			ZIndex = 42,

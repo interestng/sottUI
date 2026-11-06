@@ -74,4 +74,21 @@ function fonts.load(folder: string, base: string, encode: (any) -> string): Resu
 	return result
 end
 
+-- a small image shipped with the fonts; nil leaves whatever works without it
+function fonts.image(folder: string, base: string, file: string): string?
+	local store = env.files()
+	if store == nil or env.global("getcustomasset") == nil then
+		return nil
+	end
+	store.folder(folder)
+	local path = folder .. "/" .. file
+	if store.read(path) == nil then
+		local body = env.fetch(base .. file)
+		if body == nil or not store.write(path, body) then
+			return nil
+		end
+	end
+	return store.asset(path)
+end
+
 return fonts
