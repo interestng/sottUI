@@ -97,7 +97,7 @@ function Row.lit(self: any, on: boolean, instant: boolean?)
 	end
 	-- a master's stretch of rail widens into the whole row: the one loud moment in an otherwise quiet column
 	local target = if on and self.el.spec.primary
-		then UDim2.new(1, 0, 1, -2)
+		then UDim2.new(1, -5, 1, -2)
 		else UDim2.new(0, if on then BAR_WIDTH else 0, 1, 0)
 	if instant or not self.ctx.isShowing(self.el) then
 		self._barSize:snap(target)

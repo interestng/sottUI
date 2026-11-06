@@ -564,7 +564,7 @@ fromOffset(g,0)else p)end function m.lit(n,o,p)local q=n._bar if q==nil then q=
 b('Frame',{Name='Bar',Size=UDim2.new(0,0,1,0),BackgroundTransparency=0,ZIndex=2,
 Parent=n.root})n.ctx.theme:paint(q,'BackgroundColor3','accent')n._bar=q n.
 _barSize=n:own(c.prop(q,'Size',k))end local r=if o and n.el.spec.primary then
-UDim2.new(1,0,1,-2)else UDim2.new(0,if o then l else 0,1,0)if p or not n.ctx.
+UDim2.new(1,-5,1,-2)else UDim2.new(0,if o then l else 0,1,0)if p or not n.ctx.
 isShowing(n.el)then n._barSize:snap(r)else n._barSize:to(r)end end function m.
 ink(n,o,p,q)local r=n.ctx.theme.tokens local s=n._inks[o]if q or not n.ctx.
 isShowing(n.el)then if s then s:snap(r[p])else o.TextColor3=r[p]end return end
@@ -1285,237 +1285,262 @@ local g=a.v()local h=a.t()local i=a.f()local j=a.j()local k=a.b()local l=a.w()
 local m=a.x()local n=a.y()local o=a.h()local p=a.p()local q=a.z()local r=a.n()
 local s=a.A()local t=a.B()local u={}local v='main'local w=
 [[https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/]]local x=420
-local y=64 local z=64 local A=24 local B=19 local C=24 local D=17 local E=16
-local F=4 local G=64 local H=124 local I=40 local J=30 local K=34 local L=12
-local M=600 local N=30 local O=28 local P=30 local Q=30 local R=4 local S=6
-local T=24 local U=12 local V={}V.__index=V local function randomName()local W=
-table.create(U)for X=1,U do W[X]=string.char(math.random(97,122))end return
-table.concat(W)end local function encode(W)return c.service('HttpService'):
-JSONEncode(W)end local function decode(W)local X,Y=pcall(function()return c.
-service('HttpService'):JSONDecode(W)end)return if X then Y else nil end function
-V._registerElement(W,X,Y,Z)if Y==W._resultsPage or Y==W._onPage then return end
-X._pageName=Y.name X._page=Y if Z then if W.elements[X.id]then error(
-'sottUI: element id used twice: '..X.id,3)end W.elements[X.id]=X end if X.kind~=
-'divider'and X.kind~='label'and X.kind~='stat'then table.insert(W.ordered,X)end
-if X.kind=='toggle'then X:on(function()if W._showing==W._onPage and W.isOpen
-then W:_fillOn()end if X.spec.primary then W:_drawChips()end end)if X.spec.
-primary then X._onLabel=function()W:_drawChips()end if X.value==true then W:
-_drawChips()end end end end function V._drawChips(W)if W._chipsQueued or W.
-destroyed then return end W._chipsQueued=true task.defer(function()W.
-_chipsQueued=false if W.destroyed then return end local X={}for Y,Z in W.ordered
-do if Z.kind=='toggle'and Z.spec.primary and Z.value==true and not Z.disabled
-and Z:shown()then table.insert(X,Z)end end for Y,Z in W._chips do Z:Destroy()end
-table.clear(W._chips)local Y=W.ctx.theme local Z=0 local function widthOf(_)
-return math.ceil(j.width('display',_,D))+2*E end local function add(_,aa,ab)
-local ac=widthOf(_)local ad=i('TextButton',{Name='Chip',Size=UDim2.new(0,ac,1,0)
-,BackgroundTransparency=0,TextSize=D,Text=_,LayoutOrder=aa,ZIndex=3,Parent=W.
-_chipRow})Z+=ac+F Y:type(ad,'display')Y:paint(ad,'BackgroundColor3','surface')Y:
-paint(ad,'TextColor3','accent')ad.MouseEnter:Connect(function()W.ctx.tint(ad,
-'BackgroundColor3','accent')W.ctx.tint(ad,'TextColor3','onAccent')end)ad.
-MouseLeave:Connect(function()W.ctx.tint(ad,'BackgroundColor3','surface')W.ctx.
-tint(ad,'TextColor3','accent')end)ad.Activated:Connect(ab)table.insert(W._chips,
-ad)end local aa=W._scale.Scale local ab=(W._gui.AbsoluteSize.X/aa-(W._dockWidth
-or 0))/2-F-L for ac,ad in X do local _=#X-ac local ae=widthOf(ad.label)+(if _>0
-then G else 0)if ac>S or Z+ae>ab then add('+'..(_+1),100+ac,function()W:_fillOn(
-)W:_show(W._onPage)end)break end add(ad.label,100+ac,function()ad:set(false)end)
-end W._chipRow.Size=UDim2.new(0,math.max(Z-F,0),1,0)end)end function V.
-_setPerson(aa,ab)aa._person=ab end function V._contentChanged(aa,ab,ac)if aa.
-_showing==nil then return end local ad=aa._scale.Scale local ae=aa._gui.
-AbsoluteSize.Y/ad-y-A/ad-L local W=math.min(ab,M,ae)local X=UDim2.new(0,x,0,W)aa
-._sheetFade.Visible=ab>W if ac or aa._sheetRise then aa._panelSize:to(X)else aa.
-_panelSize:snap(X)end end function V._placeSheet(aa)local ab=aa._scale.Scale
-local ac=(aa._gui.AbsoluteSize.X-(aa._dockWidth or 0)*ab)/2 aa._panel.Position=
-UDim2.new(0,math.floor(ac),1,-math.floor(A+y*ab))end function V._show(aa,ab,ac)
-if aa._showing==ab then return end aa.ctx.hover.clear()aa.ctx.popover:close()aa.
-keys:cancel()local ad=aa._showing if ad then ad:setActive(false)end local ae=aa.
-_leaving if ae and ae~=ab then ae:setActive(false)end aa._leaving=nil aa.
+local y=64 local z=64 local A=76 local B=19 local C=24 local D=17 local E=16
+local F=4 local G=64 local H=124 local I=40 local J=44 local K=28 local L=34
+local M=12 local N=600 local O=30 local P=28 local Q=30 local R=30 local S=4
+local T=6 local U=24 local V=12 local W={}W.__index=W local function randomName(
+)local X=table.create(V)for Y=1,V do X[Y]=string.char(math.random(97,122))end
+return table.concat(X)end local function encode(X)return c.service('HttpService'
+):JSONEncode(X)end local function decode(X)local Y,Z=pcall(function()return c.
+service('HttpService'):JSONDecode(X)end)return if Y then Z else nil end function
+W._registerElement(X,Y,Z,_)if Z==X._resultsPage or Z==X._onPage then return end
+Y._pageName=Z.name Y._page=Z if _ then if X.elements[Y.id]then error(
+'sottUI: element id used twice: '..Y.id,3)end X.elements[Y.id]=Y end if Y.kind~=
+'divider'and Y.kind~='label'and Y.kind~='stat'then table.insert(X.ordered,Y)end
+if Y.kind=='toggle'then Y:on(function()if X._showing==X._onPage and X.isOpen
+then X:_fillOn()end if Y.spec.primary then X:_drawChips()end end)if Y.spec.
+primary then Y._onLabel=function()X:_drawChips()end if Y.value==true then X:
+_drawChips()end end end end function W._drawChips(X)if X._chipsQueued or X.
+destroyed then return end X._chipsQueued=true task.defer(function()X.
+_chipsQueued=false if X.destroyed then return end local Y={}for Z,_ in X.ordered
+do if _.kind=='toggle'and _.spec.primary and _.value==true and not _.disabled
+and _:shown()then table.insert(Y,_)end end for Z,_ in X._chips do _:Destroy()end
+table.clear(X._chips)local Z=X.ctx.theme local _=0 local function widthOf(aa)
+return math.ceil(j.width('display',aa,D))+2*E end local function add(aa,ab,ac)
+local ad=widthOf(aa)local ae=i('TextButton',{Name='Chip',Size=UDim2.new(0,ad,1,0
+),BackgroundTransparency=0,TextSize=D,Text=aa,LayoutOrder=ab,ZIndex=3,Parent=X.
+_chipRow})_+=ad+F Z:type(ae,'display')Z:paint(ae,'BackgroundColor3','surface')Z:
+paint(ae,'TextColor3','accent')ae.MouseEnter:Connect(function()X.ctx.tint(ae,
+'BackgroundColor3','accent')X.ctx.tint(ae,'TextColor3','onAccent')end)ae.
+MouseLeave:Connect(function()X.ctx.tint(ae,'BackgroundColor3','surface')X.ctx.
+tint(ae,'TextColor3','accent')end)ae.Activated:Connect(ac)table.insert(X._chips,
+ae)end local aa=X._scale.Scale local ab=X:_dockPoint()local ac=ab+(X._dockWidth
+or 0)*aa/2 local ad=(X._gui.AbsoluteSize.X-ac)/aa-F-M for ae,af in Y do local ag
+=#Y-ae local ah=widthOf(af.label)+(if ag>0 then G else 0)if ae>T or _+ah>ad then
+add('+'..(ag+1),100+ae,function()X:_fillOn()X:_show(X._onPage)end)break end add(
+af.label,100+ae,function()af:set(false)end)end X._chipRow.Size=UDim2.new(0,math.
+max(_-F,0),1,0)end)end function W._setPerson(aa,ab)aa._person=ab end function W.
+_contentChanged(aa,ab,ac)if aa._showing==nil then return end local ad=aa._scale.
+Scale local ae=aa._sheetRoom/ad-M local af=math.min(ab,N,ae)local ag=UDim2.new(0
+,x,0,af)aa._sheetFade.Visible=ab>af if ac or aa._sheetRise then aa._panelSize:
+to(ag)else aa._panelSize:snap(ag)end end function W._placeSheet(aa)local ab=aa.
+_scale.Scale local ac,ad=aa:_dockPoint()local ae=ac-(aa._dockWidth or 0)*ab/2
+local af=ad-y*ab local ag=aa._gui.AbsoluteSize.Y local ah=af>=ag/2 aa.
+_sheetAbove=ah aa._sheetRoom=if ah then af else ag-ad aa._panel.AnchorPoint=
+Vector2.new(0,if ah then 1 else 0)aa._panel.Position=UDim2.fromOffset(math.
+floor(ae),math.floor(if ah then af else ad))end function W._dockPoint(aa)local
+ab=aa._dockAt if ab then return ab.X,ab.Y end local ac=aa._gui.AbsoluteSize
+return ac.X/2,ac.Y-A end function W._home(aa)local ab=aa._dockAt return if ab
+then UDim2.fromOffset(ab.X,ab.Y)else UDim2.new(0.5,0,1,-A)end function W._away(
+aa)return aa:_home()+UDim2.fromOffset(0,y*aa._scale.Scale+A)end function W.
+_clampDock(aa)local ab=aa._dockAt if ab==nil then return end local ac=aa._scale.
+Scale local ad=aa._gui.AbsoluteSize local ae=(aa._dockWidth or 0)*ac/2 aa.
+_dockAt=Vector2.new(math.clamp(ab.X,math.min(ae+M,ad.X/2),math.max(ad.X-ae-M,ad.
+X/2)),math.clamp(ab.Y,y*ac+M,math.max(ad.Y-M,y*ac+M)))end function W._show(aa,ab
+,ac)if aa._showing==ab then return end aa.ctx.hover.clear()aa.ctx.popover:close(
+)aa.keys:cancel()local ad=aa._showing if ad then ad:setActive(false)end local ae
+=aa._leaving if ae and ae~=ab then ae:setActive(false)end aa._leaving=nil aa.
 _showing=ab aa:_placeSheet()aa._sheetRise=not ac ab:setActive(true)aa._sheetRise
-=false ab:adopt()aa:_syncMarker(ac)aa:_saveState()end function V._hideSheet(aa)
+=false ab:adopt()aa:_syncMarker(ac)aa:_saveState()end function W._hideSheet(aa)
 local ab=aa._showing if ab==nil then return end aa.ctx.hover.clear()aa.ctx.
 popover:close()aa.keys:cancel()aa._showing=nil aa._leaving=ab aa._panelSize:to(
 UDim2.new(0,x,0,0),function()if aa._leaving==ab then aa._leaving=nil ab:
-setActive(false)end end)aa:_syncMarker()end function V._syncMarker(aa,ab)local
-ac=aa.ctx.tint local ad=nil for ae,W in aa._words do local X=aa._showing==ae if
-W:IsA('TextButton')and W.Text~=''then ac(W,'TextColor3',if X then'text'else
-'muted')end if X then ad=W end end if ad==nil then aa._markerSize:to(UDim2.
-fromOffset(0,R))return end aa.ctx.theme:paint(aa._marker,'BackgroundColor3',if
-ad==aa._homeAvatar then'text'else'accent')local ae=aa._scale.Scale local W=(ad.
-AbsolutePosition.X-aa._dock.AbsolutePosition.X)/ae local X=UDim2.fromOffset(W,0)
-local Y=UDim2.fromOffset(ad.AbsoluteSize.X/ae,R)if ab or aa._markerSize.target==
-nil or aa._markerSize.target.X.Offset==0 then aa._markerAt:snap(X)else aa.
-_markerAt:to(X)end if ab then aa._markerSize:snap(Y)else aa._markerSize:to(Y)end
-end local function bindWord(aa,ab,ac)aa._words[ab]=ac ac.Activated:Connect(
-function()if aa._box.Text~=''then aa._box.Text=''end if aa._showing==ab then aa:
-_hideSheet()else aa:_show(ab)end end)end local function addWord(aa,ab,ac,ad)
-local ae=aa.ctx.theme local W=math.ceil(j.width('display',ac,B))+2 local X=i(
-'TextButton',{Name=ac,Size=UDim2.new(0,W,1,0),TextSize=B,Text=ac,LayoutOrder=ad,
-ZIndex=3,Parent=aa._row})ae:type(X,'display')ae:paint(X,'TextColor3','muted')
-bindWord(aa,ab,X)X.MouseEnter:Connect(function()if aa._showing~=ab then aa.ctx.
-tint(X,'TextColor3','text')end end)X.MouseLeave:Connect(function()if aa._showing
-~=ab then aa.ctx.tint(X,'TextColor3','muted')end end)end function V.page(aa,ab)
-local ac=n.new(aa,ab)table.insert(aa.pages,ac)if ab=='Home'and aa._homeAvatar
-then bindWord(aa,ac,aa._homeAvatar)else addWord(aa,ac,ab,2+#aa.pages)end ac:
-mount(aa._panel)return ac end function V._fillOn(aa)local ab,ac={},{}for ad,ae
-in aa.ordered do if ae.kind=='toggle'and ae.value==true then table.insert(if ae.
-spec.primary then ab else ac,ae)end end if#ab==0 then ab=ac end aa._onPage:
-showList(ab,if#ab==0 then'Nothing is on'else nil)end function V._query(aa,ab)if
-ab==''then if aa._showing==aa._resultsPage then aa:_hideSheet()end aa.
-_resultsPage:showList({})return end local ac=o.settings(ab,aa.ordered,T)aa.
-_resultsPage:showList(ac,if#ac==0 then'Nothing matches'else nil)aa:_show(aa.
-_resultsPage)end function V.showPage(aa,ab)for ac,ad in aa.pages do if ad.name==
-ab then aa._box.Text=''aa:_show(ad)return end end end function V.show(aa,ab,ac)
-local ad=aa.pages[ab]if ad then aa:_show(ad,ac)end end function V.reveal(aa,ab)
-local ac=ab._page if ac then aa:setOpen(true)aa:showPage(ac.name)end end
-function V.setOpen(aa,ab)if aa.isOpen==ab or aa.destroyed then return end aa.
-isOpen=ab if aa._opener then aa._opener.Visible=not ab end aa.ctx.hover.clear()
-aa.ctx.popover:close()aa.ctx.tooltip:hide()aa.keys:cancel()if not ab and aa.
-_dialogClose then aa._dialogClose()end if ab then aa._root.Visible=true aa.
-_modal.Visible=true aa:_guardCursor(true)aa._at:to(UDim2.new(0.5,0,1,-A))aa:
-_drawChips()else aa._modal.Visible=false aa:_guardCursor(false)aa._box:
-ReleaseFocus()aa._box.Text=''aa:_hideSheet()aa._at:to(UDim2.new(0.5,0,1,y*aa.
-_scale.Scale),function()if not aa.isOpen then aa._root.Visible=false end end)end
-aa.visibilityChanged:fire(ab)end function V._guardCursor(aa,ab)local ac=c.
-service('UserInputService')if ab then aa._gameCursor=ac.MouseIconEnabled ac.
-MouseIconEnabled=true if aa._cursorGuard==nil then aa._cursorGuard=ac:
-GetPropertyChangedSignal('MouseIconEnabled'):Connect(function()if not ac.
-MouseIconEnabled then aa._gameCursor=false ac.MouseIconEnabled=true end end)end
-else if aa._cursorGuard then aa._cursorGuard:Disconnect()aa._cursorGuard=nil end
-if aa._gameCursor~=nil then ac.MouseIconEnabled=aa._gameCursor aa._gameCursor=
-nil end end end function V.toggle(aa)aa:setOpen(not aa.isOpen)end function V.
-notify(aa,ab)if aa.destroyed then return end aa.ctx.notify(ab)end function V.
-setTheme(aa,ab)aa.ctx.theme:apply(ab)end function V.setScale(aa,ab)local ac=math
-.clamp(ab,0.7,1.5)aa._scale.Scale=ac aa._panelScale.Scale=ac aa:_placeSheet()aa:
-_drawChips()aa:_saveState()end function V.setSubtitle(aa,ab)aa._subtitleText=ab
-end function V._saveState(aa)local ab=aa._files if ab==nil or aa._stateFile==nil
-or aa._stateQueued then return end aa._stateQueued=true task.delay(0.5,function(
-)aa._stateQueued=false if not aa.destroyed then ab.write(aa._stateFile,encode({
-scale=aa._scale.Scale}))end end)end function V.dialog(aa,ab,ac)if aa.destroyed
-then return false end b.open(aa,ab,ac)return true end function V.find(aa,ab)
-return aa.elements[ab]end function V.snapshot(aa)local ab={}for ac,ad in aa.
-elements do if ad.saved then local ae=ad.value if ad.kind=='color'then ae={hex=
-ae.color:ToHex(),alpha=ae.alpha}elseif ad.kind=='key'then ae={key=ae.key,mode=ae
-.mode,modifiers=ae.modifiers,toggled=ad.toggled==true}end ab[ac]=ae end end
-return ab end function V.restore(aa,ab)for ac,ad in ab do local ae=aa.elements[
-ac]if ae and ae.saved then if ae.kind=='color'and type(ad)=='table'then ae:set({
-color=Color3.fromHex(ad.hex or'ffffff'),alpha=ad.alpha})elseif ae.kind=='key'and
-type(ad)=='table'then ae:set(ad)ae.toggled=ad.toggled==true else ae:set(ad)end
-end end end function V.destroy(aa)if aa.destroyed then return end aa.destroyed=
-true aa:_guardCursor(false)aa.ctx.notifications:destroy()for ab,ac in aa.pages
-do ac:destroy()end aa._onPage:destroy()aa._resultsPage:destroy()aa.ctx.input:
-destroy()aa._maid:clean()aa.visibilityChanged:clear()if aa._registry and aa.
-_registry.current==aa then aa._registry.current=nil end end function u.new(aa)
-local ab=aa._registry if ab and ab.current then ab.current:destroy()end local ac
-=h.new()local ad=s.new(aa.theme)local ae=f.new()local W=c.service(
-'UserInputService')local X=aa.touch==true or(W.TouchEnabled and not W.
-MouseEnabled)local Y=i('ScreenGui',{Name=randomName(),IgnoreGuiInset=true,
+setActive(false)end end)aa:_syncMarker()end function W._syncMarker(aa,ab)local
+ac=aa.ctx.tint local ad=nil for ae,af in aa._words do local ag=aa._showing==ae
+if af:IsA('TextButton')and af.Text~=''then ac(af,'TextColor3',if ag then'text'
+else'muted')end if ag then ad=af end end if ad==nil then aa._markerSize:to(UDim2
+.fromOffset(0,S))return end aa.ctx.theme:paint(aa._marker,'BackgroundColor3',if
+ad==aa._homeAvatar then'text'else'accent')local ae=aa._scale.Scale local af=(ad.
+AbsolutePosition.X-aa._dock.AbsolutePosition.X)/ae local ag=UDim2.fromOffset(af,
+if aa._sheetAbove==false then y-S else 0)local ah=UDim2.fromOffset(ad.
+AbsoluteSize.X/ae,S)if ab or aa._markerSize.target==nil or aa._markerSize.target
+.X.Offset==0 then aa._markerAt:snap(ag)else aa._markerAt:to(ag)end if ab then aa
+._markerSize:snap(ah)else aa._markerSize:to(ah)end end local function bindWord(
+aa,ab,ac)aa._words[ab]=ac ac.Activated:Connect(function()if aa._box.Text~=''then
+aa._box.Text=''end if aa._showing==ab then aa:_hideSheet()else aa:_show(ab)end
+end)end local function addWord(aa,ab,ac,ad)local ae=aa.ctx.theme local af=math.
+ceil(j.width('display',ac,B))+2 local ag=i('TextButton',{Name=ac,Size=UDim2.new(
+0,af,1,0),TextSize=B,Text=ac,LayoutOrder=ad,ZIndex=3,Parent=aa._row})ae:type(ag,
+'display')ae:paint(ag,'TextColor3','muted')bindWord(aa,ab,ag)ag.MouseEnter:
+Connect(function()if aa._showing~=ab then aa.ctx.tint(ag,'TextColor3','text')end
+end)ag.MouseLeave:Connect(function()if aa._showing~=ab then aa.ctx.tint(ag,
+'TextColor3','muted')end end)end function W.page(aa,ab)local ac=n.new(aa,ab)
+table.insert(aa.pages,ac)if ab=='Home'and aa._homeAvatar then bindWord(aa,ac,aa.
+_homeAvatar)else addWord(aa,ac,ab,2+#aa.pages)end ac:mount(aa._panel)return ac
+end function W._fillOn(aa)local ab,ac={},{}for ad,ae in aa.ordered do if ae.kind
+=='toggle'and ae.value==true then table.insert(if ae.spec.primary then ab else
+ac,ae)end end if#ab==0 then ab=ac end aa._onPage:showList(ab,if#ab==0 then
+'Nothing is on'else nil)end function W._query(aa,ab)if ab==''then if aa._showing
+==aa._resultsPage then aa:_hideSheet()end aa._resultsPage:showList({})return end
+local ac=o.settings(ab,aa.ordered,U)aa._resultsPage:showList(ac,if#ac==0 then
+'Nothing matches'else nil)aa:_show(aa._resultsPage)end function W.showPage(aa,ab
+)for ac,ad in aa.pages do if ad.name==ab then aa._box.Text=''aa:_show(ad)return
+end end end function W.show(aa,ab,ac)local ad=aa.pages[ab]if ad then aa:_show(ad
+,ac)end end function W.reveal(aa,ab)local ac=ab._page if ac then aa:setOpen(true
+)aa:showPage(ac.name)end end function W.setOpen(aa,ab)if aa.isOpen==ab or aa.
+destroyed then return end aa.isOpen=ab if aa._opener then aa._opener.Visible=not
+ab end aa.ctx.hover.clear()aa.ctx.popover:close()aa.ctx.tooltip:hide()aa.keys:
+cancel()if not ab and aa._dialogClose then aa._dialogClose()end if ab then aa.
+_root.Visible=true aa._modal.Visible=true aa:_guardCursor(true)aa._at:to(aa:
+_home())aa:_drawChips()else aa._modal.Visible=false aa:_guardCursor(false)aa.
+_box:ReleaseFocus()aa._box.Text=''aa:_hideSheet()aa._at:to(aa:_away(),function()
+if not aa.isOpen then aa._root.Visible=false end end)end aa.visibilityChanged:
+fire(ab)end function W._guardCursor(aa,ab)local ac=c.service('UserInputService')
+if ab then aa._gameCursor=ac.MouseIconEnabled ac.MouseIconEnabled=true if aa.
+_cursorGuard==nil then aa._cursorGuard=ac:GetPropertyChangedSignal(
+'MouseIconEnabled'):Connect(function()if not ac.MouseIconEnabled then aa.
+_gameCursor=false ac.MouseIconEnabled=true end end)end else if aa._cursorGuard
+then aa._cursorGuard:Disconnect()aa._cursorGuard=nil end if aa._gameCursor~=nil
+then ac.MouseIconEnabled=aa._gameCursor aa._gameCursor=nil end end end function
+W.toggle(aa)aa:setOpen(not aa.isOpen)end function W.notify(aa,ab)if aa.destroyed
+then return end aa.ctx.notify(ab)end function W.setTheme(aa,ab)aa.ctx.theme:
+apply(ab)end function W.setScale(aa,ab)local ac=math.clamp(ab,0.7,1.5)aa._scale.
+Scale=ac aa._panelScale.Scale=ac aa:_placeSheet()aa:_drawChips()aa:_saveState()
+end function W.setSubtitle(aa,ab)aa._subtitleText=ab end function W._saveState(
+aa)local ab=aa._files if ab==nil or aa._stateFile==nil or aa._stateQueued then
+return end aa._stateQueued=true task.delay(0.5,function()aa._stateQueued=false
+if not aa.destroyed then local ac=aa._dockAt ab.write(aa._stateFile,encode({
+scale=aa._scale.Scale,dockX=ac and ac.X,dockY=ac and ac.Y}))end end)end function
+W.dialog(aa,ab,ac)if aa.destroyed then return false end b.open(aa,ab,ac)return
+true end function W.find(aa,ab)return aa.elements[ab]end function W.snapshot(aa)
+local ab={}for ac,ad in aa.elements do if ad.saved then local ae=ad.value if ad.
+kind=='color'then ae={hex=ae.color:ToHex(),alpha=ae.alpha}elseif ad.kind=='key'
+then ae={key=ae.key,mode=ae.mode,modifiers=ae.modifiers,toggled=ad.toggled==true
+}end ab[ac]=ae end end return ab end function W.restore(aa,ab)for ac,ad in ab do
+local ae=aa.elements[ac]if ae and ae.saved then if ae.kind=='color'and type(ad)
+=='table'then ae:set({color=Color3.fromHex(ad.hex or'ffffff'),alpha=ad.alpha})
+elseif ae.kind=='key'and type(ad)=='table'then ae:set(ad)ae.toggled=ad.toggled==
+true else ae:set(ad)end end end end function W.destroy(aa)if aa.destroyed then
+return end aa.destroyed=true aa:_guardCursor(false)aa.ctx.notifications:destroy(
+)for ab,ac in aa.pages do ac:destroy()end aa._onPage:destroy()aa._resultsPage:
+destroy()aa.ctx.input:destroy()aa._maid:clean()aa.visibilityChanged:clear()if aa
+._registry and aa._registry.current==aa then aa._registry.current=nil end end
+function u.new(aa)local ab=aa._registry if ab and ab.current then ab.current:
+destroy()end local ac=h.new()local ad=s.new(aa.theme)local ae=f.new()local af=c.
+service('UserInputService')local ag=aa.touch==true or(af.TouchEnabled and not af
+.MouseEnabled)local ah=i('ScreenGui',{Name=randomName(),IgnoreGuiInset=true,
 ResetOnSpawn=false,ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=aa.
-displayOrder or 10000})c.protect(Y)Y.Parent=c.guiParent()ac:add(Y)local Z=c.
-files()local _=aa.folder or'sottui_dock'local af=aa.stateFile or(_..
-'/window.json')local ag=nil if Z then Z.folder(_)local ah=Z.read(af)ag=ah and
-decode(ah)end if type(ag)~='table'then ag={}end local ah=i('Frame',{Name='Root',
-Size=UDim2.fromScale(1,1),Visible=false,Parent=Y})local ai=tonumber(ag.scale)or(
-if Y.AbsoluteSize.X<800 then 0.8 else 1)local aj=i('Frame',{Name='Layer',Size=
-UDim2.fromScale(1,1),ZIndex=100,Parent=Y})local ak=i('TextButton',{Name='Modal',
-Size=UDim2.fromOffset(0,0),Modal=true,Visible=false,Parent=ah})local al=i(
+displayOrder or 10000})c.protect(ah)ah.Parent=c.guiParent()ac:add(ah)local X=c.
+files()local Y=aa.folder or'sottui_dock'local Z=aa.stateFile or(Y..
+'/window.json')local _=nil if X then X.folder(Y)local ai=X.read(Z)_=ai and
+decode(ai)end if type(_)~='table'then _={}end local ai=i('Frame',{Name='Root',
+Size=UDim2.fromScale(1,1),Visible=false,Parent=ah})local aj=tonumber(_.scale)or(
+if ah.AbsoluteSize.X<800 then 0.8 else 1)local ak=i('Frame',{Name='Layer',Size=
+UDim2.fromScale(1,1),ZIndex=100,Parent=ah})local al=i('TextButton',{Name='Modal'
+,Size=UDim2.fromOffset(0,0),Modal=true,Visible=false,Parent=ai})local am=i(
 'Frame',{Name='Assembly',AnchorPoint=Vector2.new(0.5,1),Position=UDim2.new(0.5,0
-,1,y),Size=UDim2.fromOffset(400,y),ZIndex=3,Parent=ah})local am=i('UIScale',{
-Scale=ai,Parent=al})local an=i('Frame',{Name='Dock',Size=UDim2.fromScale(1,1),
-BackgroundTransparency=0,ClipsDescendants=true,Active=true,ZIndex=3,Parent=al})
-ad:paint(an,'BackgroundColor3','surface')local ao=i('Frame',{Name='Row',Size=
-UDim2.fromScale(1,1),ZIndex=3,Parent=an})local ap=i('UIListLayout',{
+,1,y),Size=UDim2.fromOffset(400,y),ZIndex=3,Parent=ai})local an=i('UIScale',{
+Scale=aj,Parent=am})local ao=i('Frame',{Name='Dock',Size=UDim2.fromScale(1,1),
+BackgroundTransparency=0,ClipsDescendants=true,Active=true,ZIndex=3,Parent=am})
+ad:paint(ao,'BackgroundColor3','surface')local ap=i('Frame',{Name='Row',Size=
+UDim2.fromScale(1,1),ZIndex=3,Parent=ao})local aq=i('UIListLayout',{
 FillDirection=Enum.FillDirection.Horizontal,VerticalAlignment=Enum.
 VerticalAlignment.Center,Padding=UDim.new(0,C),SortOrder=Enum.SortOrder.
-LayoutOrder,Parent=ao})local aq=i('TextButton',{Name='Avatar',Size=UDim2.
+LayoutOrder,Parent=ap})local ar=i('TextButton',{Name='Avatar',Size=UDim2.
 fromOffset(z,z),BackgroundTransparency=0,ClipsDescendants=true,Text='',
-LayoutOrder=1,ZIndex=3,Parent=ao})ad:paint(aq,'BackgroundColor3','accent')local
-ar=c.service('Players').LocalPlayer if ar then i('ImageLabel',{Size=UDim2.
+LayoutOrder=1,ZIndex=3,Parent=ap})ad:paint(ar,'BackgroundColor3','accent')local
+as=c.service('Players').LocalPlayer if as then i('ImageLabel',{Size=UDim2.
 fromScale(1,1),BackgroundTransparency=1,BorderSizePixel=0,Image=string.format(
-'rbxthumb://type=AvatarBust&id=%d&w=150&h=150',ar.UserId),ZIndex=3,Parent=aq})
-end local as=i('Frame',{Name='Running',Position=UDim2.new(1,F,0,0),Size=UDim2.
-new(0,0,1,0),ZIndex=3,Parent=al})i('UIListLayout',{FillDirection=Enum.
+'rbxthumb://type=AvatarBust&id=%d&w=150&h=150',as.UserId),ZIndex=3,Parent=ar})
+end local at=i('Frame',{Name='Running',Position=UDim2.new(1,F,0,0),Size=UDim2.
+new(0,0,1,0),ZIndex=3,Parent=am})i('UIListLayout',{FillDirection=Enum.
 FillDirection.Horizontal,VerticalAlignment=Enum.VerticalAlignment.Center,Padding
-=UDim.new(0,F),SortOrder=Enum.SortOrder.LayoutOrder,Parent=as})local at=i(
+=UDim.new(0,F),SortOrder=Enum.SortOrder.LayoutOrder,Parent=at})local au=i(
 'TextBox',{Name='Search',Size=UDim2.fromOffset(H,I),BackgroundTransparency=0,
 TextSize=B,Text='',PlaceholderText='Search',ClearTextOnFocus=false,
 ClipsDescendants=true,TextXAlignment=Enum.TextXAlignment.Left,LayoutOrder=300,
-ZIndex=3,Parent=ao})i('UIPadding',{PaddingLeft=UDim.new(0,12),PaddingRight=UDim.
-new(0,8),Parent=at})ad:paint(at,'BackgroundColor3','base')ad:type(at,'display')
-ad:paint(at,'TextColor3','text')ad:paint(at,'PlaceholderColor3','muted')local au
-=i('Frame',{Name='Marker',Size=UDim2.fromOffset(0,R),BackgroundTransparency=0,
-ZIndex=4,Parent=an})ad:paint(au,'BackgroundColor3','accent')local av=i('Frame',{
+ZIndex=3,Parent=ap})i('UIPadding',{PaddingLeft=UDim.new(0,12),PaddingRight=UDim.
+new(0,8),Parent=au})ad:paint(au,'BackgroundColor3','base')ad:type(au,'display')
+ad:paint(au,'TextColor3','text')ad:paint(au,'PlaceholderColor3','muted')local av
+=i('Frame',{Name='Marker',Size=UDim2.fromOffset(0,S),BackgroundTransparency=0,
+ZIndex=4,Parent=ao})ad:paint(av,'BackgroundColor3','accent')local aw=i('Frame',{
 Name='Sheet',AnchorPoint=Vector2.new(0,1),Position=UDim2.new(0,0,1,-(A+y)),Size=
 UDim2.new(0,x,0,0),BackgroundTransparency=0,ClipsDescendants=true,Active=true,
-ZIndex=2,Parent=ah})ad:paint(av,'BackgroundColor3','surface')local aw=i('Frame',
+ZIndex=2,Parent=ai})ad:paint(aw,'BackgroundColor3','surface')local ax=i('Frame',
 {Name='Fade',AnchorPoint=Vector2.new(0,1),Position=UDim2.fromScale(0,1),Size=
-UDim2.new(1,0,0,K),BackgroundTransparency=0,Visible=false,ZIndex=20,Parent=av})
-ad:paint(aw,'BackgroundColor3','surface')i('UIGradient',{Rotation=90,
+UDim2.new(1,0,0,L),BackgroundTransparency=0,Visible=false,ZIndex=20,Parent=aw})
+ad:paint(ax,'BackgroundColor3','surface')i('UIGradient',{Rotation=90,
 Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),
-NumberSequenceKeypoint.new(1,0)}),Parent=aw})local ax=i('UIScale',{Scale=ai,
-Parent=av})local ay=setmetatable({ctx=nil,pages={},elements={},ordered={},isOpen
-=false,destroyed=false,width=x,visibilityChanged=r.new(),_maid=ac,_gui=Y,_root=
-ah,_layer=aj,_modal=ak,_scale=am,_panelScale=ax,_box=at,_panel=av,_dock=an,_row=
-ao,_marker=au,_sheetFade=aw,_chipRow=as,_homeAvatar=aq,_chips={},_words={},
-_subtitleText=aa.subtitle,_files=Z,_stateFile=af,_dialogIds=0,_registry=ab},V)if
-ab then ab.current=ay end local az={theme=ad,input=ae,touch=X,assets={},glyph=e.
-new(ad),tint=t.new(ad),uiScale=function()return am.Scale end,popoverTop=function
-()return 8 end,dialogAt=function(az)local aA=aj.AbsoluteSize return UDim2.
-fromOffset(math.floor((aA.X-az*am.Scale)/2),math.floor(aA.Y*0.2))end,isShowing=
-function(az)if not ay.isOpen or ay._showing==nil then return false end return az
-._shownOn==ay._showing or az._page==ay._showing end,setScrollLocked=function(az)
-local aA=ay._showing if aA and aA.frame and X then aA.frame.ScrollingEnabled=not
-az end end}ay.ctx=az local aA=m.popover(az,aj)az.popover={open=function(aB,aC,aD
-,aE,aF)local aG=ay._showing if aG==nil or not aG:expand(aC,aE,aF)then aA:open(aC
-,aD,aE,aF)end end,close=function()aA:close()local aB=ay._showing if aB then aB:
-collapse()end end,isOpen=function()return aA:isOpen()end,key=function(aB,aC)if
-aA:key(aC)then return true end local aD=ay._showing return aD~=nil and aD:
-expansionKey(aC)end}az.tooltip=m.tooltip(az,aj)az.hover=m.hover(az)az.
-notifications=l.new(az,aj)az.notify=function(aB)az.notifications:show(aB)end ay.
-keys=g.new(ae,c,function()return ay.isOpen end)az.keys=ay.keys ay._at=ac:add(k.
-prop(al,'Position',O))ay._panelSize=ac:add(k.prop(av,'Size',N))ay._markerAt=ac:
-add(k.prop(au,'Position',P))ay._markerSize=ac:add(k.prop(au,'Size',P))local aB=
-ac:add(k.prop(al,'Size',Q))ay._onPage=n.new(ay,'On')ay._resultsPage=n.new(ay,
-'Results')ay._onPage:mount(av)ay._resultsPage:mount(av)local aC=i('TextButton',{
-Name='Close',Size=UDim2.new(0,J,1,0),LayoutOrder=400,ZIndex=4,Parent=ao})local
-aD=az.glyph.cross(aC,'muted')aD.AnchorPoint=Vector2.new(0.5,0.5)aD.Position=
-UDim2.fromScale(0.5,0.5)aD.ZIndex=4 aC.Activated:Connect(function()ay:setOpen(
-false)end)at:GetPropertyChangedSignal('Text'):Connect(function()ay:_query(at.
-Text)end)local function fitDock()local aE=math.ceil(ap.AbsoluteContentSize.X/am.
-Scale)ay._dockWidth=aE aB:snap(UDim2.fromOffset(aE,y))ay:_placeSheet()ay:
-_drawChips()task.defer(function()if not ay.destroyed then ay:_syncMarker(true)
-end end)end ap:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(fitDock)
-task.defer(fitDock)ac:add(Y:GetPropertyChangedSignal('AbsoluteSize'):Connect(
-function()ay:_placeSheet()ay:_drawChips()local aE=ay._showing if aE then aE:
-_invalidate()end end))ae.moved:connect(function(aE)az.hover:verify(aE)end)ae.
-wheel:connect(function(aE)if not ay.isOpen or az.popover:isOpen()then return end
-local aF=ay._showing if aF==nil or aF.frame==nil then return end local aG=ae:
-pointer()local aH,aI=aF.frame.AbsolutePosition,aF.frame.AbsoluteSize if aG.X>=aH
-.X and aG.Y>=aH.Y and aG.X<=aH.X+aI.X and aG.Y<=aH.Y+aI.Y then if not aF:
-pointerInExpansion(aG)then aF:wheel(aE)end end end)ae.keyDown:connect(function(
-aE,aF)if aE.UserInputType~=Enum.UserInputType.Keyboard then return end local aG=
-aE.KeyCode.Name if ay.keys:swallowed(aG)then return end if az.popover:key(aG)
-then return end if aG=='Escape'and ay._dialogClose then ay._dialogClose()return
-end if aG=='Escape'and at.Text~=''then at.Text=''return end if aG=='Escape'and
-ay._showing then ay:_hideSheet()return end if aF or ae:typing()then return end
-if ay.isOpen and aG=='K'then if W:IsKeyDown(Enum.KeyCode.LeftControl)or W:
-IsKeyDown(Enum.KeyCode.RightControl)then at:CaptureFocus()end end end)ac:add(ad.
-changed:connect(function()for aE,aF in ay.pages do for aG,aH in aF._views do
-pcall(function()aH:retint()aH.refresh()end)end end end))local aE=p.new({window=
-ay,nextId=function()return 0 end,_register=function(aE,aF,aG)if aG then ay.
-elements[aF.id]=aF end aF._pageName=''end,_invalidate=function()end},'')ay.
-menuKey=aE:key('__menu',{label='Menu',default=aa.key or'RightShift',mode=
-'Toggle',saved=false,onPress=function()ay:toggle()end})local aF=c.service(
-'RunService')k.setAttach(function(aG)return aF.PreRender:Connect(aG)end)if aa.
-fonts~=false and Z then ac:add(task.defer(function()local aG=aa.fontTag or v
-local aH=string.format(w,aG)local aI=_..'/fonts-'..aG local aJ=d.load(aI,aH,
-encode)if not ay.destroyed and(aJ.text or aJ.display)then ad:setFonts(aJ.text,aJ
-.display)end end))end if X then ay._opener=q(Y,ad,function()ay:setOpen(true)end)
-end if aa.autoShow~=false then task.defer(function()ay:setOpen(true)end)end
-return ay end function u.setVersion(aa)v=aa end return u end function a.C()local
-aa=a.cache.C if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end
-end end local aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae=
-'0.2.4-dock'local function registry()local af=aa.global('getgenv')local ag=if
-type(af)=='function'then af()else _G local ah=ag.__sottui if type(ah)~='table'
-then ah={current=nil}ag.__sottui=ah end return ah end local af={version=ae,
-motion=ab}ad.setVersion('v'..ae)function af.window(ag)local ah=table.clone(ag or
-{})ah._registry=registry()return ad.new(ah)end function af.current()return
-registry().current end function af.obsidian()return ac.new(af)end return af
+NumberSequenceKeypoint.new(1,0)}),Parent=ax})local ay=i('UIScale',{Scale=aj,
+Parent=aw})local az=setmetatable({ctx=nil,pages={},elements={},ordered={},isOpen
+=false,destroyed=false,width=x,visibilityChanged=r.new(),_maid=ac,_gui=ah,_root=
+ai,_layer=ak,_modal=al,_scale=an,_panelScale=ay,_box=au,_panel=aw,_dock=ao,_row=
+ap,_marker=av,_sheetFade=ax,_chipRow=at,_homeAvatar=ar,_chips={},_sheetRoom=600,
+_dockAt=if tonumber(_.dockX)and tonumber(_.dockY)then Vector2.new(_.dockX,_.
+dockY)else nil,_words={},_subtitleText=aa.subtitle,_files=X,_stateFile=Z,
+_dialogIds=0,_registry=ab},W)if ab then ab.current=az end local aA={theme=ad,
+input=ae,touch=ag,assets={},glyph=e.new(ad),tint=t.new(ad),uiScale=function()
+return an.Scale end,popoverTop=function()return 8 end,dialogAt=function(aA)local
+aB=ak.AbsoluteSize return UDim2.fromOffset(math.floor((aB.X-aA*an.Scale)/2),math
+.floor(aB.Y*0.2))end,isShowing=function(aA)if not az.isOpen or az._showing==nil
+then return false end return aA._shownOn==az._showing or aA._page==az._showing
+end,setScrollLocked=function(aA)local aB=az._showing if aB and aB.frame and ag
+then aB.frame.ScrollingEnabled=not aA end end}az.ctx=aA local aB=m.popover(aA,ak
+)aA.popover={open=function(aC,aD,aE,aF,aG)local aH=az._showing if aH==nil or not
+aH:expand(aD,aF,aG)then aB:open(aD,aE,aF,aG)end end,close=function()aB:close()
+local aC=az._showing if aC then aC:collapse()end end,isOpen=function()return aB:
+isOpen()end,key=function(aC,aD)if aB:key(aD)then return true end local aE=az.
+_showing return aE~=nil and aE:expansionKey(aD)end}aA.tooltip=m.tooltip(aA,ak)aA
+.hover=m.hover(aA)aA.notifications=l.new(aA,ak)aA.notify=function(aC)aA.
+notifications:show(aC)end az.keys=g.new(ae,c,function()return az.isOpen end)aA.
+keys=az.keys az._at=ac:add(k.prop(am,'Position',P))az._at:snap(az:_away())az.
+_panelSize=ac:add(k.prop(aw,'Size',O))az._markerAt=ac:add(k.prop(av,'Position',Q
+))az._markerSize=ac:add(k.prop(av,'Size',Q))local aC=ac:add(k.prop(am,'Size',R))
+az._onPage=n.new(az,'On')az._resultsPage=n.new(az,'Results')az._onPage:mount(aw)
+az._resultsPage:mount(aw)local aD=i('TextButton',{Name='Close',Size=UDim2.new(0,
+J,1,0),LayoutOrder=400,ZIndex=4,Parent=ap})local aE=aA.glyph.cross(aD,'muted')aE
+.AnchorPoint=Vector2.new(0.5,0.5)aE.Position=UDim2.new(0.5,4,0.5,0)aE.ZIndex=4
+local aF=i('Frame',{AnchorPoint=Vector2.new(0,0.5),Position=UDim2.fromScale(0,
+0.5),Size=UDim2.fromOffset(1,K),BackgroundTransparency=0,ZIndex=4,Parent=aD})ad:
+paint(aF,'BackgroundColor3','lineStrong')ar.MouseEnter:Connect(function()aA.
+tint(ar,'BackgroundColor3','accentHover')end)ar.MouseLeave:Connect(function()aA.
+tint(ar,'BackgroundColor3','accent')end)ao.InputBegan:Connect(function(aG)local
+aH=aG.UserInputType if aH~=Enum.UserInputType.MouseButton1 and aH~=Enum.
+UserInputType.Touch then return end local aI=if aH==Enum.UserInputType.Touch
+then ae:at(aG)else ae:pointer()local aJ,aK=az:_dockPoint()ae:capture(function(aL
+)local aM=aL-aI az._dockAt=Vector2.new(aJ+aM.X,aK+aM.Y)az:_clampDock()az._at:
+snap(az:_home())az:_placeSheet()end,function()az:_drawChips()az:_syncMarker(true
+)az:_saveState()end,if aH==Enum.UserInputType.Touch then aG else nil)end)aD.
+Activated:Connect(function()az:setOpen(false)end)au:GetPropertyChangedSignal(
+'Text'):Connect(function()az:_query(au.Text)end)local function fitDock()local aG
+=math.ceil(aq.AbsoluteContentSize.X/an.Scale)az._dockWidth=aG aC:snap(UDim2.
+fromOffset(aG,y))az:_clampDock()if az.isOpen then az._at:snap(az:_home())else az
+._at:snap(az:_away())end az:_placeSheet()az:_drawChips()task.defer(function()if
+not az.destroyed then az:_syncMarker(true)end end)end aq:
+GetPropertyChangedSignal('AbsoluteContentSize'):Connect(fitDock)task.defer(
+fitDock)ac:add(ah:GetPropertyChangedSignal('AbsoluteSize'):Connect(function()az:
+_clampDock()if az.isOpen then az._at:snap(az:_home())end az:_placeSheet()az:
+_drawChips()local aG=az._showing if aG then aG:_invalidate()end end))ae.moved:
+connect(function(aG)aA.hover:verify(aG)end)ae.wheel:connect(function(aG)if not
+az.isOpen or aA.popover:isOpen()then return end local aH=az._showing if aH==nil
+or aH.frame==nil then return end local aI=ae:pointer()local aJ,aK=aH.frame.
+AbsolutePosition,aH.frame.AbsoluteSize if aI.X>=aJ.X and aI.Y>=aJ.Y and aI.X<=aJ
+.X+aK.X and aI.Y<=aJ.Y+aK.Y then if not aH:pointerInExpansion(aI)then aH:wheel(
+aG)end end end)ae.keyDown:connect(function(aG,aH)if aG.UserInputType~=Enum.
+UserInputType.Keyboard then return end local aI=aG.KeyCode.Name if az.keys:
+swallowed(aI)then return end if aA.popover:key(aI)then return end if aI==
+'Escape'and az._dialogClose then az._dialogClose()return end if aI=='Escape'and
+au.Text~=''then au.Text=''return end if aH or ae:typing()then return end if az.
+isOpen and aI=='K'then if af:IsKeyDown(Enum.KeyCode.LeftControl)or af:IsKeyDown(
+Enum.KeyCode.RightControl)then au:CaptureFocus()end end end)ac:add(ad.changed:
+connect(function()for aG,aH in az.pages do for aI,aJ in aH._views do pcall(
+function()aJ:retint()aJ.refresh()end)end end end))local aG=p.new({window=az,
+nextId=function()return 0 end,_register=function(aG,aH,aI)if aI then az.elements
+[aH.id]=aH end aH._pageName=''end,_invalidate=function()end},'')az.menuKey=aG:
+key('__menu',{label='Menu',default=aa.key or'RightShift',mode='Toggle',saved=
+false,onPress=function()az:toggle()end})local aH=c.service('RunService')k.
+setAttach(function(aI)return aH.PreRender:Connect(aI)end)if aa.fonts~=false and
+X then ac:add(task.defer(function()local aI=aa.fontTag or v local aJ=string.
+format(w,aI)local aK=Y..'/fonts-'..aI local aL=d.load(aK,aJ,encode)if not az.
+destroyed and(aL.text or aL.display)then ad:setFonts(aL.text,aL.display)end end)
+)end if ag then az._opener=q(ah,ad,function()az:setOpen(true)end)end if aa.
+autoShow~=false then task.defer(function()az:setOpen(true)end)end return az end
+function u.setVersion(aa)v=aa end return u end function a.C()local aa=a.cache.C
+if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local
+aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.2.5-dock'local 
+function registry()local af=aa.global('getgenv')local ag=if type(af)=='function'
+then af()else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}
+ag.__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion(
+'v'..ae)function af.window(ag)local ah=table.clone(ag or{})ah._registry=
+registry()return ad.new(ah)end function af.current()return registry().current
+end function af.obsidian()return ac.new(af)end return af

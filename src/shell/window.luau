@@ -30,7 +30,8 @@ local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/
 local WIDTH = 420
 local DOCK = 64
 local AVATAR = 64
-local BOTTOM = 24
+-- clears the standard hotbar (measured live: its top is 65 above the screen edge); anything else, the strip can be dragged
+local BOTTOM = 76
 local WORD = 19
 local WORD_GAP = 24
 local CHIP = 17
@@ -39,7 +40,8 @@ local CHIP_GAP = 4
 local MORE_ROOM = 64
 local SEARCH = 124
 local SEARCH_HEIGHT = 40
-local CLOSE = 30
+local CLOSE = 44
+local RULE_HEIGHT = 28
 local FADE = 34
 local EDGE = 12
 local MAX_PANEL = 600
@@ -165,7 +167,9 @@ function Window._drawChips(self: any)
 		end
 		-- what fits beside the strip; the rest collapses into a count that opens the full list
 		local scale = self._scale.Scale
-		local room = (self._gui.AbsoluteSize.X / scale - (self._dockWidth or 0)) / 2 - CHIP_GAP - EDGE
+		local center = self:_dockPoint()
+		local right = center + (self._dockWidth or 0) * scale / 2
+		local room = (self._gui.AbsoluteSize.X - right) / scale - CHIP_GAP - EDGE
 		for index, el in running do
 			local rest = #running - index
 			local needed = widthOf(el.label) + (if rest > 0 then MORE_ROOM else 0)
@@ -194,7 +198,7 @@ function Window._contentChanged(self: any, content: number, live: boolean?)
 		return
 	end
 	local scale = self._scale.Scale
-	local available = self._gui.AbsoluteSize.Y / scale - DOCK - BOTTOM / scale - EDGE
+	local available = self._sheetRoom / scale - EDGE
 	local height = math.min(content, MAX_PANEL, available)
 	local size = UDim2.new(0, WIDTH, 0, height)
 	self._sheetFade.Visible = content > height
@@ -209,8 +213,49 @@ end
 -- under the pointer on each switch
 function Window._placeSheet(self: any)
 	local scale = self._scale.Scale
-	local x = (self._gui.AbsoluteSize.X - (self._dockWidth or 0) * scale) / 2
-	self._panel.Position = UDim2.new(0, math.floor(x), 1, -math.floor(BOTTOM + DOCK * scale))
+	local center, bottom = self:_dockPoint()
+	local x = center - (self._dockWidth or 0) * scale / 2
+	local top = bottom - DOCK * scale
+	local height = self._gui.AbsoluteSize.Y
+	local above = top >= height / 2
+	self._sheetAbove = above
+	self._sheetRoom = if above then top else height - bottom
+	self._panel.AnchorPoint = Vector2.new(0, if above then 1 else 0)
+	self._panel.Position = UDim2.fromOffset(math.floor(x), math.floor(if above then top else bottom))
+end
+
+-- the strip's bottom centre, in the gui's own pixels
+function Window._dockPoint(self: any): (number, number)
+	local at = self._dockAt
+	if at then
+		return at.X, at.Y
+	end
+	local size = self._gui.AbsoluteSize
+	return size.X / 2, size.Y - BOTTOM
+end
+
+function Window._home(self: any): UDim2
+	local at = self._dockAt
+	return if at then UDim2.fromOffset(at.X, at.Y) else UDim2.new(0.5, 0, 1, -BOTTOM)
+end
+
+function Window._away(self: any): UDim2
+	return self:_home() + UDim2.fromOffset(0, DOCK * self._scale.Scale + BOTTOM)
+end
+
+-- a saved or dragged spot stays reachable when the screen changes
+function Window._clampDock(self: any)
+	local at = self._dockAt
+	if at == nil then
+		return
+	end
+	local scale = self._scale.Scale
+	local size = self._gui.AbsoluteSize
+	local half = (self._dockWidth or 0) * scale / 2
+	self._dockAt = Vector2.new(
+		math.clamp(at.X, math.min(half + EDGE, size.X / 2), math.max(size.X - half - EDGE, size.X / 2)),
+		math.clamp(at.Y, DOCK * scale + EDGE, math.max(size.Y - EDGE, DOCK * scale + EDGE))
+	)
 end
 
 function Window._show(self: any, page: any, instant: boolean?)
@@ -278,7 +323,8 @@ function Window._syncMarker(self: any, instant: boolean?)
 	self.ctx.theme:paint(self._marker, "BackgroundColor3", if active == self._homeAvatar then "text" else "accent")
 	local scale = self._scale.Scale
 	local x = (active.AbsolutePosition.X - self._dock.AbsolutePosition.X) / scale
-	local position = UDim2.fromOffset(x, 0)
+	-- the marker sits on the edge the sheet comes out of
+	local position = UDim2.fromOffset(x, if self._sheetAbove == false then DOCK - MARKER else 0)
 	local size = UDim2.fromOffset(active.AbsoluteSize.X / scale, MARKER)
 	if instant or self._markerSize.target == nil or self._markerSize.target.X.Offset == 0 then
 		self._markerAt:snap(position)
@@ -418,7 +464,7 @@ function Window.setOpen(self: any, open: boolean)
 		self._root.Visible = true
 		self._modal.Visible = true
 		self:_guardCursor(true)
-		self._at:to(UDim2.new(0.5, 0, 1, -BOTTOM))
+		self._at:to(self:_home())
 		self:_drawChips()
 		-- no focus and no sheet on open: the keyboard stays with the game until you ask for the menu's
 	else
@@ -428,7 +474,7 @@ function Window.setOpen(self: any, open: boolean)
 		-- a query left behind would show in the box with no results under it on the next open
 		self._box.Text = ""
 		self:_hideSheet()
-		self._at:to(UDim2.new(0.5, 0, 1, DOCK * self._scale.Scale), function()
+		self._at:to(self:_away(), function()
 			if not self.isOpen then
 				self._root.Visible = false
 			end
@@ -499,7 +545,11 @@ function Window._saveState(self: any)
 	task.delay(0.5, function()
 		self._stateQueued = false
 		if not self.destroyed then
-			store.write(self._stateFile, encode({ scale = self._scale.Scale }))
+			local at = self._dockAt
+			store.write(
+				self._stateFile,
+				encode({ scale = self._scale.Scale, dockX = at and at.X, dockY = at and at.Y })
+			)
 		end
 	end)
 end
@@ -782,6 +832,10 @@ function window.new(options: { [string]: any }): any
 		_chipRow = chipRow,
 		_homeAvatar = avatar,
 		_chips = {},
+		_sheetRoom = 600,
+		_dockAt = if tonumber(saved.dockX) and tonumber(saved.dockY)
+			then Vector2.new(saved.dockX, saved.dockY)
+			else nil,
 		_words = {},
 		_subtitleText = options.subtitle,
 		_files = files,
@@ -862,6 +916,7 @@ function window.new(options: { [string]: any }): any
 	ctx.keys = self.keys
 
 	self._at = maid:add(motion.prop(assembly, "Position", OPEN_SPEED))
+	self._at:snap(self:_away())
 	self._panelSize = maid:add(motion.prop(panel, "Size", PANEL_SPEED))
 	self._markerAt = maid:add(motion.prop(marker, "Position", MARKER_SPEED))
 	self._markerSize = maid:add(motion.prop(marker, "Size", MARKER_SPEED))
@@ -881,8 +936,44 @@ function window.new(options: { [string]: any }): any
 	})
 	local crossIcon = ctx.glyph.cross(close, "muted")
 	crossIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-	crossIcon.Position = UDim2.fromScale(0.5, 0.5)
+	crossIcon.Position = UDim2.new(0.5, 4, 0.5, 0)
 	crossIcon.ZIndex = 4
+	-- set apart from search, or it reads as clearing the field rather than closing the menu
+	local rule = make("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
+		Size = UDim2.fromOffset(1, RULE_HEIGHT),
+		BackgroundTransparency = 0,
+		ZIndex = 4,
+		Parent = close,
+	})
+	theme:paint(rule, "BackgroundColor3", "lineStrong")
+	avatar.MouseEnter:Connect(function()
+		ctx.tint(avatar, "BackgroundColor3", "accentHover")
+	end)
+	avatar.MouseLeave:Connect(function()
+		ctx.tint(avatar, "BackgroundColor3", "accent")
+	end)
+
+	dock.InputBegan:Connect(function(event: any)
+		local kind = event.UserInputType
+		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
+			return
+		end
+		local from = if kind == Enum.UserInputType.Touch then router:at(event) else router:pointer()
+		local originX, originY = self:_dockPoint()
+		router:capture(function(at: Vector2)
+			local delta = at - from
+			self._dockAt = Vector2.new(originX + delta.X, originY + delta.Y)
+			self:_clampDock()
+			self._at:snap(self:_home())
+			self:_placeSheet()
+		end, function()
+			self:_drawChips()
+			self:_syncMarker(true)
+			self:_saveState()
+		end, if kind == Enum.UserInputType.Touch then event else nil)
+	end)
 	close.Activated:Connect(function()
 		self:setOpen(false)
 	end)
@@ -896,6 +987,12 @@ function window.new(options: { [string]: any }): any
 		local width = math.ceil(rowLayout.AbsoluteContentSize.X / scale.Scale)
 		self._dockWidth = width
 		dockSize:snap(UDim2.fromOffset(width, DOCK))
+		self:_clampDock()
+		if self.isOpen then
+			self._at:snap(self:_home())
+		else
+			self._at:snap(self:_away())
+		end
 		self:_placeSheet()
 		self:_drawChips()
 		task.defer(function()
@@ -907,6 +1004,10 @@ function window.new(options: { [string]: any }): any
 	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitDock)
 	task.defer(fitDock)
 	maid:add(gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		self:_clampDock()
+		if self.isOpen then
+			self._at:snap(self:_home())
+		end
 		self:_placeSheet()
 		self:_drawChips()
 		local page = self._showing
@@ -952,10 +1053,6 @@ function window.new(options: { [string]: any }): any
 		end
 		if name == "Escape" and box.Text ~= "" then
 			box.Text = ""
-			return
-		end
-		if name == "Escape" and self._showing then
-			self:_hideSheet()
 			return
 		end
 		if processed or router:typing() then
