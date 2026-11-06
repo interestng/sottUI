@@ -189,7 +189,7 @@ function Window._drawChips(self: any)
 				el:set(false)
 			end)
 		end
-		self._chipRow.Size = UDim2.new(0, math.max(chipWidth - CHIP_GAP, 0), 1, 0)
+		self._chipRow.Size = UDim2.new(0, chipWidth, 1, 0)
 	end)
 end
 
@@ -752,13 +752,15 @@ function window.new(options: { [string]: any }): any
 
 	local chipRow = make("Frame", {
 		Name = "Running",
-		Position = UDim2.new(1, CHIP_GAP, 0, 0),
+		Position = UDim2.fromScale(1, 0),
 		Size = UDim2.new(0, 0, 1, 0),
 		BackgroundTransparency = 0,
 		ZIndex = 3,
 		Parent = assembly,
 	})
 	theme:paint(chipRow, "BackgroundColor3", "lineStrong")
+	-- the hairline before the first chip is the row showing through, so no world shows between strip and chips
+	make("UIPadding", { PaddingLeft = UDim.new(0, CHIP_GAP), Parent = chipRow })
 	make("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
