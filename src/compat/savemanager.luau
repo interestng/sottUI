@@ -387,20 +387,6 @@ function saveManager.new(lib: any): any
 			end,
 		})
 		box:AddButton({
-			Text = "Delete",
-			DoubleClick = true,
-			Risky = true,
-			Func = function()
-				local name = selected()
-				if name then
-					local ok, err = save:Delete(name)
-					report(ok, err, string.format("Deleted %q", name))
-					list:SetValue(nil)
-					refresh()
-				end
-			end,
-		})
-		box:AddButton({
 			Text = "Load at start",
 			Func = function()
 				local name = selected()
@@ -420,6 +406,20 @@ function saveManager.new(lib: any): any
 			end,
 		})
 		box:AddButton("Refresh list", refresh)
+		box:AddButton({
+			Text = "Delete",
+			DoubleClick = true,
+			Risky = true,
+			Func = function()
+				local name = selected()
+				if name then
+					local ok, err = save:Delete(name)
+					report(ok, err, string.format("Deleted %q", name))
+					list:SetValue(nil)
+					refresh()
+				end
+			end,
+		})
 		return box
 	end
 
