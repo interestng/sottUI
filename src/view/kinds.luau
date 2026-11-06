@@ -563,10 +563,18 @@ end
 -- no mark and bright ink: a tile with nothing to report is one that does something when pressed
 function builders.button(ctx: any, el: any): any
 	local view: any = tileModule.new(ctx, el, { quiet = true })
+	-- on an inset frame: a stroke draws outside its parent and would overrun the grid by a pixel each side
+	local box = make("Frame", {
+		Name = "Outline",
+		Position = UDim2.fromOffset(1, 1),
+		Size = UDim2.new(1, -2, 1, -2),
+		ZIndex = 2,
+		Parent = view.root,
+	})
 	local outline = make("UIStroke", {
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		Thickness = 1,
-		Parent = view.root,
+		Parent = box,
 	})
 	ctx.theme:paint(outline, "Color", "lineStrong")
 	local armed: thread? = nil

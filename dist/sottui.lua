@@ -739,276 +739,277 @@ _applying=false end end)I.root.Activated:Connect(function()if not H.disabled
 then L:CaptureFocus()end end)I.refresh=function()I:refreshName()L.TextEditable=
 not H.disabled if L.Text~=(H.value or'')then I._applying=true L.Text=H.value or
 ''I._applying=false end end return I end function F.button(G,H)local I=h.new(G,H
-,{quiet=true})local J=e('UIStroke',{ApplyStrokeMode=Enum.ApplyStrokeMode.Border,
-Thickness=1,Parent=I.root})G.theme:paint(J,'Color','lineStrong')local K=nil
-local function draw()I:refreshName()I:ink(I.name,if H.disabled then'faint'elseif
-H.spec.danger then'danger'else'text')end I.refresh=draw draw()I.root.Activated:
-Connect(function()if H.disabled then return end if H.spec.confirm and K==nil
-then I.name.Text='Again to confirm'I:flood(true)I:ink(I.name,'onAccent')K=task.
-delay(2.5,function()K=nil I:flood(false)draw()end)return end if K then task.
-cancel(K)K=nil I:flood(false)draw()end I:flash()I:ink(I.name,'onAccent')task.
-delay(0.28,function()if I.root.Parent then draw()end end)H:fire()end)I:
-onCleanup(function()if K then task.cancel(K)end end)return I end function F.stat
-(G,H)local I=h.new(G,H,{inert=true})local J=G.theme I.name.Position=UDim2.new()I
-.name.Size=UDim2.new(1,0,0,B+4)I.name.TextSize=B I.name.TextWrapped=false I.name
-.TextYAlignment=Enum.TextYAlignment.Top J:paint(I.name,'TextColor3','text')local
-K=e('TextLabel',{Position=UDim2.fromOffset(0,B+2),Size=UDim2.new(1,0,0,C+4),
-TextSize=C,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=3,Parent=I.root})J:type(K
-,'text')J:paint(K,'TextColor3','muted')I.refresh=function()I.name.Text=tostring(
-H.value)K.Text=H.label end I.refresh()return I end function F.label(G,H)local I=
-G.theme if H.addons then local J=h.new(G,H)I:paint(J.name,'TextColor3','muted')J
-.name.RichText=true reserveRight(J,addons(J,G,H,0))J.refresh=function()J.name.
-Text=H.label end return J end local J=h.new(G,H,{height=32,inert=true})local K=J
-.name local L=H.spec.wrap==true K.RichText=true K.TextSize=D K.TextWrapped=L I:
-type(K,'text')I:paint(K,'TextColor3','muted')K.TextTruncate=if L then Enum.
-TextTruncate.None else Enum.TextTruncate.AtEnd K.TextYAlignment=if L then Enum.
-TextYAlignment.Top else Enum.TextYAlignment.Center K.LineHeight=if L then 1.15
-else 1 K.Position=UDim2.fromOffset(0,if L then 6 else 0)K.Size=if L then UDim2.
-new(1,0,1,-6)else UDim2.fromScale(1,1)K.Text=H.label if L then K:
-GetPropertyChangedSignal('TextBounds'):Connect(function()local M=math.ceil(K.
-TextBounds.Y/G.uiScale())+12 if H._measured~=M then H._measured=M if H._relayout
-then H._relayout()end end end)end J.refresh=function()K.Text=H.label end return
-J end function F.divider(G,H)local I=h.new(G,H,{height=28,inert=true})local J=G.
-theme I.name.Position=UDim2.new()I.name.Size=UDim2.fromScale(1,1)I.name.TextSize
-=D J:type(I.name,'text',true)J:paint(I.name,'TextColor3','muted')I.refresh=
-function()I.name.Text=H.label end return I end local function chipTile(G,H,I,J,K
-)local L=h.new(G,H)G.theme:paint(L.name,'TextColor3','muted')I.root.AnchorPoint=
-Vector2.new(1,0.5)I.root.Position=UDim2.new(1,-K,0.5,0)I.root.ZIndex=4 I.root.
-Parent=L.root reserveRight(L,J)table.insert(L.chips,I)L:onCleanup(I.destroy)L.
-refresh=function()L:refreshName()I.refresh()end return L end function F.key(G,H)
-local I=d.build(G,H)local J=chipTile(G,H,I,96,j)J.root.Activated:Connect(I.start
-)return J end function F.color(G,H)local I=b.swatch(G,H)local J=chipTile(G,H,I,b
-.DOT_SPACE,j-8)J.root.Activated:Connect(I.open)return J end function i.build(G,H
-)local I=F[H.kind]assert(I,'sottUI: no view for '..tostring(H.kind))local J=I(G,
-H)local K=H._shownOn local L=K and K.sections[1]and K.sections[1].flat local M=H
-.section and(H.section._root or H.section)local N=M and M.masterElement if L and
-N and N~=H then local O=J.refreshName J.refreshName=function(P)O(P)P.name.Text=N
-.label..' '..H.label end J:refreshName()end H._view=J return J end return i end
-function a.m()local b=a.cache.m if not b then b={c=__modImpl()}a.cache.m=b end
-return b.c end end do local function __modImpl()local b={}b.__index=b local c=
-function(c)warn(c)end function b.connect(d,e)local f=table.clone(d._list)table.
-insert(f,e)d._list=f return function()local g=table.clone(d._list)local h=table.
-find(g,e)if h then table.remove(g,h)d._list=g end end end function b.fire(d,...)
-for e,f in d._list do local g,h=xpcall(f,debug.traceback,...)if not g then c(
-'sottUI: listener failed: '..tostring(h))end end end function b.clear(d)d._list=
-{}end return{new=function()return((setmetatable({_list={}},b)))end,setReporter=
-function(d)c=d end}end function a.n()local b=a.cache.n if not b then b={c=
-__modImpl()}a.cache.n=b end return b.c end end do local function __modImpl()
-local b=a.n()local c={}local d={}d.__index=d local function decimals(e)local f=
-string.format('%.10f',e)local g=string.match(f,'%.(%d-)0*$')return if g then#g
-else 0 end local function roundTo(e,f)if f<=0 then return e end local g=math.
-round(e/f)*f return tonumber(string.format('%.'..decimals(f)..'f',g))or g end c.
-roundTo=roundTo local function sameList(e,f)if#e~=#f then return false end for g
-=1,#e do if e[g]~=f[g]then return false end end return true end local function 
-sameSet(e,f)for g,h in e do if h and not f[g]then return false end end for g,h
-in f do if h and not e[g]then return false end end return true end local e={
-toggle=function(e,f)return f==true end,slider=function(e,f)local g=tonumber(f)if
-g==nil or g~=g then return nil end local h=e.spec return math.clamp(roundTo(g,h.
-step or 1),h.min,h.max)end,dropdown=function(e,f)local g=e.spec if g.multi then
-local h={}if type(f)=='table'then for i,j in f do if type(i)=='number'then h[j]=
-true elseif j then h[i]=true end end elseif f~=nil and f~=''then h[f]=true end
-if not g.keep then for i in h do if not table.find(g.options,i)then h[i]=nil end
-end end return h end if f==nil or f==''then return false end if not table.find(g
-.options,f)and not g.keep then return nil end return f end,input=function(e,f)
-local g=if f==nil then''else tostring(f)local h=e.spec if h.maxLength and#g>h.
-maxLength then g=string.sub(g,1,h.maxLength)end if h.numeric and g~=''and g~='-'
-and g~='.'and tonumber(g)==nil then return nil end if h.verify and not h.verify(
-g)then return nil end return g end,key=function(e,f)if type(f)=='string'then
-return{key=f,mode=e.value and e.value.mode or'Toggle',modifiers={}}end if type(f
-)~='table'then return nil end local g=e.value or{}return{key=f.key or f[1]or g.
-key or'None',mode=f.mode or f[2]or g.mode or'Toggle',modifiers=f.modifiers or f[
-3]or g.modifiers or{}}end,color=function(e,f)if typeof(f)=='Color3'then return{
-color=f,alpha=e.value and e.value.alpha or 0}end if type(f)=='table'and typeof(f
-.color)=='Color3'then return{color=f.color,alpha=math.clamp(tonumber(f.alpha)or
-0,0,1)}end return nil end,label=function(e,f)return tostring(f)end,stat=function
-(e,f)return tostring(f)end}local function equal(f,g,h)local i=f.kind if i==
-'dropdown'and f.spec.multi then return sameSet(g,h)end if i=='key'then return g.
-key==h.key and g.mode==h.mode and sameList(g.modifiers,h.modifiers)end if i==
-'color'then return g.color==h.color and g.alpha==h.alpha end return g==h end
-local function unwrap(f,g)if f.kind=='dropdown'and not f.spec.multi and g==false
-then return nil end return g end function c.new(f,g,h,i,j)local k=setmetatable({
-kind=f,id=g,label=h,spec=i,tip=i.tip,disabled=i.disabled==true,disabledTip=i.
-disabledTip,visible=i.visible~=false,saved=i.saved~=false,changed=b.new()},d)
-local l=e[f]local m=j if l then m=l(k,j)if m==nil and f=='slider'then m=i.min
-end if m==nil and f=='dropdown'then m=false end end k.value=unwrap(k,m)k.default
-=k.value return k end function d.set(f,g)local h=e[f.kind]local i=g if h then i=
-h(f,g)if i==nil then return false end i=unwrap(f,i)end local j=f.value if j~=nil
-and i~=nil and equal(f,j,i)then return false end if j==nil and i==nil then
-return false end f.value=i f:notify()return true end function d.reset(f)local g=
-f.default if f.kind=='dropdown'and f.spec.multi then g=table.clone(g)end f:set(g
-)end local function redraw(f)local g=f._view if g then g.refresh()end local h=f.
-host if h and h._view then h._view.refresh()end end function d.notify(f)redraw(f
-)f.changed:fire(f.value)end function d.fire(f)f.changed:fire(f.value)end
-function d.on(f,g)return f.changed:connect(g)end function d.setLabel(f,g)if f.
-label==g then return end f.label=g if f.kind=='label'then f.value=g local h=f.
-_relayout if h then h()end end if f._onLabel then f._onLabel()end redraw(f)end
-function d.setTip(f,g)f.tip=g end function d.setDisabled(f,g,h)f.disabled=g==
-true f.disabledTip=h or f.disabledTip redraw(f)end function d.setVisible(f,g)if
-f.visible==g then return end f.visible=g local h=f._relayout if h then h()end
-end function d.setOptions(f,g)local h=f.spec h.options=table.clone(g)if h.multi
-then if h.keep then for i,j in f.value do if j and not table.find(h.options,i)
-then table.insert(h.options,i)end end else local i=false for j in f.value do if
-not table.find(h.options,j)then f.value[j]=nil i=true end end if i then f:
-notify()return end end elseif f.value~=nil and not table.find(h.options,f.value)
-then if h.keep then table.insert(h.options,f.value)else f.value=nil f:notify()
-return end end redraw(f)end function d.isModified(f)if f.kind=='button'or f.kind
-=='label'or f.kind=='divider'or f.kind=='stat'then return false end local g,h=f.
-value,f.default if g==nil or h==nil then return g~=h end return not equal(f,g,h)
-end function d.attach(f,g)local h=f.addons if h==nil then h={}f.addons=h end
-table.insert(h,g)g.host=f redraw(f)end function d.shown(f)if not f.visible or(f.
-kind=='label'and f.label=='')then return false end local g=f.guard return g==nil
-or g()end return c end function a.o()local b=a.cache.o if not b then b={c=
-__modImpl()}a.cache.o=b end return b.c end end do local function __modImpl()
-local b=a.o()local c={}local d={}d.__index=d local function add(e,f,g,h,i,j)
-local k=b.new(f,g or(f..'#'..tostring(e._page:nextId())),h,i,j)k.section=e k.
-guard=e._guard e._page:_register(k,g~=nil)table.insert(e.rows,k)local l=e._root
-or e if l.masterElement then l.hasOptions=true end e._page:_invalidate()return k
-end function d.toggle(e,f,g)local h=add(e,'toggle',f,g.label or f,g,g.default==
-true)if g.onChanged then h:on(g.onChanged)end return h end function d.master(e,f
-,g)g.primary=true local h=e:toggle(f,g)e.masterElement=h local i=e._page h:on(
-function()i:_invalidate()end)local j=e._guard e._guard=function()if j and not j(
-)then return false end return h.value==true or e.peeking==true end return h end
-function d.togglePeek(e)e.peeking=not e.peeking e._page:_invalidate()end
-function d.slider(e,f,g)g.min=g.min or 0 g.max=g.max or 100 g.step=g.step or 1
-if g.decimals==nil then local h=string.format('%.10f',g.step)local i=string.
-match(h,'%.(%d-)0*$')g.decimals=if i then#i else 0 end local h=add(e,'slider',f,
-g.label or f,g,g.default or g.min)if g.onChanged then h:on(g.onChanged)end
-return h end function d.dropdown(e,f,g)g.options=g.options or{}local h=g.default
-if h==nil and g.multi then h={}end local i=add(e,'dropdown',f,g.label or f,g,h)
-if g.onChanged then i:on(g.onChanged)end return i end function d.input(e,f,g)
-local h=add(e,'input',f,g.label or'',g,g.default or'')if g.onChanged then h:on(g
-.onChanged)end return h end function d.key(e,f,g)local h=add(e,'key',f,g.label
-or f,g,{key=g.default or'None',mode=g.mode or'Toggle',modifiers=g.modifiers or{}
-})e._page.window.keys:register(h)return h end function d.color(e,f,g)local h=
-add(e,'color',f,g.label or f,g,{color=g.default or Color3.new(1,1,1),alpha=g.
-alphaValue or 0})if g.onChanged then h:on(g.onChanged)end return h end function
-d.button(e,f,g)local h=if type(g)=='function'then{onPressed=g}else g h.saved=
-false local i=add(e,'button',nil,f,h,nil)if h.onPressed then i:on(h.onPressed)
-end return i end function d.label(e,f,g)local h=g or{}h.saved=false return add(e
-,'label',nil,f,h,f)end function d.stat(e,f,g)return add(e,'stat',nil,f,{saved=
-false},tostring(g))end function d.divider(e,f)return add(e,'divider',nil,f or'',
-{saved=false},nil)end function d.addKey(e,f,g,h)local i=b.new('key',g,h.label or
-f.label,h,{key=h.default or'None',mode=h.mode or'Toggle',modifiers=h.modifiers
-or{}})i.section=e local j=i j.toggled=h.toggled==true if f.kind=='toggle'and h.
-onPress==nil then j.toggled=f.value h.onPress=function()f:set(not f.value)j.
-toggled=f.value end end e._page:_register(i,true)e._page.window.keys:register(i)
-f:attach(i)return i end function d.addColor(e,f,g,h)local i=b.new('color',g,h.
-label or f.label,h,{color=h.default or Color3.new(1,1,1),alpha=h.alphaValue or 0
-})i.section=e e._page:_register(i,true)f:attach(i)if h.onChanged then i:on(h.
-onChanged)end return i end function d.when(e,f,g)local h=e._guard local i=f if h
-then i=function()return h()and f()end end local j=setmetatable({rows=e.rows,
-title=e.title,_page=e._page,_guard=i,_root=e._root or e},d)for k,l in(g or{})do
-l:on(function()e._page:_invalidate()end)end return j end function c.new(e,f)
-return setmetatable({title=f,rows={},_page=e,_guard=nil,_root=nil},d)end return
-c end function a.p()local b=a.cache.p if not b then b={c=__modImpl()}a.cache.p=b
-end return b.c end end do local function __modImpl()local b=a.m()local c=a.f()
-local d=a.j()local e=a.b()local f=a.p()local g={}local h=26 local i=36 function
-g.open(j,k,l)if j._dialogClose then j._dialogClose()end local m=j.ctx local n=m.
-theme local o=j._layer local p=k.width or 460 local q=k.maxHeight or 340 local r
-=60 local s=c('TextButton',{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,
-BackgroundColor3=Color3.new(0,0,0),ZIndex=50,Parent=o})local t=e.prop(s,
-'BackgroundTransparency',22)t:to(0.4)local u=c('Frame',{AnchorPoint=Vector2.new(
-0.5,0.5),Position=UDim2.fromScale(0.5,0.5),Size=UDim2.fromOffset(p,0),
-BackgroundTransparency=0,ClipsDescendants=true,Active=true,ZIndex=51,Parent=o})n
-:paint(u,'BackgroundColor3','base')c('UIScale',{Scale=m.uiScale(),Parent=u})
-local v=c('UIStroke',{ApplyStrokeMode=Enum.ApplyStrokeMode.Border,Parent=u})n:
-paint(v,'Color','lineStrong')local w=c('TextLabel',{Position=UDim2.fromOffset(20
-,16),Size=UDim2.new(1,-40,0,40),TextSize=36,Text=k.title or'',ZIndex=52,Parent=u
-})n:type(w,'display')n:paint(w,'TextColor3','text')local x=60 local y=k.text if
-y and y~=''then local z=c('TextLabel',{Position=UDim2.fromOffset(20,x),Size=
-UDim2.new(1,-40,0,22),AutomaticSize=Enum.AutomaticSize.Y,TextSize=16,TextWrapped
-=true,Text=y,ZIndex=52,Parent=u})n:type(z,'text')n:paint(z,'TextColor3','muted')
-x+=22+math.floor(#y/52)*22+12 end local z=c('ScrollingFrame',{Position=UDim2.
-fromOffset(20,x),Size=UDim2.new(1,-40,0,0),ScrollBarThickness=3,ZIndex=52,Parent
-=u})n:paint(z,'ScrollBarImageColor3','lineStrong')local A=false local B={window=
-j,name='Dialog',nextId=function()j._dialogIds+=1 return j._dialogIds end,
-_register=function(B,C,D)C._pageName='Dialog'if D then j.elements[C.id]=C end
-end,_invalidate=function()end}local C=f.new(B,'')local D,E=xpcall(l,debug.
-traceback,C)if not D then warn('sottUI: dialog build failed: '..tostring(E))end
-local F={}local G=0 for H,I in C.rows do if I:shown()then local J=b.build(m,I)
-local K=r if I.kind=='divider'then K=28 elseif I.kind=='label'then local L=math.
-ceil(d.width('text',I.label,16)/(p-48))K=if I.spec.wrap then L*21+12 else 32 end
-J.root.Position=UDim2.fromOffset(0,G)J.root.Size=UDim2.new(1,0,0,K)J.root.Parent
-=z G+=K+3 table.insert(F,J)end end z.CanvasSize=UDim2.fromOffset(0,G)local H=
-math.min(G,q)z.Size=UDim2.new(1,-40,0,H)local I=x+H+12 local J=c('TextButton',{
-Position=UDim2.fromOffset(20,I),Size=UDim2.new(1,-40,0,54),
-BackgroundTransparency=0,TextSize=28,Text=k.done or'Done',ZIndex=52,Parent=u})n:
-type(J,'display')n:paint(J,'BackgroundColor3','text')n:paint(J,'TextColor3',
-'base')local K=I+54+20 local L=e.prop(u,'Size',h)L:to(UDim2.fromOffset(p,K))
-local function close()if A then return end A=true j._dialogClose=nil s.Active=
-false for M,N in C.rows do if j.elements[N.id]==N then j.elements[N.id]=nil end
-for O,P in N.addons or{}do j.keys:unregister(P)if j.elements[P.id]==P then j.
-elements[P.id]=nil end end end if k.onClose then task.spawn(k.onClose)end t:to(1
-,function()t:destroy()s:Destroy()end)L.speed=i L:to(UDim2.fromOffset(p,0),
-function()for M,N in F do N.destroy()end L:destroy()u:Destroy()end)end j.
-_dialogClose=close s.MouseButton1Down:Connect(close)J.Activated:Connect(close)
-end return g end function a.q()local b=a.cache.q if not b then b={c=__modImpl()}
-a.cache.q=b end return b.c end end do local function __modImpl()local b=a.a()
-local c={}local d={text={name='SottUIText',faces={{name='Regular',weight=400,
-file='text-400.ttf'},{name='Medium',weight=500,file='text-500.ttf'}}},display={
-name='SottUIDisplay',faces={{name='ExtraBold',weight=800,file='display-800.ttf'}
-}}}local e=10000 local function family(f,g,h,i,j)local k={}for l,m in h.faces do
-local n=g..'/'..m.file local o=f.read(n)if o==nil or#o<e then local p=b.fetch(i
-..m.file)if p==nil or#p<e then return nil end if not f.write(n,p)then return nil
-end end local p=f.asset(n)if p==nil then return nil end table.insert(k,{name=m.
-name,weight=m.weight,style='normal',assetId=p})end local l=g..'/'..h.name..
-'.json'if not f.write(l,j({name=h.name,faces=k}))then return nil end return f.
-asset(l)end function c.load(f,g,h)local i=b.files()if i==nil or b.global(
-'getcustomasset')==nil then return{}end i.folder(f)local j={}local k,l=pcall(
-function()j.text=family(i,f,d.text,g,h)j.display=family(i,f,d.display,g,h)end)if
-not k then warn('sottUI: fonts unavailable: '..tostring(l))end return j end
-function c.image(f,g,h)local i=b.files()if i==nil or b.global('getcustomasset')
-==nil then return nil end i.folder(f)local j=f..'/'..h if i.read(j)==nil then
-local k=b.fetch(g..h)if k==nil or not i.write(j,k)then return nil end end return
-i.asset(j)end return c end function a.r()local b=a.cache.r if not b then b={c=
-__modImpl()}a.cache.r=b end return b.c end end do local function __modImpl()
-local b=a.f()local c={}local function stroke(d,e,f,g,h,i,j)local k=b('Frame',{
-AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromOffset(i,j),Size=UDim2.
-fromOffset(g,2),Rotation=h,BackgroundTransparency=0,Parent=d})e:paint(k,
-'BackgroundColor3',f)return k end function c.new(d)local e={}function e.chevron(
-f,g,h)local i=b('Frame',{Size=UDim2.fromOffset(12,12),Parent=f})if h=='right'
-then stroke(i,d,g,7,45,6,3.6)stroke(i,d,g,7,-45,6,8.4)elseif h=='up'then stroke(
-i,d,g,7,-45,3.6,6)stroke(i,d,g,7,45,8.4,6)else stroke(i,d,g,7,45,3.6,6)stroke(i,
-d,g,7,-45,8.4,6)end return i end function e.cross(f,g)local h=b('Frame',{Size=
-UDim2.fromOffset(12,12),Parent=f})stroke(h,d,g,13,45,6,6)stroke(h,d,g,13,-45,6,6
-)return h end function e.dash(f,g)local h=b('Frame',{Size=UDim2.fromOffset(12,12
-),Parent=f})stroke(h,d,g,12,0,6,6)return h end return e end return c end
-function a.s()local b=a.cache.s if not b then b={c=__modImpl()}a.cache.s=b end
-return b.c end end do local function __modImpl()local b={}b.__index=b local 
-function dispose(c)local d=typeof(c)if d=='RBXScriptConnection'then c:
-Disconnect()elseif d=='Instance'then c:Destroy()elseif d=='function'then c()
-elseif d=='thread'then task.cancel(c)elseif d=='table'then local e=c.destroy or
-c.Destroy or c.Disconnect if e then e(c)end end end function b.add(c,d)table.
-insert(c._items,d)return d end function b.clean(c)local d=c._items c._items={}
-for e=#d,1,-1 do local f,g=pcall(dispose,d[e])if not f then warn(
-'sottUI: cleanup failed: '..tostring(g))end end end b.destroy=b.clean return{new
-=function()return((setmetatable({_items={}},b)))end}end function a.t()local b=a.
-cache.t if not b then b={c=__modImpl()}a.cache.t=b end return b.c end end do
-local function __modImpl()local b=a.a()local c=a.t()local d=a.n()local e={}local
-f={}f.__index=f function f.pointer(g)local h=g._guiService:GetGuiInset()return g
-._uis:GetMouseLocation()-h end function f.at(g,h)local i=h.Position return
-Vector2.new(i.X,i.Y)end function f.capture(g,h,i,j)g:release()g._move=h g.
-_finish=i g._finger=j end function f.release(g)local h=g._finish g._move=nil g.
-_finish=nil g._finger=nil if h then task.spawn(h,g:pointer())end end function f.
-typing(g)return g._uis:GetFocusedTextBox()~=nil end function f.destroy(g)g._move
-=nil g._finish=nil g._maid:clean()g.keyDown:clear()g.keyUp:clear()g.wheel:clear(
-)g.moved:clear()g.pointerUp:clear()end function e.new()local g=b.service(
-'UserInputService')local h=c.new()local i=setmetatable({_uis=g,_guiService=b.
-service('GuiService'),_maid=h,_move=nil,_finish=nil,keyDown=d.new(),keyUp=d.new(
-),wheel=d.new(),moved=d.new(),pointerUp=d.new()},f)h:add(g.InputChanged:Connect(
-function(j)local k=j.UserInputType if k==Enum.UserInputType.MouseMovement then
-local l=i:pointer()if i._move then i._move(l)end i.moved:fire(l)elseif k==Enum.
-UserInputType.Touch then if i._move and(i._finger==nil or i._finger==j)then i.
-_move(i:at(j))end elseif k==Enum.UserInputType.MouseWheel then i.wheel:fire(j.
-Position.Z)end end))h:add(g.InputEnded:Connect(function(j,k)local l=j.
-UserInputType if l==Enum.UserInputType.MouseButton1 or l==Enum.UserInputType.
-Touch then if i._move and(l~=Enum.UserInputType.Touch or i._finger==nil or i.
-_finger==j)then local m=if l==Enum.UserInputType.Touch then i:at(j)else i:
-pointer()local n=i._finish i._move=nil i._finish=nil i._finger=nil if n then n(m
-)end end i.pointerUp:fire()end i.keyUp:fire(j,k)end))h:add(g.InputBegan:Connect(
-function(j,k)i.keyDown:fire(j,k)end))return i end return e end function a.u()
-local b=a.cache.u if not b then b={c=__modImpl()}a.cache.u=b end return b.c end
-end do local function __modImpl()local b={}local c={[Enum.UserInputType.
+,{quiet=true})local J=e('Frame',{Name='Outline',Position=UDim2.fromOffset(1,1),
+Size=UDim2.new(1,-2,1,-2),ZIndex=2,Parent=I.root})local K=e('UIStroke',{
+ApplyStrokeMode=Enum.ApplyStrokeMode.Border,Thickness=1,Parent=J})G.theme:paint(
+K,'Color','lineStrong')local L=nil local function draw()I:refreshName()I:ink(I.
+name,if H.disabled then'faint'elseif H.spec.danger then'danger'else'text')end I.
+refresh=draw draw()I.root.Activated:Connect(function()if H.disabled then return
+end if H.spec.confirm and L==nil then I.name.Text='Again to confirm'I:flood(true
+)I:ink(I.name,'onAccent')L=task.delay(2.5,function()L=nil I:flood(false)draw()
+end)return end if L then task.cancel(L)L=nil I:flood(false)draw()end I:flash()I:
+ink(I.name,'onAccent')task.delay(0.28,function()if I.root.Parent then draw()end
+end)H:fire()end)I:onCleanup(function()if L then task.cancel(L)end end)return I
+end function F.stat(G,H)local I=h.new(G,H,{inert=true})local J=G.theme I.name.
+Position=UDim2.new()I.name.Size=UDim2.new(1,0,0,B+4)I.name.TextSize=B I.name.
+TextWrapped=false I.name.TextYAlignment=Enum.TextYAlignment.Top J:paint(I.name,
+'TextColor3','text')local K=e('TextLabel',{Position=UDim2.fromOffset(0,B+2),Size
+=UDim2.new(1,0,0,C+4),TextSize=C,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=3,
+Parent=I.root})J:type(K,'text')J:paint(K,'TextColor3','muted')I.refresh=function
+()I.name.Text=tostring(H.value)K.Text=H.label end I.refresh()return I end
+function F.label(G,H)local I=G.theme if H.addons then local J=h.new(G,H)I:paint(
+J.name,'TextColor3','muted')J.name.RichText=true reserveRight(J,addons(J,G,H,0))
+J.refresh=function()J.name.Text=H.label end return J end local J=h.new(G,H,{
+height=32,inert=true})local K=J.name local L=H.spec.wrap==true K.RichText=true K
+.TextSize=D K.TextWrapped=L I:type(K,'text')I:paint(K,'TextColor3','muted')K.
+TextTruncate=if L then Enum.TextTruncate.None else Enum.TextTruncate.AtEnd K.
+TextYAlignment=if L then Enum.TextYAlignment.Top else Enum.TextYAlignment.Center
+K.LineHeight=if L then 1.15 else 1 K.Position=UDim2.fromOffset(0,if L then 6
+else 0)K.Size=if L then UDim2.new(1,0,1,-6)else UDim2.fromScale(1,1)K.Text=H.
+label if L then K:GetPropertyChangedSignal('TextBounds'):Connect(function()local
+M=math.ceil(K.TextBounds.Y/G.uiScale())+12 if H._measured~=M then H._measured=M
+if H._relayout then H._relayout()end end end)end J.refresh=function()K.Text=H.
+label end return J end function F.divider(G,H)local I=h.new(G,H,{height=28,inert
+=true})local J=G.theme I.name.Position=UDim2.new()I.name.Size=UDim2.fromScale(1,
+1)I.name.TextSize=D J:type(I.name,'text',true)J:paint(I.name,'TextColor3',
+'muted')I.refresh=function()I.name.Text=H.label end return I end local function 
+chipTile(G,H,I,J,K)local L=h.new(G,H)G.theme:paint(L.name,'TextColor3','muted')I
+.root.AnchorPoint=Vector2.new(1,0.5)I.root.Position=UDim2.new(1,-K,0.5,0)I.root.
+ZIndex=4 I.root.Parent=L.root reserveRight(L,J)table.insert(L.chips,I)L:
+onCleanup(I.destroy)L.refresh=function()L:refreshName()I.refresh()end return L
+end function F.key(G,H)local I=d.build(G,H)local J=chipTile(G,H,I,96,j)J.root.
+Activated:Connect(I.start)return J end function F.color(G,H)local I=b.swatch(G,H
+)local J=chipTile(G,H,I,b.DOT_SPACE,j-8)J.root.Activated:Connect(I.open)return J
+end function i.build(G,H)local I=F[H.kind]assert(I,'sottUI: no view for '..
+tostring(H.kind))local J=I(G,H)local K=H._shownOn local L=K and K.sections[1]and
+K.sections[1].flat local M=H.section and(H.section._root or H.section)local N=M
+and M.masterElement if L and N and N~=H then local O=J.refreshName J.refreshName
+=function(P)O(P)P.name.Text=N.label..' '..H.label end J:refreshName()end H._view
+=J return J end return i end function a.m()local b=a.cache.m if not b then b={c=
+__modImpl()}a.cache.m=b end return b.c end end do local function __modImpl()
+local b={}b.__index=b local c=function(c)warn(c)end function b.connect(d,e)local
+f=table.clone(d._list)table.insert(f,e)d._list=f return function()local g=table.
+clone(d._list)local h=table.find(g,e)if h then table.remove(g,h)d._list=g end
+end end function b.fire(d,...)for e,f in d._list do local g,h=xpcall(f,debug.
+traceback,...)if not g then c('sottUI: listener failed: '..tostring(h))end end
+end function b.clear(d)d._list={}end return{new=function()return((setmetatable({
+_list={}},b)))end,setReporter=function(d)c=d end}end function a.n()local b=a.
+cache.n if not b then b={c=__modImpl()}a.cache.n=b end return b.c end end do
+local function __modImpl()local b=a.n()local c={}local d={}d.__index=d local 
+function decimals(e)local f=string.format('%.10f',e)local g=string.match(f,
+'%.(%d-)0*$')return if g then#g else 0 end local function roundTo(e,f)if f<=0
+then return e end local g=math.round(e/f)*f return tonumber(string.format('%.'..
+decimals(f)..'f',g))or g end c.roundTo=roundTo local function sameList(e,f)if#e
+~=#f then return false end for g=1,#e do if e[g]~=f[g]then return false end end
+return true end local function sameSet(e,f)for g,h in e do if h and not f[g]then
+return false end end for g,h in f do if h and not e[g]then return false end end
+return true end local e={toggle=function(e,f)return f==true end,slider=function(
+e,f)local g=tonumber(f)if g==nil or g~=g then return nil end local h=e.spec
+return math.clamp(roundTo(g,h.step or 1),h.min,h.max)end,dropdown=function(e,f)
+local g=e.spec if g.multi then local h={}if type(f)=='table'then for i,j in f do
+if type(i)=='number'then h[j]=true elseif j then h[i]=true end end elseif f~=nil
+and f~=''then h[f]=true end if not g.keep then for i in h do if not table.find(g
+.options,i)then h[i]=nil end end end return h end if f==nil or f==''then return
+false end if not table.find(g.options,f)and not g.keep then return nil end
+return f end,input=function(e,f)local g=if f==nil then''else tostring(f)local h=
+e.spec if h.maxLength and#g>h.maxLength then g=string.sub(g,1,h.maxLength)end if
+h.numeric and g~=''and g~='-'and g~='.'and tonumber(g)==nil then return nil end
+if h.verify and not h.verify(g)then return nil end return g end,key=function(e,f
+)if type(f)=='string'then return{key=f,mode=e.value and e.value.mode or'Toggle',
+modifiers={}}end if type(f)~='table'then return nil end local g=e.value or{}
+return{key=f.key or f[1]or g.key or'None',mode=f.mode or f[2]or g.mode or
+'Toggle',modifiers=f.modifiers or f[3]or g.modifiers or{}}end,color=function(e,f
+)if typeof(f)=='Color3'then return{color=f,alpha=e.value and e.value.alpha or 0}
+end if type(f)=='table'and typeof(f.color)=='Color3'then return{color=f.color,
+alpha=math.clamp(tonumber(f.alpha)or 0,0,1)}end return nil end,label=function(e,
+f)return tostring(f)end,stat=function(e,f)return tostring(f)end}local function 
+equal(f,g,h)local i=f.kind if i=='dropdown'and f.spec.multi then return sameSet(
+g,h)end if i=='key'then return g.key==h.key and g.mode==h.mode and sameList(g.
+modifiers,h.modifiers)end if i=='color'then return g.color==h.color and g.alpha
+==h.alpha end return g==h end local function unwrap(f,g)if f.kind=='dropdown'and
+not f.spec.multi and g==false then return nil end return g end function c.new(f,
+g,h,i,j)local k=setmetatable({kind=f,id=g,label=h,spec=i,tip=i.tip,disabled=i.
+disabled==true,disabledTip=i.disabledTip,visible=i.visible~=false,saved=i.saved
+~=false,changed=b.new()},d)local l=e[f]local m=j if l then m=l(k,j)if m==nil and
+f=='slider'then m=i.min end if m==nil and f=='dropdown'then m=false end end k.
+value=unwrap(k,m)k.default=k.value return k end function d.set(f,g)local h=e[f.
+kind]local i=g if h then i=h(f,g)if i==nil then return false end i=unwrap(f,i)
+end local j=f.value if j~=nil and i~=nil and equal(f,j,i)then return false end
+if j==nil and i==nil then return false end f.value=i f:notify()return true end
+function d.reset(f)local g=f.default if f.kind=='dropdown'and f.spec.multi then
+g=table.clone(g)end f:set(g)end local function redraw(f)local g=f._view if g
+then g.refresh()end local h=f.host if h and h._view then h._view.refresh()end
+end function d.notify(f)redraw(f)f.changed:fire(f.value)end function d.fire(f)f.
+changed:fire(f.value)end function d.on(f,g)return f.changed:connect(g)end
+function d.setLabel(f,g)if f.label==g then return end f.label=g if f.kind==
+'label'then f.value=g local h=f._relayout if h then h()end end if f._onLabel
+then f._onLabel()end redraw(f)end function d.setTip(f,g)f.tip=g end function d.
+setDisabled(f,g,h)f.disabled=g==true f.disabledTip=h or f.disabledTip redraw(f)
+end function d.setVisible(f,g)if f.visible==g then return end f.visible=g local
+h=f._relayout if h then h()end end function d.setOptions(f,g)local h=f.spec h.
+options=table.clone(g)if h.multi then if h.keep then for i,j in f.value do if j
+and not table.find(h.options,i)then table.insert(h.options,i)end end else local
+i=false for j in f.value do if not table.find(h.options,j)then f.value[j]=nil i=
+true end end if i then f:notify()return end end elseif f.value~=nil and not
+table.find(h.options,f.value)then if h.keep then table.insert(h.options,f.value)
+else f.value=nil f:notify()return end end redraw(f)end function d.isModified(f)
+if f.kind=='button'or f.kind=='label'or f.kind=='divider'or f.kind=='stat'then
+return false end local g,h=f.value,f.default if g==nil or h==nil then return g~=
+h end return not equal(f,g,h)end function d.attach(f,g)local h=f.addons if h==
+nil then h={}f.addons=h end table.insert(h,g)g.host=f redraw(f)end function d.
+shown(f)if not f.visible or(f.kind=='label'and f.label=='')then return false end
+local g=f.guard return g==nil or g()end return c end function a.o()local b=a.
+cache.o if not b then b={c=__modImpl()}a.cache.o=b end return b.c end end do
+local function __modImpl()local b=a.o()local c={}local d={}d.__index=d local 
+function add(e,f,g,h,i,j)local k=b.new(f,g or(f..'#'..tostring(e._page:nextId())
+),h,i,j)k.section=e k.guard=e._guard e._page:_register(k,g~=nil)table.insert(e.
+rows,k)local l=e._root or e if l.masterElement then l.hasOptions=true end e.
+_page:_invalidate()return k end function d.toggle(e,f,g)local h=add(e,'toggle',f
+,g.label or f,g,g.default==true)if g.onChanged then h:on(g.onChanged)end return
+h end function d.master(e,f,g)g.primary=true local h=e:toggle(f,g)e.
+masterElement=h local i=e._page h:on(function()i:_invalidate()end)local j=e.
+_guard e._guard=function()if j and not j()then return false end return h.value==
+true or e.peeking==true end return h end function d.togglePeek(e)e.peeking=not e
+.peeking e._page:_invalidate()end function d.slider(e,f,g)g.min=g.min or 0 g.max
+=g.max or 100 g.step=g.step or 1 if g.decimals==nil then local h=string.format(
+'%.10f',g.step)local i=string.match(h,'%.(%d-)0*$')g.decimals=if i then#i else 0
+end local h=add(e,'slider',f,g.label or f,g,g.default or g.min)if g.onChanged
+then h:on(g.onChanged)end return h end function d.dropdown(e,f,g)g.options=g.
+options or{}local h=g.default if h==nil and g.multi then h={}end local i=add(e,
+'dropdown',f,g.label or f,g,h)if g.onChanged then i:on(g.onChanged)end return i
+end function d.input(e,f,g)local h=add(e,'input',f,g.label or'',g,g.default or''
+)if g.onChanged then h:on(g.onChanged)end return h end function d.key(e,f,g)
+local h=add(e,'key',f,g.label or f,g,{key=g.default or'None',mode=g.mode or
+'Toggle',modifiers=g.modifiers or{}})e._page.window.keys:register(h)return h end
+function d.color(e,f,g)local h=add(e,'color',f,g.label or f,g,{color=g.default
+or Color3.new(1,1,1),alpha=g.alphaValue or 0})if g.onChanged then h:on(g.
+onChanged)end return h end function d.button(e,f,g)local h=if type(g)==
+'function'then{onPressed=g}else g h.saved=false local i=add(e,'button',nil,f,h,
+nil)if h.onPressed then i:on(h.onPressed)end return i end function d.label(e,f,g
+)local h=g or{}h.saved=false return add(e,'label',nil,f,h,f)end function d.stat(
+e,f,g)return add(e,'stat',nil,f,{saved=false},tostring(g))end function d.divider
+(e,f)return add(e,'divider',nil,f or'',{saved=false},nil)end function d.addKey(e
+,f,g,h)local i=b.new('key',g,h.label or f.label,h,{key=h.default or'None',mode=h
+.mode or'Toggle',modifiers=h.modifiers or{}})i.section=e local j=i j.toggled=h.
+toggled==true if f.kind=='toggle'and h.onPress==nil then j.toggled=f.value h.
+onPress=function()f:set(not f.value)j.toggled=f.value end end e._page:_register(
+i,true)e._page.window.keys:register(i)f:attach(i)return i end function d.
+addColor(e,f,g,h)local i=b.new('color',g,h.label or f.label,h,{color=h.default
+or Color3.new(1,1,1),alpha=h.alphaValue or 0})i.section=e e._page:_register(i,
+true)f:attach(i)if h.onChanged then i:on(h.onChanged)end return i end function d
+.when(e,f,g)local h=e._guard local i=f if h then i=function()return h()and f()
+end end local j=setmetatable({rows=e.rows,title=e.title,_page=e._page,_guard=i,
+_root=e._root or e},d)for k,l in(g or{})do l:on(function()e._page:_invalidate()
+end)end return j end function c.new(e,f)return setmetatable({title=f,rows={},
+_page=e,_guard=nil,_root=nil},d)end return c end function a.p()local b=a.cache.p
+if not b then b={c=__modImpl()}a.cache.p=b end return b.c end end do local 
+function __modImpl()local b=a.m()local c=a.f()local d=a.j()local e=a.b()local f=
+a.p()local g={}local h=26 local i=36 function g.open(j,k,l)if j._dialogClose
+then j._dialogClose()end local m=j.ctx local n=m.theme local o=j._layer local p=
+k.width or 460 local q=k.maxHeight or 340 local r=60 local s=c('TextButton',{
+Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BackgroundColor3=Color3.new(0
+,0,0),ZIndex=50,Parent=o})local t=e.prop(s,'BackgroundTransparency',22)t:to(0.4)
+local u=c('Frame',{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0.5
+,0.5),Size=UDim2.fromOffset(p,0),BackgroundTransparency=0,ClipsDescendants=true,
+Active=true,ZIndex=51,Parent=o})n:paint(u,'BackgroundColor3','base')c('UIScale',
+{Scale=m.uiScale(),Parent=u})local v=c('UIStroke',{ApplyStrokeMode=Enum.
+ApplyStrokeMode.Border,Parent=u})n:paint(v,'Color','lineStrong')local w=c(
+'TextLabel',{Position=UDim2.fromOffset(20,16),Size=UDim2.new(1,-40,0,40),
+TextSize=36,Text=k.title or'',ZIndex=52,Parent=u})n:type(w,'display')n:paint(w,
+'TextColor3','text')local x=60 local y=k.text if y and y~=''then local z=c(
+'TextLabel',{Position=UDim2.fromOffset(20,x),Size=UDim2.new(1,-40,0,22),
+AutomaticSize=Enum.AutomaticSize.Y,TextSize=16,TextWrapped=true,Text=y,ZIndex=52
+,Parent=u})n:type(z,'text')n:paint(z,'TextColor3','muted')x+=22+math.floor(#y/52
+)*22+12 end local z=c('ScrollingFrame',{Position=UDim2.fromOffset(20,x),Size=
+UDim2.new(1,-40,0,0),ScrollBarThickness=3,ZIndex=52,Parent=u})n:paint(z,
+'ScrollBarImageColor3','lineStrong')local A=false local B={window=j,name=
+'Dialog',nextId=function()j._dialogIds+=1 return j._dialogIds end,_register=
+function(B,C,D)C._pageName='Dialog'if D then j.elements[C.id]=C end end,
+_invalidate=function()end}local C=f.new(B,'')local D,E=xpcall(l,debug.traceback,
+C)if not D then warn('sottUI: dialog build failed: '..tostring(E))end local F={}
+local G=0 for H,I in C.rows do if I:shown()then local J=b.build(m,I)local K=r if
+I.kind=='divider'then K=28 elseif I.kind=='label'then local L=math.ceil(d.width(
+'text',I.label,16)/(p-48))K=if I.spec.wrap then L*21+12 else 32 end J.root.
+Position=UDim2.fromOffset(0,G)J.root.Size=UDim2.new(1,0,0,K)J.root.Parent=z G+=K
++3 table.insert(F,J)end end z.CanvasSize=UDim2.fromOffset(0,G)local H=math.min(G
+,q)z.Size=UDim2.new(1,-40,0,H)local I=x+H+12 local J=c('TextButton',{Position=
+UDim2.fromOffset(20,I),Size=UDim2.new(1,-40,0,54),BackgroundTransparency=0,
+TextSize=28,Text=k.done or'Done',ZIndex=52,Parent=u})n:type(J,'display')n:paint(
+J,'BackgroundColor3','text')n:paint(J,'TextColor3','base')local K=I+54+20 local
+L=e.prop(u,'Size',h)L:to(UDim2.fromOffset(p,K))local function close()if A then
+return end A=true j._dialogClose=nil s.Active=false for M,N in C.rows do if j.
+elements[N.id]==N then j.elements[N.id]=nil end for O,P in N.addons or{}do j.
+keys:unregister(P)if j.elements[P.id]==P then j.elements[P.id]=nil end end end
+if k.onClose then task.spawn(k.onClose)end t:to(1,function()t:destroy()s:
+Destroy()end)L.speed=i L:to(UDim2.fromOffset(p,0),function()for M,N in F do N.
+destroy()end L:destroy()u:Destroy()end)end j._dialogClose=close s.
+MouseButton1Down:Connect(close)J.Activated:Connect(close)end return g end
+function a.q()local b=a.cache.q if not b then b={c=__modImpl()}a.cache.q=b end
+return b.c end end do local function __modImpl()local b=a.a()local c={}local d={
+text={name='SottUIText',faces={{name='Regular',weight=400,file='text-400.ttf'},{
+name='Medium',weight=500,file='text-500.ttf'}}},display={name='SottUIDisplay',
+faces={{name='ExtraBold',weight=800,file='display-800.ttf'}}}}local e=10000
+local function family(f,g,h,i,j)local k={}for l,m in h.faces do local n=g..'/'..
+m.file local o=f.read(n)if o==nil or#o<e then local p=b.fetch(i..m.file)if p==
+nil or#p<e then return nil end if not f.write(n,p)then return nil end end local
+p=f.asset(n)if p==nil then return nil end table.insert(k,{name=m.name,weight=m.
+weight,style='normal',assetId=p})end local l=g..'/'..h.name..'.json'if not f.
+write(l,j({name=h.name,faces=k}))then return nil end return f.asset(l)end
+function c.load(f,g,h)local i=b.files()if i==nil or b.global('getcustomasset')==
+nil then return{}end i.folder(f)local j={}local k,l=pcall(function()j.text=
+family(i,f,d.text,g,h)j.display=family(i,f,d.display,g,h)end)if not k then warn(
+'sottUI: fonts unavailable: '..tostring(l))end return j end function c.image(f,g
+,h)local i=b.files()if i==nil or b.global('getcustomasset')==nil then return nil
+end i.folder(f)local j=f..'/'..h if i.read(j)==nil then local k=b.fetch(g..h)if
+k==nil or not i.write(j,k)then return nil end end return i.asset(j)end return c
+end function a.r()local b=a.cache.r if not b then b={c=__modImpl()}a.cache.r=b
+end return b.c end end do local function __modImpl()local b=a.f()local c={}local 
+function stroke(d,e,f,g,h,i,j)local k=b('Frame',{AnchorPoint=Vector2.new(0.5,0.5
+),Position=UDim2.fromOffset(i,j),Size=UDim2.fromOffset(g,2),Rotation=h,
+BackgroundTransparency=0,Parent=d})e:paint(k,'BackgroundColor3',f)return k end
+function c.new(d)local e={}function e.chevron(f,g,h)local i=b('Frame',{Size=
+UDim2.fromOffset(12,12),Parent=f})if h=='right'then stroke(i,d,g,7,45,6,3.6)
+stroke(i,d,g,7,-45,6,8.4)elseif h=='up'then stroke(i,d,g,7,-45,3.6,6)stroke(i,d,
+g,7,45,8.4,6)else stroke(i,d,g,7,45,3.6,6)stroke(i,d,g,7,-45,8.4,6)end return i
+end function e.cross(f,g)local h=b('Frame',{Size=UDim2.fromOffset(12,12),Parent=
+f})stroke(h,d,g,13,45,6,6)stroke(h,d,g,13,-45,6,6)return h end function e.dash(f
+,g)local h=b('Frame',{Size=UDim2.fromOffset(12,12),Parent=f})stroke(h,d,g,12,0,6
+,6)return h end return e end return c end function a.s()local b=a.cache.s if not
+b then b={c=__modImpl()}a.cache.s=b end return b.c end end do local function 
+__modImpl()local b={}b.__index=b local function dispose(c)local d=typeof(c)if d
+=='RBXScriptConnection'then c:Disconnect()elseif d=='Instance'then c:Destroy()
+elseif d=='function'then c()elseif d=='thread'then task.cancel(c)elseif d==
+'table'then local e=c.destroy or c.Destroy or c.Disconnect if e then e(c)end end
+end function b.add(c,d)table.insert(c._items,d)return d end function b.clean(c)
+local d=c._items c._items={}for e=#d,1,-1 do local f,g=pcall(dispose,d[e])if not
+f then warn('sottUI: cleanup failed: '..tostring(g))end end end b.destroy=b.
+clean return{new=function()return((setmetatable({_items={}},b)))end}end function
+a.t()local b=a.cache.t if not b then b={c=__modImpl()}a.cache.t=b end return b.c
+end end do local function __modImpl()local b=a.a()local c=a.t()local d=a.n()
+local e={}local f={}f.__index=f function f.pointer(g)local h=g._guiService:
+GetGuiInset()return g._uis:GetMouseLocation()-h end function f.at(g,h)local i=h.
+Position return Vector2.new(i.X,i.Y)end function f.capture(g,h,i,j)g:release()g.
+_move=h g._finish=i g._finger=j end function f.release(g)local h=g._finish g.
+_move=nil g._finish=nil g._finger=nil if h then task.spawn(h,g:pointer())end end
+function f.typing(g)return g._uis:GetFocusedTextBox()~=nil end function f.
+destroy(g)g._move=nil g._finish=nil g._maid:clean()g.keyDown:clear()g.keyUp:
+clear()g.wheel:clear()g.moved:clear()g.pointerUp:clear()end function e.new()
+local g=b.service('UserInputService')local h=c.new()local i=setmetatable({_uis=g
+,_guiService=b.service('GuiService'),_maid=h,_move=nil,_finish=nil,keyDown=d.
+new(),keyUp=d.new(),wheel=d.new(),moved=d.new(),pointerUp=d.new()},f)h:add(g.
+InputChanged:Connect(function(j)local k=j.UserInputType if k==Enum.UserInputType
+.MouseMovement then local l=i:pointer()if i._move then i._move(l)end i.moved:
+fire(l)elseif k==Enum.UserInputType.Touch then if i._move and(i._finger==nil or
+i._finger==j)then i._move(i:at(j))end elseif k==Enum.UserInputType.MouseWheel
+then i.wheel:fire(j.Position.Z)end end))h:add(g.InputEnded:Connect(function(j,k)
+local l=j.UserInputType if l==Enum.UserInputType.MouseButton1 or l==Enum.
+UserInputType.Touch then if i._move and(l~=Enum.UserInputType.Touch or i._finger
+==nil or i._finger==j)then local m=if l==Enum.UserInputType.Touch then i:at(j)
+else i:pointer()local n=i._finish i._move=nil i._finish=nil i._finger=nil if n
+then n(m)end end i.pointerUp:fire()end i.keyUp:fire(j,k)end))h:add(g.InputBegan:
+Connect(function(j,k)i.keyDown:fire(j,k)end))return i end return e end function
+a.u()local b=a.cache.u if not b then b={c=__modImpl()}a.cache.u=b end return b.c
+end end do local function __modImpl()local b={}local c={[Enum.UserInputType.
 MouseButton1]='MB1',[Enum.UserInputType.MouseButton2]='MB2',[Enum.UserInputType.
 MouseButton3]='MB3'}local d={MB1=Enum.UserInputType.MouseButton1,MB2=Enum.
 UserInputType.MouseButton2,MB3=Enum.UserInputType.MouseButton3}local e={[Enum.
@@ -1589,7 +1590,7 @@ destroyed and(aN.text or aN.display)then ag:setFonts(aN.text,aN.display)end end)
 autoShow~=false then task.defer(function()aB:setOpen(true)end)end return aB end
 function r.setVersion(ad)s=ad end return r end function a.C()local aa=a.cache.C
 if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local
-aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.3.2-dock'local 
+aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.3.3-dock'local 
 function registry()local af=aa.global('getgenv')local ag=if type(af)=='function'
 then af()else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}
 ag.__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion(
