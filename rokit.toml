@@ -1,0 +1,5 @@
+[tools]
+lune = "lune-org/lune@0.10.5"
+stylua = "johnnymorganz/stylua@2.5.2"
+luau-lsp = "johnnymorganz/luau-lsp@1.68.1"
+darklua = "seaofvoices/darklua@0.19.0"

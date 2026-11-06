@@ -1,0 +1,12 @@
+{
+	generator: {
+		name: "dense",
+	},
+	bundle: {
+		require_mode: "path",
+	},
+	rules: [
+		"remove_types",
+		"rename_variables",
+	],
+}
