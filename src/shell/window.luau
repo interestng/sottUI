@@ -36,7 +36,7 @@ local CHIP = 17
 local CHIP_PAD = 14
 local CHIP_HEIGHT = 36
 local CHIP_GAP = 6
-local SEARCH = 110
+local SEARCH = 84
 local CLOSE = 44
 local EDGE = 12
 local MAX_PANEL = 600
@@ -123,6 +123,7 @@ function Window._drawChips(self: any)
 		end
 		table.clear(self._chips)
 		local theme = self.ctx.theme
+		local chipWidth = 0
 		local function add(text: string, order: number, onPress: () -> ())
 			local width = math.ceil(metrics.width("display", text, CHIP)) + 2 * CHIP_PAD
 			local chip = make("TextButton", {
@@ -133,8 +134,9 @@ function Window._drawChips(self: any)
 				Text = text,
 				LayoutOrder = order,
 				ZIndex = 3,
-				Parent = self._row,
+				Parent = self._chipRow,
 			})
+			chipWidth += width + CHIP_GAP
 			theme:type(chip, "display")
 			theme:paint(chip, "BackgroundColor3", "accent")
 			theme:paint(chip, "TextColor3", "onAccent")
@@ -153,6 +155,9 @@ function Window._drawChips(self: any)
 				el:set(false)
 			end)
 		end
+		-- empty, the group takes no room and no gap
+		self._chipRow.Visible = chipWidth > 0
+		self._chipRow.Size = UDim2.new(0, math.max(chipWidth - CHIP_GAP, 0), 1, 0)
 	end)
 end
 
@@ -202,6 +207,12 @@ function Window._show(self: any, page: any, instant: boolean?)
 	if previous then
 		previous:setActive(false)
 	end
+	-- a word pressed mid close replaces the spring's done, so the page on its way out has to be let go here
+	local leaving = self._leaving
+	if leaving and leaving ~= page then
+		leaving:setActive(false)
+	end
+	self._leaving = nil
 	self._showing = page
 	local anchor = self._words[page] or self._box
 	-- a sheet opening from nothing starts where it belongs; only one already up travels
@@ -221,8 +232,10 @@ function Window._hideSheet(self: any)
 	self.ctx.popover:close()
 	self.keys:cancel()
 	self._showing = nil
+	self._leaving = previous
 	self._panelSize:to(UDim2.new(0, WIDTH, 0, 0), function()
-		if self._showing == nil then
+		if self._leaving == previous then
+			self._leaving = nil
 			previous:setActive(false)
 		end
 	end)
@@ -635,6 +648,22 @@ function window.new(options: { [string]: any }): any
 		})
 	end
 
+	local chipRow = make("Frame", {
+		Name = "Running",
+		Size = UDim2.new(0, 0, 1, 0),
+		Visible = false,
+		LayoutOrder = 200,
+		ZIndex = 3,
+		Parent = row,
+	})
+	make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, CHIP_GAP),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = chipRow,
+	})
+
 	local box = make("TextBox", {
 		Name = "Search",
 		Size = UDim2.new(0, SEARCH, 1, 0),
@@ -694,6 +723,7 @@ function window.new(options: { [string]: any }): any
 		_panel = panel,
 		_dock = dock,
 		_row = row,
+		_chipRow = chipRow,
 		_homeAvatar = avatar,
 		_chips = {},
 		_words = {},
