@@ -22,16 +22,16 @@ export type Tokens = {
 	danger: Color3,
 }
 
-export type Family = "text" | "display" | "mono"
+export type Family = "text" | "display"
 
 export type Theme = {
 	tokens: Tokens,
-	fonts: { text: any, display: any, mono: any },
+	fonts: { text: any, display: any },
 	changed: signal.Signal,
 	paint: (self: Theme, instance: any, property: string, token: string) -> (),
 	type: (self: Theme, instance: any, family: Family, medium: boolean?) -> (),
 	apply: (self: Theme, partial: { [string]: Color3 }) -> (),
-	setFonts: (self: Theme, text: string?, display: string?, mono: string?) -> (),
+	setFonts: (self: Theme, text: string?, display: string?) -> (),
 	face: (self: Theme, family: Family, medium: boolean?) -> any,
 	forget: (self: Theme, instance: any) -> (),
 }
@@ -63,7 +63,6 @@ local DEFAULT: Tokens = {
 
 local FALLBACK_TEXT = "rbxasset://fonts/families/BuilderSans.json"
 local FALLBACK_DISPLAY = "rbxasset://fonts/families/BuilderSans.json"
-local FALLBACK_MONO = "rbxasset://fonts/families/RobotoMono.json"
 
 local Theme = {}
 Theme.__index = Theme
@@ -79,7 +78,7 @@ function theme.new(overrides: { [string]: Color3 }?): Theme
 	end
 	local self = {
 		tokens = tokens,
-		fonts = { text = FALLBACK_TEXT, display = FALLBACK_DISPLAY, mono = FALLBACK_MONO },
+		fonts = { text = FALLBACK_TEXT, display = FALLBACK_DISPLAY },
 		changed = signal.new(),
 		-- strong keys: a weak key can drop while the instance lives on once its Lua wrapper is collected, and the hairline
 		-- would miss every later theme change. dead instances are swept when the table has grown
@@ -125,9 +124,6 @@ function Theme.face(self: any, family: Family, medium: boolean?): any
 	if family == "display" then
 		return Font.new(self.fonts.display, Enum.FontWeight.SemiBold)
 	end
-	if family == "mono" then
-		return Font.new(self.fonts.mono, Enum.FontWeight.Medium)
-	end
 	return Font.new(self.fonts.text, if medium then Enum.FontWeight.Medium else Enum.FontWeight.Regular)
 end
 
@@ -155,8 +151,7 @@ function Theme.apply(self: any, partial: { [string]: Color3 })
 	self.changed:fire()
 end
 
-function Theme.setFonts(self: any, text: string?, display: string?, mono: string?)
-	self.fonts.mono = mono or self.fonts.mono
+function Theme.setFonts(self: any, text: string?, display: string?)
 	self.fonts.text = text or self.fonts.text
 	self.fonts.display = display or self.fonts.display
 	for instance, spec in self._types do

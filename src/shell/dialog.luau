@@ -113,13 +113,10 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	local stack = 0
 	for _, el in section.rows do
 		if el:shown() then
+			kinds.measure(el, width - 40)
 			local view = kinds.build(ctx, el)
 			local height = TILE
-			if el.kind == "slider" then
-				height = 170
-			elseif el.kind == "dropdown" or el.kind == "input" then
-				height = kinds.measure(el).height
-			elseif el.kind == "divider" then
+			if el.kind == "divider" then
 				height = 28
 			elseif el.kind == "label" then
 				-- no page to correct it later, so wrapped text is measured here; a clipped explanation is no explanation

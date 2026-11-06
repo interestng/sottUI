@@ -7,7 +7,7 @@ local env = require("./env")
 
 local fonts = {}
 
-export type Result = { text: string?, display: string?, mono: string? }
+export type Result = { text: string?, display: string? }
 
 local FAMILIES = {
 	text = {
@@ -21,12 +21,6 @@ local FAMILIES = {
 		name = "SottUIDisplay",
 		faces = {
 			{ name = "SemiBold", weight = 600, file = "display-600.ttf" },
-		},
-	},
-	mono = {
-		name = "SottUIMono",
-		faces = {
-			{ name = "Medium", weight = 500, file = "mono-500.ttf" },
 		},
 	},
 }
@@ -73,7 +67,6 @@ function fonts.load(folder: string, base: string, encode: (any) -> string): Resu
 	local ok, err: any = pcall(function()
 		result.text = family(store, folder, FAMILIES.text, base, encode)
 		result.display = family(store, folder, FAMILIES.display, base, encode)
-		result.mono = family(store, folder, FAMILIES.mono, base, encode)
 	end)
 	if not ok then
 		warn("sottUI: fonts unavailable: " .. tostring(err))

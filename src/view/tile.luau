@@ -8,7 +8,7 @@ local motion = require("../core/motion")
 local tile = {}
 
 tile.PAD = 12
-tile.HEIGHT = 38
+tile.HEIGHT = 36
 tile.NAME = 14
 tile.RADIUS = 8
 
@@ -71,6 +71,9 @@ local function baseColor(self: any): Color3
 	local tokens = self.ctx.theme.tokens
 	if self._lit then
 		return if self._hover then tokens.accentHover else tokens.accent
+	end
+	if self._flat then
+		return if self._hover then tokens.raised else tokens.surface
 	end
 	return if self._hover then tokens.lineStrong else tokens.raised
 end
@@ -173,7 +176,7 @@ function Tile.refreshName(self: any)
 	end
 end
 
-function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean? }?): Tile
+function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?, flat: boolean? }?): Tile
 	local settings: any = options or {}
 	local root = make("TextButton", {
 		Name = el.kind,
@@ -208,6 +211,7 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 		_hover = false,
 		_lit = false,
 		_inert = settings.inert == true,
+		_flat = settings.flat == true,
 	}, Tile)
 	root.BackgroundColor3 = baseColor(self)
 	self:refreshName()

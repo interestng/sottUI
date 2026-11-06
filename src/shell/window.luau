@@ -1,7 +1,7 @@
 --!strict
--- a rounded box you can drag: pages along the top, each one a desk of channel strips. the window is as wide as its page
--- needs, up to the screen, and opens like a lid from under its top bar. a light on a page's name says something there is
--- running. the keyboard stays with the game until you click into search
+-- a rounded box you can drag: pages along the top, each one sections in two columns. it opens like a lid from under its
+-- top bar, and a light on a page's name says something there is running. the keyboard stays with the game until you
+-- click into search
 
 local dialogModule = require("./dialog")
 local env = require("../core/env")
@@ -27,12 +27,12 @@ local window = {}
 
 local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
-local ART = { "glow.png", "shadow.png", "ticks.png" }
+local ART = { "glow.png", "shadow.png" }
 
-local HEIGHT = 420
+local WIDTH = 860
+local HEIGHT = 560
 local TOP = 48
 local RADIUS = 14
-local MAX_WIDTH = 1120
 local EDGE = 16
 local SHADOW = 32
 local SHADOW_REST = 0.35
@@ -40,7 +40,7 @@ local TAB_TEXT = 14
 local TAB_PAD = 14
 local TAB_LED = 7
 local TAB_LED_ROOM = 15
-local MARK_TEXT = 14
+local MARK_TEXT = 17
 local MARK_PAD = 18
 local SEARCH = 168
 local SEARCH_HEIGHT = 30
@@ -132,43 +132,20 @@ function Window._setPerson(self: any, options: any)
 	self._person = options
 end
 
-function Window.minContentWidth(self: any): number
-	return self._minWidth or 0
-end
-
-function Window._screenWidth(self: any): number
-	return self._gui.AbsoluteSize.X / self._scale.Scale - 2 * EDGE
-end
-
--- as wide as the page wants within what the screen has; the left edge stays put so the page names never move
-function Window._contentChanged(self: any, content: number, live: boolean?)
-	if self._showing == nil then
-		return
-	end
-	local limit = math.min(MAX_WIDTH, self:_screenWidth())
-	local width = math.clamp(content, math.min(self._minWidth or 0, limit), limit)
-	self._width = width
-	-- no saved spot: centred on the first page's real width, which is not known when the window first opens
-	if self._autoCentre then
-		self._autoCentre = false
-		local screen = self._gui.AbsoluteSize
-		local scale = self._scale.Scale
-		self._at = Vector2.new((screen.X - width * scale) / 2, (screen.Y - HEIGHT * scale) / 2)
-		self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
-	end
-	self:_keepOnScreen(true)
-	local size = UDim2.fromOffset(width, if self.isOpen then HEIGHT else 0)
-	if live or self._rising or self._size:moving() then
-		self._size:to(size)
-	else
-		self._size:snap(size)
-	end
+-- the box's size on this screen, shrunk only if the screen is smaller; the body keeps its height so the lid clips it
+function Window._fit(self: any)
+	local scale = self._scale.Scale
+	local screen = self._gui.AbsoluteSize / scale
+	self._width = math.min(WIDTH, screen.X - 2 * EDGE)
+	self._height = math.min(HEIGHT, screen.Y - 2 * EDGE)
+	self._body.Size = UDim2.new(1, 0, 0, self._height - TOP)
+	self._size:snap(UDim2.fromOffset(self._width, if self.isOpen then self._height else 0))
 end
 
 function Window._clamped(self: any, at: Vector2): Vector2
 	local scale = self._scale.Scale
 	local screen = self._gui.AbsoluteSize
-	local width, height = (self._width or 0) * scale, HEIGHT * scale
+	local width, height = self._width * scale, self._height * scale
 	return Vector2.new(
 		math.clamp(at.X, EDGE, math.max(screen.X - width - EDGE, EDGE)),
 		math.clamp(at.Y, EDGE, math.max(screen.Y - height - EDGE, EDGE))
@@ -207,9 +184,7 @@ function Window._show(self: any, page: any, instant: boolean?)
 	if page ~= self._resultsPage then
 		self._lastPage = page
 	end
-	self._rising = not instant
 	page:setActive(true, instant)
-	self._rising = false
 	page:adopt()
 	self:_syncMarker(instant)
 	self:_saveState()
@@ -392,7 +367,7 @@ function Window.setOpen(self: any, open: boolean)
 	if not open and self._dialogClose then
 		self._dialogClose()
 	end
-	local width = self._width or self._minWidth or 0
+	local width = self._width
 	if open then
 		self._root.Visible = true
 		self._modal.Visible = true
@@ -400,10 +375,11 @@ function Window.setOpen(self: any, open: boolean)
 		if self._at == nil then
 			local scale = self._scale.Scale
 			local screen = self._gui.AbsoluteSize
-			self._at = Vector2.new((screen.X - width * scale) / 2, (screen.Y - HEIGHT * scale) / 2)
+			self._at = Vector2.new((screen.X - width * scale) / 2, (screen.Y - self._height * scale) / 2)
 		end
+		self._at = self:_clamped(self._at)
 		self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
-		self._size:to(UDim2.fromOffset(width, HEIGHT))
+		self._size:to(UDim2.fromOffset(width, self._height))
 		self._shadowFade:to(SHADOW_REST)
 		-- no focus on open: the keyboard stays with the game until you ask for the menu's
 	else
@@ -464,6 +440,7 @@ end
 
 function Window.setScale(self: any, scale: number)
 	self._scale.Scale = math.clamp(scale, 0.7, 1.5)
+	self:_fit()
 	self:_keepOnScreen(false)
 	self:_saveState()
 end
@@ -580,7 +557,7 @@ function window.new(options: { [string]: any }): any
 	maid:add(gui)
 
 	local files = env.files()
-	local folder = options.folder or "sottui_console"
+	local folder = options.folder or "sottui_sections"
 	local stateFile = options.stateFile or (folder .. "/window.json")
 	local saved: any = nil
 	if files then
@@ -677,7 +654,7 @@ function window.new(options: { [string]: any }): any
 		Parent = row,
 	})
 	local title = options.mark or "sottoro"
-	local markWidth = math.ceil(metrics.width("mono", title, MARK_TEXT)) + 2 * MARK_PAD - 8
+	local markWidth = math.ceil(metrics.width("display", title, MARK_TEXT)) + 2 * MARK_PAD - 8
 	local mark = make("TextLabel", {
 		Name = "Mark",
 		Size = UDim2.new(0, markWidth, 1, 0),
@@ -688,7 +665,7 @@ function window.new(options: { [string]: any }): any
 		Parent = row,
 	})
 	make("UIPadding", { PaddingLeft = UDim.new(0, MARK_PAD), Parent = mark })
-	theme:type(mark, "mono")
+	theme:type(mark, "display")
 	theme:paint(mark, "TextColor3", "accent")
 
 	local right = make("Frame", {
@@ -774,7 +751,6 @@ function window.new(options: { [string]: any }): any
 		_marker = marker,
 		_tabs = {},
 		_at = if tonumber(saved.boxX) and tonumber(saved.boxY) then Vector2.new(saved.boxX, saved.boxY) else nil,
-		_autoCentre = not (tonumber(saved.boxX) and tonumber(saved.boxY)),
 		_savedPage = saved.page,
 		_subtitleText = options.subtitle,
 		_files = files,
@@ -852,6 +828,7 @@ function window.new(options: { [string]: any }): any
 	self._shadowFade = maid:add(motion.prop(shadow, "ImageTransparency", OPEN_SPEED))
 	self._markerAt = maid:add(motion.prop(marker, "Position", MARKER_SPEED))
 	self._markerSize = maid:add(motion.prop(marker, "Size", MARKER_SPEED))
+	self:_fit()
 
 	self._resultsPage = pageModule.new(self, "Results")
 	self._resultsPage:mount(body)
@@ -906,7 +883,6 @@ function window.new(options: { [string]: any }): any
 		if origin == nil then
 			return
 		end
-		self._autoCentre = false
 		router:capture(function(at: Vector2)
 			self._at = self:_clamped(origin + (at - from))
 			self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
@@ -915,37 +891,17 @@ function window.new(options: { [string]: any }): any
 		end, if kind == Enum.UserInputType.Touch then event else nil)
 	end)
 
-	-- the bar's contents are the narrowest a page may make the window
-	local function fitBar()
-		local needed = math.ceil(rowLayout.AbsoluteContentSize.X / scale.Scale)
-			+ TOP_GAP
-			+ SEARCH
-			+ CLOSE
-			+ 6
-			+ RIGHT_PAD
-		if needed == self._minWidth then
-			return
-		end
-		self._minWidth = needed
-		local page = self._showing
-		if page then
-			page:_invalidate()
-		end
+	-- tabs only change while pages are being added
+	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 		task.defer(function()
 			if not self.destroyed then
 				self:_syncMarker(true)
 			end
 		end)
-	end
-	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitBar)
-	task.defer(fitBar)
+	end)
 	maid:add(gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		self:_fit()
 		self:_keepOnScreen(false)
-		local page = self._showing
-		if page then
-			page._quiet = true
-			page:_invalidate()
-		end
 	end))
 
 	router.moved:connect(function(at: Vector2)
@@ -1049,8 +1005,8 @@ function window.new(options: { [string]: any }): any
 			if self.destroyed then
 				return
 			end
-			if loaded.text or loaded.display or loaded.mono then
-				theme:setFonts(loaded.text, loaded.display, loaded.mono)
+			if loaded.text or loaded.display then
+				theme:setFonts(loaded.text, loaded.display)
 			end
 			for _, file in ART do
 				local asset = fonts.image(fontFolder, base, file)

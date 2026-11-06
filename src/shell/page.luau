@@ -1,7 +1,6 @@
 --!strict
--- a page is a desk: every section is a channel strip, side by side, and the desk scrolls sideways. faders stand at the
--- strip's left, everything else runs down columns beside them, and a section's main switch sits along its foot. placing
--- is one pass of arithmetic with no layout objects; a control's instances are built the first time it comes near view
+-- a page is sections in two columns, each section dropped into whichever column is shorter. placing is one pass of
+-- arithmetic with no layout objects; a row's instances are built the first time it scrolls near view
 
 local kinds = require("../view/kinds")
 local make = require("../core/make")
@@ -11,29 +10,30 @@ local sectionModule = require("./section")
 
 local page = {}
 
-local STRIP_PAD = 14
-local GAP = 8
-local ROW_GAP = 6
-local HEADER = 26
-local HEADER_GAP = 10
-local TITLE = 15
+local SIDE = 14
+local TOP = 14
+local BOTTOM = 14
+local GAP = 12
+local ONE_COLUMN_BELOW = 560
+local CARD_PAD = 6
+local CARD_RADIUS = 14
+local HEAD = 42
+local ROW_GAP = 3
+local TITLE = 16
 local TAB_TEXT = 14
-local TAB_GAP = 14
-local SWITCH = 38
-local SWITCH_GAP = 12
-local STRIP_MIN = 112
-local HERO_WIDTH = 260
-local EMPTY_WIDTH = 240
-local NEAR = 420
-local WHEEL_STEP = 150
-local SCROLL_SPEED = 20
-local SLIDE_SPEED = 24
+local TAB_GAP = 16
+local HERO = 136
+local NEAR = 360
+local WHEEL_STEP = 110
+local SCROLL_SPEED = 24
+local SLIDE_SPEED = 26
 local LIVE_SPEED = 18
-local ENTER_SPEED = 22
-local ENTER_FROM = 12
+local ENTER_SPEED = 24
+local ENTER_FROM = 10
+local WASH_HEIGHT = 84
 local THUMB = 3
-local THUMB_INSET = 3
-local THUMB_SIDE = 16
+local THUMB_INSET = 4
+local THUMB_MIN = 40
 
 local Page = {}
 Page.__index = Page
@@ -72,7 +72,7 @@ function Page.section(self: any, title: string): any
 	return built
 end
 
--- several sections sharing one strip, the title being their switcher. tabs may be added one at a time
+-- several sections sharing one card, the title being their switcher. tabs may be added one at a time
 function Page.tabset(self: any): any
 	local holder = sectionModule.new(self, "")
 	holder.tabNames = {}
@@ -107,7 +107,7 @@ function Page.tabs(self: any, names: { string }): { any }
 	return out
 end
 
--- the person, large, as the desk's first strip. userId shows their avatar; the text can change while it is up
+-- the person, large, across the top of a page. userId shows their avatar; the text can change while it is up
 function Page.hero(self: any, options: { userId: number?, title: string, text: string? }): any
 	self._hero = options
 	self:_invalidate()
@@ -124,27 +124,41 @@ function Page.hero(self: any, options: { userId: number?, title: string, text: s
 	}
 end
 
+local function card(theme: any, parent: any, name: string): (any, any)
+	local root = make("Frame", {
+		Name = name,
+		BackgroundTransparency = 0,
+		ZIndex = 0,
+		Parent = parent,
+	})
+	make("UICorner", { CornerRadius = UDim.new(0, CARD_RADIUS), Parent = root })
+	theme:paint(root, "BackgroundColor3", "surface")
+	local edge = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Thickness = 1, Parent = root })
+	theme:paint(edge, "Color", "line")
+	return root, edge
+end
+
 local function buildHero(self: any): any
 	local ctx = self.window.ctx
 	local theme = ctx.theme
 	local options = self._hero
-	local root = make("Frame", { Name = "Hero", ClipsDescendants = true, Parent = self.canvas })
+	local root = card(theme, self.canvas, "Hero")
+	root.ClipsDescendants = true
 	local glow = make("ImageLabel", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0, 130),
-		Size = UDim2.fromOffset(360, 360),
+		Position = UDim2.new(0, 72, 0.5, 0),
+		Size = UDim2.fromOffset(300, 300),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		ImageTransparency = 0.72,
+		ImageTransparency = 0.68,
 		Parent = root,
 	})
 	theme:paint(glow, "ImageColor3", "accent")
 	ctx.art(glow, "glow.png")
 	if options.userId then
 		local bust = make("ImageLabel", {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 16),
-			Size = UDim2.fromOffset(232, 232),
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.fromOffset(136, 136),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Image = string.format("rbxthumb://type=AvatarBust&id=%d&w=420&h=420", options.userId),
@@ -155,17 +169,16 @@ local function buildHero(self: any): any
 			Rotation = 90,
 			Transparency = NumberSequence.new({
 				NumberSequenceKeypoint.new(0, 0),
-				NumberSequenceKeypoint.new(0.72, 0),
+				NumberSequenceKeypoint.new(0.75, 0),
 				NumberSequenceKeypoint.new(1, 1),
 			}),
 			Parent = bust,
 		})
 	end
 	local name = make("TextLabel", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, STRIP_PAD + 4, 1, -42),
-		Size = UDim2.new(1, -2 * (STRIP_PAD + 4), 0, 30),
-		TextSize = 24,
+		Position = UDim2.fromOffset(156, 44),
+		Size = UDim2.new(1, -172, 0, 34),
+		TextSize = 28,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 2,
 		Parent = root,
@@ -173,10 +186,9 @@ local function buildHero(self: any): any
 	theme:type(name, "display")
 	theme:paint(name, "TextColor3", "text")
 	local line = make("TextLabel", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, STRIP_PAD + 4, 1, -18),
-		Size = UDim2.new(1, -2 * (STRIP_PAD + 4), 0, 22),
-		TextSize = 14,
+		Position = UDim2.fromOffset(156, 78),
+		Size = UDim2.new(1, -172, 0, 22),
+		TextSize = 15,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 2,
 		Parent = root,
@@ -216,172 +228,67 @@ local function buildHeader(self: any, section: any): any
 			button.Activated:Connect(function()
 				section.activeTab = index
 				for i, label in labels do
-					ctx.tint(label, "TextColor3", if i == section.activeTab then "text" else "faint")
+					ctx.tint(label, "TextColor3", if i == section.activeTab then "text" else "muted")
 				end
 				self:_invalidate()
 			end)
-			theme:paint(button, "TextColor3", if index == section.activeTab then "text" else "faint")
+			theme:paint(button, "TextColor3", if index == section.activeTab then "text" else "muted")
 			x += width
 		end
 		return holder
 	end
-	local master = section.masterElement
 	local title = make("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		TextSize = TITLE,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Text = if master then master.label else section.title,
+		Text = section.title,
 		Parent = holder,
 	})
 	theme:type(title, "display")
-	if master then
-		local function ink(instant: boolean?)
-			local token = if master.value == true then "text" else "muted"
-			if instant then
-				theme:paint(title, "TextColor3", token)
-			else
-				ctx.tint(title, "TextColor3", token)
-			end
-		end
-		ink(true)
-		master:on(function()
-			ink()
-		end)
-	else
-		theme:paint(title, "TextColor3", "text")
-	end
+	theme:paint(title, "TextColor3", "text")
 	return holder
 end
 
--- the hairline between strips and the wash that says this strip is running
-local function buildStrip(self: any, section: any, last: boolean): any
+-- a section's card; one that is switched on carries a soft wash of mint under its title and a mint edge
+local function buildCard(self: any, section: any): any
 	local ctx = self.window.ctx
 	local theme = ctx.theme
-	local root = make("Frame", { Name = "Strip", ZIndex = 0, Parent = self.canvas })
-	local rule = make("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.new(0, 1, 1, 0),
-		BackgroundTransparency = 0,
-		Visible = not last,
-		ZIndex = 0,
-		Parent = root,
-	})
-	theme:paint(rule, "BackgroundColor3", "line")
-	local strip: any = { root = root, rule = rule }
+	local root, edge = card(theme, self.canvas, "Card")
+	local built: any = { root = root }
 	local master = section.masterElement
 	if master then
+		local on = master.value == true
 		local wash = make("Frame", {
-			Size = UDim2.fromScale(1, 0.55),
-			BackgroundTransparency = if master.value == true then 0 else 1,
+			Size = UDim2.new(1, 0, 0, WASH_HEIGHT),
+			BackgroundTransparency = if on then 0 else 1,
 			ZIndex = 0,
 			Parent = root,
 		})
+		make("UICorner", { CornerRadius = UDim.new(0, CARD_RADIUS), Parent = wash })
 		theme:paint(wash, "BackgroundColor3", "accentDim")
 		make("UIGradient", {
 			Rotation = 90,
-			Transparency = NumberSequence.new(0.45, 1),
+			Transparency = NumberSequence.new(0.25, 1),
 			Parent = wash,
 		})
+		theme:paint(edge, "Color", if on then "accentDim" else "line")
 		local spring = motion.prop(wash, "BackgroundTransparency", LIVE_SPEED)
-		strip.spring = spring
 		local disconnect = master:on(function()
+			local lit = master.value == true
 			if self.active then
-				spring:to(if master.value == true then 0 else 1)
+				spring:to(if lit then 0 else 1)
+				ctx.tint(edge, "Color", if lit then "accentDim" else "line")
 			else
-				spring:snap(if master.value == true then 0 else 1)
+				spring:snap(if lit then 0 else 1)
+				theme:paint(edge, "Color", if lit then "accentDim" else "line")
 			end
 		end)
-		strip.destroy = function()
+		built.destroy = function()
 			disconnect()
 			spring:destroy()
 		end
 	end
-	return strip
-end
-
--- one strip's contents, measured but not yet placed
-local function planStrip(section: any, available: number): any
-	local master = if section.flat then nil else section.masterElement
-	local faders, flow = {}, {}
-	for _, el in section.rows do
-		if el == master then
-			continue
-		end
-		if section.flat or el:shown() then
-			local size = kinds.measure(el)
-			if size.fader then
-				table.insert(faders, { el = el, width = size.width })
-			else
-				table.insert(flow, { el = el, width = size.width, height = size.height })
-			end
-		end
-	end
-	local titled = master ~= nil or section.title ~= "" or section.tabNames ~= nil
-	if #faders == 0 and #flow == 0 and not titled then
-		return nil
-	end
-	local top = STRIP_PAD + (if titled then HEADER + HEADER_GAP else 0)
-	local bottom = available - STRIP_PAD - (if master then SWITCH + SWITCH_GAP else 0)
-
-	-- switches together and picks after them; a section mixing in text keeps the order it was written in
-	local plainControls = true
-	for _, item in flow do
-		local kind = item.el.kind
-		plainControls = plainControls and kind ~= "label" and kind ~= "divider" and kind ~= "stat"
-	end
-	if plainControls then
-		local sorted, rest = {}, {}
-		for _, item in flow do
-			table.insert(if item.el.kind == "toggle" then sorted else rest, item)
-		end
-		table.move(rest, 1, #rest, #sorted + 1, sorted)
-		flow = sorted
-	end
-
-	-- down a column until it runs out of room, then the next; a free width line takes its column's
-	local columns: { any } = {}
-	local column: any = nil
-	for _, item in flow do
-		if column == nil or (column.y > top and column.y + item.height > bottom) then
-			column = { items = {}, y = top, width = 0 }
-			table.insert(columns, column)
-		end
-		table.insert(column.items, item)
-		column.width = math.max(column.width, item.width)
-		column.y += item.height + ROW_GAP
-	end
-
-	local content = 0
-	for _, fader in faders do
-		content += fader.width + GAP
-	end
-	for _, each in columns do
-		content += each.width + GAP
-	end
-	content = math.max(content - GAP, 0)
-
-	local head = 0
-	if section.tabNames then
-		for _, name in section.tabNames do
-			head += metrics.width("textMedium", name, TAB_TEXT) + TAB_GAP
-		end
-	elseif master then
-		head = metrics.width("display", master.label, TITLE)
-	else
-		head = metrics.width("display", section.title, TITLE)
-	end
-	local inner = math.max(content, head, if master then kinds.masterWidth(master) else 0)
-	return {
-		section = section,
-		master = master,
-		titled = titled,
-		faders = faders,
-		columns = columns,
-		top = top,
-		bottom = bottom,
-		width = math.max(math.ceil(inner) + 2 * STRIP_PAD, if section.flat then 0 else STRIP_MIN),
-	}
+	return built
 end
 
 function Page.layout(self: any, live: boolean?)
@@ -392,103 +299,88 @@ function Page.layout(self: any, live: boolean?)
 	-- the first layout builds the page, nothing has anywhere to animate from
 	self._live = live == true and self._settled == true and self.active
 	local scale = self.window.ctx.uiScale()
-	local height = frame.AbsoluteSize.Y / scale
-	if height < 1 then
+	local width = frame.AbsoluteSize.X / scale
+	if width < 1 then
 		return
 	end
-
-	local plans: { any } = {}
-	local total = 0
-	if self._hero then
-		total += HERO_WIDTH
-	end
-	for _, section in self.sections do
-		local plan = planStrip(section, height)
-		if plan then
-			table.insert(plans, plan)
-			total += plan.width
-		end
-	end
-	if self._emptyVisible then
-		total = math.max(total, EMPTY_WIDTH)
-	end
-
-	-- a short page shares the spare width out, so the strips still reach the window's edge
-	local spare = math.max((self.window:minContentWidth() or 0) - total, 0)
-	local extra = if #plans > 0 then spare / #plans else 0
-
+	local inner = width - 2 * SIDE
+	local flat = self.sections[1] ~= nil and self.sections[1].flat == true
+	local count = if inner < ONE_COLUMN_BELOW or flat then 1 else 2
+	local cardWidth = (inner - GAP * (count - 1)) / count
 	local placements: { any } = {}
-	local x = 0
+
+	local top = TOP
 	if self._hero then
-		table.insert(placements, { hero = true, x = 0, y = 0, width = HERO_WIDTH, height = height })
-		x = HERO_WIDTH
+		table.insert(placements, { hero = true, x = SIDE, y = top, width = inner, height = HERO })
+		top += HERO + GAP
 	end
-	for index, plan in plans do
-		local section = plan.section
-		local width = math.floor(plan.width + extra)
-		if not section.flat then
-			table.insert(placements, {
-				strip = section,
-				last = index == #plans,
-				x = x,
-				y = 0,
-				width = width,
-				height = height,
-			})
+	local heights = table.create(count, top)
+
+	for _, section in self.sections do
+		local master = if section.flat then nil else section.masterElement
+		local titled = master ~= nil or (section.title ~= nil and section.title ~= "") or section.tabNames ~= nil
+		local rowWidth = cardWidth - 2 * CARD_PAD
+		local rows: { any } = {}
+		local body = 0
+		for _, el in section.rows do
+			if el ~= master and (section.flat or el:shown()) then
+				local height = kinds.measure(el, rowWidth)
+				table.insert(rows, { el = el, height = height })
+				body += height + ROW_GAP
+			end
 		end
-		if plan.titled then
+		if #rows == 0 and not titled then
+			continue
+		end
+		local column = 1
+		for index = 2, count do
+			if heights[index] < heights[column] - 0.5 then
+				column = index
+			end
+		end
+		local x = SIDE + (column - 1) * (cardWidth + GAP)
+		local y = heights[column]
+		local height = (if titled then HEAD else CARD_PAD) + body + (if #rows > 0 then CARD_PAD - ROW_GAP else 0)
+		table.insert(placements, { card = section, x = x, y = y, width = cardWidth, height = height })
+		if master then
+			kinds.measure(master, cardWidth)
+			table.insert(placements, { el = master, x = x, y = y, width = cardWidth, height = HEAD })
+		elseif titled then
 			table.insert(placements, {
 				section = section,
-				x = x + STRIP_PAD,
-				y = STRIP_PAD,
-				width = width - 2 * STRIP_PAD,
-				height = HEADER,
+				x = x + CARD_PAD + 12,
+				y = y,
+				width = cardWidth - 2 * (CARD_PAD + 12),
+				height = HEAD,
 			})
 		end
-		local cx = x + STRIP_PAD
-		for _, fader in plan.faders do
+		local rowY = y + (if titled then HEAD else CARD_PAD)
+		for _, row in rows do
 			table.insert(placements, {
-				el = fader.el,
-				x = cx,
-				y = plan.top,
-				width = fader.width,
-				height = plan.bottom - plan.top,
+				el = row.el,
+				x = x + CARD_PAD,
+				y = rowY,
+				width = rowWidth,
+				height = row.height,
 			})
-			cx += fader.width + GAP
+			rowY += row.height + ROW_GAP
 		end
-		for _, column in plan.columns do
-			local cy = plan.top
-			for _, item in column.items do
-				table.insert(placements, { el = item.el, x = cx, y = cy, width = column.width, height = item.height })
-				cy += item.height + ROW_GAP
-			end
-			cx += column.width + GAP
-		end
-		if plan.master then
-			table.insert(placements, {
-				el = plan.master,
-				x = x + STRIP_PAD,
-				y = height - STRIP_PAD - SWITCH,
-				width = width - 2 * STRIP_PAD,
-				height = SWITCH,
-			})
-		end
-		x += width
+		heights[column] = y + height + GAP
 	end
 
-	local contentWidth = math.max(x, total)
-	frame.CanvasSize = UDim2.fromOffset(contentWidth, 0)
-	self._contentWidth = contentWidth
+	local contentHeight = top
+	for _, height in heights do
+		contentHeight = math.max(contentHeight, height)
+	end
+	contentHeight += BOTTOM - GAP
+	frame.CanvasSize = UDim2.fromOffset(0, contentHeight)
+	self._contentHeight = contentHeight
 	-- a shorter page clamps the canvas at once; the scroll spring has to agree or the next wheel notch is swallowed
-	local limit = math.max(contentWidth - frame.AbsoluteSize.X / scale, 0)
+	local limit = math.max(contentHeight - frame.AbsoluteSize.Y / scale, 0)
 	if self._scrollTarget and self._scrollTarget > limit then
 		self._scrollTarget = limit
 	end
 	self._placements = placements
-	-- pages lay themselves out in the background too; only the one on show may size the window
-	if self.active then
-		self.window:_contentChanged(contentWidth, live)
-	end
 	self:_applyPlacements()
 	self:_materialize(true)
 	self:_refreshThumb()
@@ -505,7 +397,7 @@ local function setRect(view: any, width: number, height: number)
 	end
 end
 
--- things slide to their new place and grow out of nothing, so a rule on a setting never makes the desk jump
+-- things slide to their new place and grow out of nothing, so a rule on a setting never makes the page jump
 local function growTo(view: any, width: number, height: number, done: (() -> ())?)
 	if view._grow == nil then
 		view._grow = view:own(motion.prop(view.root, "Size", SLIDE_SPEED))
@@ -515,21 +407,34 @@ end
 
 function Page._applyPlacements(self: any)
 	local placed = {}
-	local stripsPlaced = {}
+	local cardsPlaced = {}
 	for _, item in self._placements do
 		if item.hero then
 			if self._heroView then
 				self._heroView.root.Position = UDim2.fromOffset(item.x, item.y)
 				self._heroView.root.Size = UDim2.fromOffset(item.width, item.height)
 			end
-		elseif item.strip then
-			stripsPlaced[item.strip] = true
-			local strip = self._strips[item.strip]
-			if strip then
-				strip.root.Visible = true
-				strip.root.Position = UDim2.fromOffset(item.x, item.y)
-				strip.root.Size = UDim2.fromOffset(item.width, item.height)
-				strip.rule.Visible = not item.last
+		elseif item.card then
+			cardsPlaced[item.card] = true
+			local built = self._cards[item.card]
+			if built then
+				built.root.Visible = true
+				local position = UDim2.fromOffset(item.x, item.y)
+				local size = UDim2.fromOffset(item.width, item.height)
+				if self._live then
+					if built.at == nil then
+						built.at = motion.prop(built.root, "Position", SLIDE_SPEED)
+						built.size = motion.prop(built.root, "Size", SLIDE_SPEED)
+					end
+					built.at:to(position)
+					built.size:to(size)
+				elseif built.at then
+					built.at:snap(position)
+					built.size:snap(size)
+				else
+					built.root.Position = position
+					built.root.Size = size
+				end
 			end
 		elseif item.section then
 			placed[item.section] = true
@@ -542,7 +447,7 @@ function Page._applyPlacements(self: any)
 		else
 			placed[item.el] = true
 			local view = self._views[item.el]
-			-- a list that outgrew its inline form needs a different control
+			-- a pick that outgrew its segments needs a different control
 			if view and view.form ~= kinds.form(item.el) then
 				view.destroy()
 				self._views[item.el] = nil
@@ -556,9 +461,9 @@ function Page._applyPlacements(self: any)
 			header.Visible = false
 		end
 	end
-	for key, strip in self._strips do
-		if not stripsPlaced[key] then
-			strip.root.Visible = false
+	for key, built in self._cards do
+		if not cardsPlaced[key] then
+			built.root.Visible = false
 		end
 	end
 	for key, view in self._views do
@@ -612,35 +517,35 @@ function Page._materialize(self: any, force: boolean?)
 	if frame == nil or placements == nil or not self.active then
 		return
 	end
-	-- CanvasPosition is in scaled screen pixels, everything here is in the controls' own units
+	-- CanvasPosition is in scaled screen pixels, everything here is in the rows' own units
 	local scale = self.window.ctx.uiScale()
-	local left = frame.CanvasPosition.X / scale
-	if not force and self._lastSync and math.abs(left - self._lastSync) < NEAR / 3 then
+	local at = frame.CanvasPosition.Y / scale
+	if not force and self._lastSync and math.abs(at - self._lastSync) < NEAR / 3 then
 		return
 	end
-	self._lastSync = left
-	local lo, hi = left - NEAR, left + frame.AbsoluteSize.X / scale + NEAR
+	self._lastSync = at
+	local lo, hi = at - NEAR, at + frame.AbsoluteSize.Y / scale + NEAR
 	for _, item in placements do
-		local x = item.x
-		if x + item.width >= lo and x <= hi then
+		local y = item.y
+		if y + item.height >= lo and y <= hi then
 			if item.hero then
 				if self._heroView == nil then
 					local view = buildHero(self)
-					view.root.Position = UDim2.fromOffset(x, item.y)
+					view.root.Position = UDim2.fromOffset(item.x, y)
 					view.root.Size = UDim2.fromOffset(item.width, item.height)
 					self._heroView = view
 				end
-			elseif item.strip then
-				if self._strips[item.strip] == nil then
-					local strip = buildStrip(self, item.strip, item.last)
-					strip.root.Position = UDim2.fromOffset(x, item.y)
-					strip.root.Size = UDim2.fromOffset(item.width, item.height)
-					self._strips[item.strip] = strip
+			elseif item.card then
+				if self._cards[item.card] == nil then
+					local built = buildCard(self, item.card)
+					built.root.Position = UDim2.fromOffset(item.x, y)
+					built.root.Size = UDim2.fromOffset(item.width, item.height)
+					self._cards[item.card] = built
 				end
 			elseif item.section then
 				if self._headers[item.section] == nil then
 					local header = buildHeader(self, item.section)
-					header.Position = UDim2.fromOffset(x, item.y)
+					header.Position = UDim2.fromOffset(item.x, y)
 					header.Size = UDim2.fromOffset(item.width, item.height)
 					self._headers[item.section] = header
 				end
@@ -648,7 +553,7 @@ function Page._materialize(self: any, force: boolean?)
 				item.el._shownOn = self
 				local ok, view = xpcall(kinds.build, debug.traceback, self.window.ctx, item.el)
 				if ok then
-					view.root.Position = UDim2.fromOffset(x, item.y)
+					view.root.Position = UDim2.fromOffset(item.x, y)
 					view.root.Size = UDim2.fromOffset(item.width, if self._live then 0 else item.height)
 					view.root.Parent = self.canvas
 					self._views[item.el] = view
@@ -656,7 +561,7 @@ function Page._materialize(self: any, force: boolean?)
 						growTo(view, item.width, item.height)
 					end
 				else
-					warn("sottUI: control " .. tostring(item.el.id) .. " failed: " .. tostring(view))
+					warn("sottUI: row " .. tostring(item.el.id) .. " failed: " .. tostring(view))
 				end
 			end
 		end
@@ -669,30 +574,29 @@ function Page._refreshThumb(self: any)
 		return
 	end
 	local scale = self.window.ctx.uiScale()
-	local viewport = self.frame.AbsoluteSize.X / scale
-	local content = self._contentWidth or 0
+	local viewport = self.frame.AbsoluteSize.Y / scale
+	local content = self._contentHeight or 0
 	if content <= viewport + 1 or not self.active then
 		thumb.Visible = false
 		return
 	end
-	-- always there on a desk that scrolls: it is the only sign there are more strips off to the right
 	thumb.Visible = true
-	local track = viewport - 2 * THUMB_SIDE
-	local width = math.max(track * viewport / content, 48)
-	local travel = track - width
-	local at = self.frame.CanvasPosition.X / scale / math.max(content - viewport, 1)
-	thumb.Size = UDim2.fromOffset(width, THUMB)
-	thumb.Position = UDim2.new(0, THUMB_SIDE + at * travel, 1, -(THUMB + THUMB_INSET))
+	local track = viewport - 2 * TOP
+	local height = math.max(track * viewport / content, THUMB_MIN)
+	local travel = track - height
+	local at = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)
+	thumb.Size = UDim2.fromOffset(THUMB, height)
+	thumb.Position = UDim2.new(1, -(THUMB + THUMB_INSET), 0, TOP + at * travel)
 end
 
-function Page.scrollTo(self: any, x: number, instant: boolean?)
+function Page.scrollTo(self: any, y: number, instant: boolean?)
 	local frame = self.frame
 	if frame == nil then
 		return
 	end
 	local scale = self.window.ctx.uiScale()
-	local limit = math.max((self._contentWidth or 0) - frame.AbsoluteSize.X / scale, 0)
-	local target = math.clamp(x, 0, limit)
+	local limit = math.max((self._contentHeight or 0) - frame.AbsoluteSize.Y / scale, 0)
+	local target = math.clamp(y, 0, limit)
 	self._scrollTarget = target
 	if instant then
 		self._scroll:snap(target)
@@ -705,7 +609,7 @@ function Page.wheel(self: any, delta: number)
 	if self.frame == nil or self.frame.ScrollingEnabled then
 		return
 	end
-	local current = self._scrollTarget or self.frame.CanvasPosition.X / self.window.ctx.uiScale()
+	local current = self._scrollTarget or self.frame.CanvasPosition.Y / self.window.ctx.uiScale()
 	self:scrollTo(current - delta * WHEEL_STEP)
 end
 
@@ -722,7 +626,6 @@ function Page.mount(self: any, host: any)
 		Name = self.name,
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
-		ScrollingDirection = Enum.ScrollingDirection.X,
 		-- a mouse gets the spring below; native scrolling handles touch inertia far better than anything in Lua
 		ScrollingEnabled = ctx.touch,
 		Parent = host,
@@ -740,18 +643,25 @@ function Page.mount(self: any, host: any)
 	self.frame = frame
 	self.canvas = canvas
 	self.thumb = thumb
-	self._scroll = motion.new(0, SCROLL_SPEED, function(x: number)
-		frame.CanvasPosition = Vector2.new(x * ctx.uiScale(), 0)
+	self._scroll = motion.new(0, SCROLL_SPEED, function(y: number)
+		frame.CanvasPosition = Vector2.new(0, y * ctx.uiScale())
 	end)
 	self._enter = motion.prop(canvas, "Position", ENTER_SPEED)
 	frame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
 		self:_materialize()
 		self:_refreshThumb()
 	end)
-	-- the window's width follows the page, so nothing here depends on it except what is near enough to build
+	local lastWidth = 0
 	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		self:_materialize(true)
-		self:_refreshThumb()
+		local width = frame.AbsoluteSize.X
+		if width ~= lastWidth then
+			lastWidth = width
+			self._quiet = true
+			self:_invalidate()
+		else
+			self:_materialize(true)
+			self:_refreshThumb()
+		end
 	end)
 end
 
@@ -765,9 +675,10 @@ function Page.showList(self: any, list: { any }, empty: string?)
 		if self._empty == nil then
 			local theme = self.window.ctx.theme
 			self._empty = make("TextLabel", {
-				Position = UDim2.fromOffset(STRIP_PAD, STRIP_PAD),
-				Size = UDim2.new(1, -2 * STRIP_PAD, 0, 26),
+				Position = UDim2.fromOffset(SIDE + 12, TOP + 6),
+				Size = UDim2.new(1, -2 * (SIDE + 12), 0, 26),
 				TextSize = 15,
+				ZIndex = 2,
 				Parent = self.frame,
 			})
 			theme:type(self._empty, "text")
@@ -775,7 +686,6 @@ function Page.showList(self: any, list: { any }, empty: string?)
 		end
 		self._empty.Text = empty or ""
 		self._empty.Visible = empty ~= nil
-		self._emptyVisible = empty ~= nil
 	end
 	self:_invalidate()
 end
@@ -812,7 +722,7 @@ function Page.setActive(self: any, active: boolean, instant: boolean?)
 			if instant then
 				self._enter:snap(UDim2.new())
 			else
-				self._enter:snap(UDim2.fromOffset(ENTER_FROM, 0))
+				self._enter:snap(UDim2.fromOffset(0, ENTER_FROM))
 				self._enter:to(UDim2.new())
 			end
 		end
@@ -825,12 +735,16 @@ function Page.destroy(self: any)
 		view.destroy()
 	end
 	self._views = {}
-	for _, strip in self._strips do
-		if strip.destroy then
-			strip.destroy()
+	for _, built in self._cards do
+		if built.destroy then
+			built.destroy()
+		end
+		if built.at then
+			built.at:destroy()
+			built.size:destroy()
 		end
 	end
-	self._strips = {}
+	self._cards = {}
 	if self._scroll then
 		self._scroll:destroy()
 		self._enter:destroy()
@@ -851,7 +765,7 @@ function page.new(window: any, name: string): any
 		_ids = 0,
 		_dirty = false,
 		_headers = {},
-		_strips = {},
+		_cards = {},
 		_views = {},
 		_placements = nil,
 	}, Page)
