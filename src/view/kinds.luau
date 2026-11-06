@@ -32,8 +32,8 @@ local CHIP_GAP = 8
 local FILL_SPEED = 30
 local FILL_DRAG_SPEED = 80
 local DRAG_START = 3
-local FILL_ON = 0.74
-local FILL_OFF = 0.9
+local FILL_ON = 0.82
+local FILL_OFF = 0.93
 local EDGE_ON = 0
 local EDGE_OFF = 0.6
 local EDGE_WIDTH = 2
@@ -546,7 +546,7 @@ local function segments(ctx: any, el: any): any
 		Parent = rail,
 	})
 	make("UICorner", { CornerRadius = UDim.new(0, RADIUS), Parent = thumb })
-	theme:paint(thumb, "BackgroundColor3", "accent")
+	theme:paint(thumb, "BackgroundColor3", "accentDim")
 	view.name.Size = UDim2.new(1, -(PAD + total + NAME_ROOM), 1, 0)
 	local thumbAt: any = view:own(motion.prop(thumb, "Position", SEGMENT_SPEED))
 	local thumbSize: any = view:own(motion.prop(thumb, "Size", SEGMENT_SPEED))
@@ -571,7 +571,7 @@ local function segments(ctx: any, el: any): any
 	local function draw(instant: boolean)
 		for _, spot in spots do
 			local on = el.value == spot.option
-			view:ink(spot.button, if el.disabled then "faint" elseif on then "onAccent" else "muted", instant)
+			view:ink(spot.button, if el.disabled then "faint" elseif on then "accent" else "muted", instant)
 			if on then
 				local position = UDim2.fromOffset(spot.x, 0)
 				local size = UDim2.new(0, spot.width, 1, 0)

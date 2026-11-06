@@ -121,7 +121,7 @@ function Window._drawLamps(self: any)
 			if tab.on ~= on then
 				tab.on = on
 				tab.glow:to(if on then 0.3 else 1)
-				self.ctx.tint(tab.dot, "BackgroundColor3", if on then "accent" else "lineStrong")
+				tab.fade:to(if on then 0 else 1)
 			end
 		end
 	end)
@@ -254,11 +254,14 @@ local function addTab(self: any, page: any, name: string, order: number)
 		Parent = button,
 	})
 	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
-	theme:paint(dot, "BackgroundColor3", "lineStrong")
+	-- only a page with something running shows a light; a row of grey dots would just be noise
+	dot.BackgroundTransparency = 1
+	theme:paint(dot, "BackgroundColor3", "accent")
 	self._tabs[page] = {
 		button = button,
 		dot = dot,
 		glow = self._maid:add(motion.prop(halo, "ImageTransparency", LAMP_SPEED)),
+		fade = self._maid:add(motion.prop(dot, "BackgroundTransparency", LAMP_SPEED)),
 		on = false,
 	}
 	button.Activated:Connect(function()

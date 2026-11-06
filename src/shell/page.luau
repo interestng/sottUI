@@ -22,7 +22,7 @@ local ROW_GAP = 3
 local TITLE = 16
 local TAB_TEXT = 14
 local TAB_GAP = 16
-local HERO = 136
+local HERO = 112
 local NEAR = 360
 local WHEEL_STEP = 110
 local SCROLL_SPEED = 24
@@ -146,7 +146,7 @@ local function buildHero(self: any): any
 	root.ClipsDescendants = true
 	local glow = make("ImageLabel", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0, 72, 0.5, 0),
+		Position = UDim2.new(0, 66, 0.5, 0),
 		Size = UDim2.fromOffset(300, 300),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -157,8 +157,8 @@ local function buildHero(self: any): any
 	ctx.art(glow, "glow.png")
 	if options.userId then
 		local bust = make("ImageLabel", {
-			Position = UDim2.fromOffset(4, 4),
-			Size = UDim2.fromOffset(136, 136),
+			Position = UDim2.fromOffset(10, 4),
+			Size = UDim2.fromOffset(112, 112),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Image = string.format("rbxthumb://type=AvatarBust&id=%d&w=420&h=420", options.userId),
@@ -176,8 +176,8 @@ local function buildHero(self: any): any
 		})
 	end
 	local name = make("TextLabel", {
-		Position = UDim2.fromOffset(156, 44),
-		Size = UDim2.new(1, -172, 0, 34),
+		Position = UDim2.fromOffset(136, 30),
+		Size = UDim2.new(1, -152, 0, 34),
 		TextSize = 28,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 2,
@@ -186,8 +186,8 @@ local function buildHero(self: any): any
 	theme:type(name, "display")
 	theme:paint(name, "TextColor3", "text")
 	local line = make("TextLabel", {
-		Position = UDim2.fromOffset(156, 78),
-		Size = UDim2.new(1, -172, 0, 22),
+		Position = UDim2.fromOffset(136, 62),
+		Size = UDim2.new(1, -152, 0, 22),
 		TextSize = 15,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 2,
