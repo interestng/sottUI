@@ -225,9 +225,11 @@ end
 
 -- a round dot, the one round thing in the design: a square would read as another state mark, and a tile edge bar as a
 -- glitch. the button is wider than what it draws, twelve pixels is not something to aim at
-colorpicker.DOT_SPACE = 28
+colorpicker.DOT_SPACE = 30
 
-local DOT = 12
+-- wider than tall: a colour bar, where a small square would read as a checkbox
+local DOT = 10
+local SWATCH_WIDTH = 18
 
 function colorpicker.swatch(ctx: any, el: any): any
 	local root = make("TextButton", {
@@ -238,7 +240,7 @@ function colorpicker.swatch(ctx: any, el: any): any
 	local band = make("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(DOT, DOT),
+		Size = UDim2.fromOffset(SWATCH_WIDTH, DOT),
 		BackgroundTransparency = 0,
 		ZIndex = 4,
 		Parent = root,

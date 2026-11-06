@@ -319,10 +319,9 @@ function Page.layout(self: any, live: boolean?)
 					return
 				end
 				local x, tallest = SIDE, 0
-				-- no holes: a short row shares what is left, so it keeps both edges without one stretched tile beside a stub
-				local spare = (GRID - used) / #line
+				-- a short row keeps its columns: stretched cells put thirds over halves and no gutter lined up
 				for _, entry in line do
-					local span = entry.span + spare
+					local span = entry.span
 					local w = span * column + (span - 1) * GAP
 					local height = entry.height
 					tallest = math.max(tallest, height)
