@@ -17,10 +17,12 @@ local INDENT = 16
 local MASTER_HEIGHT = 62
 local MASTER_NAME = 25
 local SLIDER_HEIGHT = 62
-local RULER = 18
-local RULER_TICKS = 12
+local RULER = 12
+local RULER_TICKS = 4
 local RULER_TILE = 40
-local NEEDLE = 3
+local BUTTON_INSET = 4
+local BUTTON_TEXT = 12
+local NEEDLE = 6
 local READOUT = 17
 local FILL_SPEED = 42
 local FILL_DRAG_SPEED = 90
@@ -549,6 +551,16 @@ end
 
 function builders.button(ctx: any, el: any): any
 	local view: any = newRow(ctx, el)
+	local block = make("Frame", {
+		Name = "Block",
+		Position = UDim2.new(0, PAD + view.indent, 0, BUTTON_INSET),
+		Size = UDim2.new(1, -(2 * PAD + view.indent), 1, -2 * BUTTON_INSET),
+		BackgroundTransparency = 0,
+		ZIndex = 1,
+		Parent = view.root,
+	})
+	ctx.theme:paint(block, "BackgroundColor3", "raised")
+	view.name.Position += UDim2.fromOffset(BUTTON_TEXT, 0)
 	local armed: thread? = nil
 
 	local function draw()

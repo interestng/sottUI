@@ -136,7 +136,7 @@ function Window._syncMarker(self: any, instant: boolean?)
 		return
 	end
 	local scale = self._scale.Scale
-	local x = (active.AbsolutePosition.X - self._wordList.AbsolutePosition.X) / scale
+	local x = (active.AbsolutePosition.X - self._wordList.Parent.AbsolutePosition.X) / scale
 	local position = UDim2.fromOffset(x, WORDS - 4)
 	local size = UDim2.fromOffset(active.AbsoluteSize.X / scale, 3)
 	if instant then
@@ -806,11 +806,6 @@ function window.new(options: { [string]: any }): any
 			local loaded = fonts.load(fontFolder, base, encode)
 			if not self.destroyed and (loaded.text or loaded.display) then
 				theme:setFonts(loaded.text, loaded.display)
-			end
-			local ticks = fonts.image(fontFolder, base, "ticks.png")
-			if ticks and not self.destroyed then
-				ctx.assets.ticks = ticks
-				theme.changed:fire()
 			end
 		end))
 	end
