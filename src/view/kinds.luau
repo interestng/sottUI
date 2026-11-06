@@ -181,7 +181,7 @@ function builders.toggle(ctx: any, el: any): any
 		state.Text = if on then "on" else "off"
 		view:ink(
 			state,
-			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "muted",
+			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accentHover" else "muted",
 			instant
 		)
 		for _, chip in view.chips do

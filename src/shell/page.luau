@@ -14,6 +14,8 @@ local page = {}
 
 local TOP = 0
 local BOTTOM = 34
+local FLAT_BOTTOM = 6
+local THUMB_LINGER = 0.9
 local HEADER = 52
 local SECTION_GAP = 18
 local MASTER_GAP = 2
@@ -234,7 +236,8 @@ function Page.layout(self: any, live: boolean?)
 		return
 	end
 
-	local contentHeight = y + BOTTOM
+	-- a result list ends at its last row; only a page that can scroll needs room for the fade
+	local contentHeight = y + (if self.sections[1] and self.sections[1].flat then FLAT_BOTTOM else BOTTOM)
 	if self._emptyText then
 		contentHeight = math.max(contentHeight, 54)
 	end
@@ -536,7 +539,15 @@ function Page._refreshThumb(self: any)
 		thumb.Visible = false
 		return
 	end
+	-- shows while something is moving, then gets out of the way: at rest it would sit across the mint bands
 	thumb.Visible = true
+	self._thumbStamp = (self._thumbStamp or 0) + 1
+	local stamp = self._thumbStamp
+	task.delay(THUMB_LINGER, function()
+		if self._thumbStamp == stamp and not self.destroyed then
+			thumb.Visible = false
+		end
+	end)
 	local height = math.max(viewport * viewport / content, 40)
 	local travel = viewport - height
 	local top = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)

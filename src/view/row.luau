@@ -91,14 +91,26 @@ function Row.lit(self: any, on: boolean, instant: boolean?)
 			ZIndex = 2,
 			Parent = self.root,
 		})
-		self.ctx.theme:paint(bar, "BackgroundColor3", "accent")
+		-- a master floods; a lit option tints the whole row with a bright edge, the same statement said more quietly, so a
+		-- page reads as blocks of what is on rather than a list with small words at the end
+		local primary = self.el.spec.primary == true
+		self.ctx.theme:paint(bar, "BackgroundColor3", if primary then "accent" else "accentDim")
+		if not primary then
+			local edge = make("Frame", {
+				Name = "Edge",
+				Size = UDim2.new(0, BAR_WIDTH, 1, 0),
+				BackgroundTransparency = 0,
+				ZIndex = 2,
+				Parent = bar,
+			})
+			self.ctx.theme:paint(edge, "BackgroundColor3", "accent")
+		end
+		bar.ClipsDescendants = true
 		self._bar = bar
 		self._barSize = self:own(motion.prop(bar, "Size", BAR_SPEED))
 	end
 	-- a master's stretch of rail widens into the whole row: the one loud moment in an otherwise quiet column
-	local target = if on and self.el.spec.primary
-		then UDim2.new(1, -5, 1, -2)
-		else UDim2.new(0, if on then BAR_WIDTH else 0, 1, 0)
+	local target = if on then UDim2.new(1, 0, 1, -2) else UDim2.new(0, 0, 1, -2)
 	if instant or not self.ctx.isShowing(self.el) then
 		self._barSize:snap(target)
 	else

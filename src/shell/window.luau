@@ -36,7 +36,7 @@ local WORD = 19
 local WORD_GAP = 24
 local CHIP = 17
 local CHIP_PAD = 16
-local CHIP_GAP = 4
+local CHIP_GAP = 1
 local MORE_ROOM = 64
 local SEARCH = 124
 local SEARCH_HEIGHT = 40
@@ -46,7 +46,7 @@ local FADE = 34
 local EDGE = 12
 local MAX_PANEL = 600
 local MAX_SHEET = 560
-local PANEL_SPEED = 30
+local PANEL_SPEED = 38
 local OPEN_SPEED = 28
 local MARKER_SPEED = 30
 local DOCK_SPEED = 30
@@ -241,7 +241,8 @@ function Window._home(self: any): UDim2
 end
 
 function Window._away(self: any): UDim2
-	return self:_home() + UDim2.fromOffset(0, DOCK * self._scale.Scale + BOTTOM)
+	-- past the edge by a margin, or the spring's slow tail leaves a sliver hanging there
+	return self:_home() + UDim2.fromOffset(0, DOCK * self._scale.Scale + BOTTOM + EDGE)
 end
 
 -- a saved or dragged spot stays reachable when the screen changes
@@ -321,7 +322,7 @@ function Window._syncMarker(self: any, instant: boolean?)
 		self._markerSize:to(UDim2.fromOffset(0, MARKER))
 		return
 	end
-	self.ctx.theme:paint(self._marker, "BackgroundColor3", if active == self._homeAvatar then "text" else "accent")
+	self.ctx.theme:paint(self._marker, "BackgroundColor3", if active == self._homeAvatar then "onAccent" else "accent")
 	local scale = self._scale.Scale
 	local x = (active.AbsolutePosition.X - self._dock.AbsolutePosition.X) / scale
 	-- the marker sits on the edge the sheet comes out of
@@ -735,9 +736,11 @@ function window.new(options: { [string]: any }): any
 		Name = "Running",
 		Position = UDim2.new(1, CHIP_GAP, 0, 0),
 		Size = UDim2.new(0, 0, 1, 0),
+		BackgroundTransparency = 0,
 		ZIndex = 3,
 		Parent = assembly,
 	})
+	theme:paint(chipRow, "BackgroundColor3", "lineStrong")
 	make("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -746,6 +749,9 @@ function window.new(options: { [string]: any }): any
 		Parent = chipRow,
 	})
 
+	local function tintFocus(target: any, token: string)
+		theme:paint(target, "BackgroundColor3", token)
+	end
 	local box = make("TextBox", {
 		Name = "Search",
 		Size = UDim2.fromOffset(SEARCH, SEARCH_HEIGHT),
@@ -761,7 +767,14 @@ function window.new(options: { [string]: any }): any
 		Parent = row,
 	})
 	make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8), Parent = box })
-	theme:paint(box, "BackgroundColor3", "base")
+	-- only a well while it has the keyboard, which is the one time that matters
+	theme:paint(box, "BackgroundColor3", "surface")
+	box.Focused:Connect(function()
+		tintFocus(box, "base")
+	end)
+	box.FocusLost:Connect(function()
+		tintFocus(box, "surface")
+	end)
 	theme:type(box, "display")
 	theme:paint(box, "TextColor3", "text")
 	theme:paint(box, "PlaceholderColor3", "muted")
