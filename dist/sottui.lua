@@ -1542,17 +1542,17 @@ aR then aJ.elements[aQ.id]=aQ end aQ._pageName=''end,_invalidate=function()end},
 'Toggle',saved=false,onPress=function()aJ:toggle()end})local aQ=c.service(
 'RunService')k.setAttach(function(aR)return aQ.PreRender:Connect(aR)end)if aa.
 fonts~=false and ac then V:add(task.defer(function()local aR=aa.fontTag or u
-local aS=string.format(v,aR)local aT=ad..'/fonts'local aU=d.load(aT,aS,encode)if
-not aJ.destroyed and(aU.text or aU.display)then W:setFonts(aU.text,aU.display)
-end local aV=d.image(aT,aS,'ticks.png')if aV and not aJ.destroyed then aK.assets
-.ticks=aV W.changed:fire()end end))end if aa.autoShow~=false then task.defer(
-function()aJ:setOpen(true)end)else aG.Visible=true end return aJ end function t.
-setVersion(aa)u=aa end return t end function a.C()local aa=a.cache.C if not aa
-then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()
-local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.1.3-edge'local function 
-registry()local af=aa.global('getgenv')local ag=if type(af)=='function'then af()
-else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.
-__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion('v'..
-ae)function af.window(ag)local ah=table.clone(ag or{})ah._registry=registry()
-return ad.new(ah)end function af.current()return registry().current end function
-af.obsidian()return ac.new(af)end return af
+local aS=string.format(v,aR)local aT=ad..'/fonts-'..aR local aU=d.load(aT,aS,
+encode)if not aJ.destroyed and(aU.text or aU.display)then W:setFonts(aU.text,aU.
+display)end local aV=d.image(aT,aS,'ticks.png')if aV and not aJ.destroyed then
+aK.assets.ticks=aV W.changed:fire()end end))end if aa.autoShow~=false then task.
+defer(function()aJ:setOpen(true)end)else aG.Visible=true end return aJ end
+function t.setVersion(aa)u=aa end return t end function a.C()local aa=a.cache.C
+if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local
+aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.1.4-edge'local 
+function registry()local af=aa.global('getgenv')local ag=if type(af)=='function'
+then af()else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}
+ag.__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion(
+'v'..ae)function af.window(ag)local ah=table.clone(ag or{})ah._registry=
+registry()return ad.new(ah)end function af.current()return registry().current
+end function af.obsidian()return ac.new(af)end return af

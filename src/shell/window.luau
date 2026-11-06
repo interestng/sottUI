@@ -1039,7 +1039,8 @@ function window.new(options: { [string]: any }): any
 		maid:add(task.defer(function()
 			local tag = options.fontTag or VERSION
 			local base = string.format(FONT_BASE, tag)
-			local fontFolder = folder .. "/fonts"
+			-- by tag: a new release may change a file under the same name, and a cached copy would otherwise win forever
+			local fontFolder = folder .. "/fonts-" .. tag
 			local loaded = fonts.load(fontFolder, base, encode)
 			if not self.destroyed and (loaded.text or loaded.display) then
 				theme:setFonts(loaded.text, loaded.display)
