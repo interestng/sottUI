@@ -1,6 +1,7 @@
 --!strict
 -- dropdown popover. the list is a fixed pool of rows repositioned on scroll, so a dropdown of every item in a game costs
--- the same as one with ten
+-- the same as one with ten. in a multi list what is picked is pinned to the top, so five picks out of a hundred stay in
+-- view, and searching clears itself after each pick
 
 local make = require("../core/make")
 local search = require("../model/search")
@@ -10,8 +11,10 @@ local droplist = {}
 local ITEM = 38
 local MAX_VISIBLE = 8
 local SEARCH_AT = 9
-local SEARCH_HEIGHT = 48
-local MIN_WIDTH = 230
+local SEARCH_HEIGHT = 46
+local CLEAR_HEIGHT = 38
+local MIN_WIDTH = 260
+local TEXT_SIZE = 17
 
 local function isPicked(el: any, option: any): boolean
 	if el.spec.multi then
@@ -25,21 +28,35 @@ function droplist.open(ctx: any, el: any, anchor: any)
 	local theme = ctx.theme
 	local display = spec.display or tostring
 	local showSearch = spec.searchable == true or #spec.options >= SEARCH_AT
+	local showClear = spec.multi == true
+	local top = (if showSearch then SEARCH_HEIGHT else 0) + (if showClear then CLEAR_HEIGHT else 0)
 	local filtered: { any } = spec.options
 	local highlighted = 0
+	local query = ""
+
+	local function ordered(list: { any }): { any }
+		if not spec.multi then
+			return list
+		end
+		local picked, rest = {}, {}
+		for _, option in list do
+			table.insert(if el.value[option] then picked else rest, option)
+		end
+		table.move(rest, 1, #rest, #picked + 1, picked)
+		return picked
+	end
+	filtered = ordered(filtered)
+
+	local function bodyHeight(): number
+		return math.clamp(#filtered, 1, MAX_VISIBLE) * ITEM + 8
+	end
 
 	local width = math.max(anchor.AbsoluteSize.X, MIN_WIDTH)
-	local function bodyHeight(): number
-		local rows = math.clamp(#filtered, 1, MAX_VISIBLE)
-		return rows * ITEM + 8
-	end
-	local height = bodyHeight() + (if showSearch then SEARCH_HEIGHT else 0)
-
-	ctx.popover:open(anchor, width, height, function(content: any, handle: any)
+	ctx.popover:open(anchor, width, bodyHeight() + top, function(content: any, handle: any)
 		local scroller = make("ScrollingFrame", {
-			Position = UDim2.fromOffset(0, if showSearch then SEARCH_HEIGHT else 0),
-			Size = UDim2.new(1, 0, 1, if showSearch then -SEARCH_HEIGHT else 0),
-			ScrollBarThickness = 2,
+			Position = UDim2.fromOffset(0, top),
+			Size = UDim2.new(1, 0, 1, -top),
+			ScrollBarThickness = 3,
 			Parent = content,
 		})
 		theme:paint(scroller, "ScrollBarImageColor3", "lineStrong")
@@ -48,22 +65,18 @@ function droplist.open(ctx: any, el: any, anchor: any)
 		local pool: { any } = {}
 		local poolSize = MAX_VISIBLE + 2
 		local empty = make("TextLabel", {
-			Position = UDim2.fromOffset(14, 4),
+			Position = UDim2.fromOffset(14, top + 4),
 			Size = UDim2.new(1, -28, 0, ITEM),
-			TextSize = 16,
+			TextSize = TEXT_SIZE,
 			Text = "Nothing matches",
 			Visible = false,
 			Parent = content,
 		})
 		theme:type(empty, "text")
 		theme:paint(empty, "TextColor3", "faint")
-		if showSearch then
-			empty.Position = UDim2.fromOffset(14, SEARCH_HEIGHT + 4)
-		end
 
 		local function draw()
-			local top = scroller.CanvasPosition.Y
-			local first = math.floor(top / ITEM) + 1
+			local first = math.floor(scroller.CanvasPosition.Y / ITEM) + 1
 			for i = 1, poolSize do
 				local item = pool[i]
 				local index = first + i - 1
@@ -78,7 +91,7 @@ function droplist.open(ctx: any, el: any, anchor: any)
 					item.text.Text = display(option)
 					local picked = isPicked(el, option)
 					theme:paint(item.text, "TextColor3", if picked then "onAccent" else "text")
-					theme:paint(item.root, "BackgroundColor3", if picked then "accent" else "raised")
+					theme:paint(item.root, "BackgroundColor3", if picked then "accent" else "line")
 					item.root.BackgroundTransparency = if picked or index == highlighted then 0 else 1
 				end
 			end
@@ -87,16 +100,33 @@ function droplist.open(ctx: any, el: any, anchor: any)
 		local function refit()
 			scroller.CanvasSize = UDim2.fromOffset(0, #filtered * ITEM + 8)
 			empty.Visible = #filtered == 0
-			handle.resize(bodyHeight() + (if showSearch then SEARCH_HEIGHT else 0))
+			handle.resize(bodyHeight() + top)
 			draw()
 		end
 
+		local function refilter()
+			local source = spec.options
+			if query ~= "" then
+				source = search.rank(query, source, display, 500)
+			end
+			filtered = ordered(source)
+			refit()
+		end
+
+		local box: any = nil
 		local function choose(option: any)
 			if spec.multi then
 				local picks = table.clone(el.value)
 				picks[option] = if picks[option] then nil else true
 				el:set(picks)
-				draw()
+				if box and box.Text ~= "" then
+					box.Text = ""
+				else
+					refilter()
+				end
+				if box and not ctx.touch then
+					box:CaptureFocus()
+				end
 				return
 			end
 			if el.value == option then
@@ -116,11 +146,10 @@ function droplist.open(ctx: any, el: any, anchor: any)
 				Visible = false,
 				Parent = canvas,
 			})
-			theme:paint(root, "BackgroundColor3", "raised")
 			local text = make("TextLabel", {
 				Position = UDim2.fromOffset(10, 0),
 				Size = UDim2.new(1, -20, 1, 0),
-				TextSize = 16,
+				TextSize = TEXT_SIZE,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Parent = root,
 			})
@@ -146,17 +175,17 @@ function droplist.open(ctx: any, el: any, anchor: any)
 
 		scroller:GetPropertyChangedSignal("CanvasPosition"):Connect(draw)
 
-		local box: any = nil
+		local y = 0
 		if showSearch then
 			box = make("TextBox", {
 				Position = UDim2.fromOffset(14, 0),
 				Size = UDim2.new(1, -28, 0, SEARCH_HEIGHT),
-				TextSize = 24,
+				TextSize = TEXT_SIZE + 1,
 				Text = "",
 				PlaceholderText = "Search",
 				Parent = content,
 			})
-			theme:type(box, "display")
+			theme:type(box, "text", true)
 			theme:paint(box, "TextColor3", "text")
 			theme:paint(box, "PlaceholderColor3", "faint")
 			local rule = make("Frame", {
@@ -165,17 +194,36 @@ function droplist.open(ctx: any, el: any, anchor: any)
 				BackgroundTransparency = 0,
 				Parent = content,
 			})
-			theme:paint(rule, "BackgroundColor3", "line")
+			theme:paint(rule, "BackgroundColor3", "lineStrong")
 			box:GetPropertyChangedSignal("Text"):Connect(function()
-				local query = box.Text
-				if query == "" then
-					filtered = spec.options
-				else
-					filtered = search.rank(query, spec.options, display, 500)
-				end
-				highlighted = if #filtered > 0 and query ~= "" then 1 else 0
+				query = box.Text
+				highlighted = if query ~= "" then 1 else 0
 				scroller.CanvasPosition = Vector2.zero
-				refit()
+				refilter()
+			end)
+			y = SEARCH_HEIGHT
+		end
+		if showClear then
+			local clear = make("TextButton", {
+				Position = UDim2.fromOffset(4, y),
+				Size = UDim2.new(1, -8, 0, CLEAR_HEIGHT),
+				TextSize = TEXT_SIZE,
+				Text = "Clear all",
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Parent = content,
+			})
+			make("UIPadding", { PaddingLeft = UDim.new(0, 10), Parent = clear })
+			theme:type(clear, "text", true)
+			theme:paint(clear, "TextColor3", "muted")
+			clear.MouseEnter:Connect(function()
+				theme:paint(clear, "TextColor3", "text")
+			end)
+			clear.MouseLeave:Connect(function()
+				theme:paint(clear, "TextColor3", "muted")
+			end)
+			clear.Activated:Connect(function()
+				el:set({})
+				refilter()
 			end)
 		end
 
@@ -183,13 +231,13 @@ function droplist.open(ctx: any, el: any, anchor: any)
 			if name == "Down" or name == "Up" then
 				local step = if name == "Down" then 1 else -1
 				highlighted = math.clamp(highlighted + step, 1, math.max(#filtered, 1))
-				local y = (highlighted - 1) * ITEM
-				local viewport = scroller.AbsoluteSize.Y
-				local top = scroller.CanvasPosition.Y
-				if y < top then
-					scroller.CanvasPosition = Vector2.new(0, y)
-				elseif y + ITEM + 8 > top + viewport then
-					scroller.CanvasPosition = Vector2.new(0, y + ITEM + 8 - viewport)
+				local itemY = (highlighted - 1) * ITEM
+				local viewport = scroller.AbsoluteWindowSize.Y
+				local current = scroller.CanvasPosition.Y
+				if itemY < current then
+					scroller.CanvasPosition = Vector2.new(0, itemY)
+				elseif itemY + ITEM + 8 > current + viewport then
+					scroller.CanvasPosition = Vector2.new(0, itemY + ITEM + 8 - viewport)
 				end
 				draw()
 			elseif name == "Return" then
@@ -204,7 +252,7 @@ function droplist.open(ctx: any, el: any, anchor: any)
 		if not spec.multi and el.value ~= nil then
 			local at = table.find(filtered, el.value)
 			if at then
-				local viewport = (math.clamp(#filtered, 1, MAX_VISIBLE)) * ITEM
+				local viewport = math.clamp(#filtered, 1, MAX_VISIBLE) * ITEM
 				scroller.CanvasPosition = Vector2.new(0, math.max((at - 1) * ITEM - viewport / 2 + ITEM / 2, 0))
 				draw()
 			end

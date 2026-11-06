@@ -1,13 +1,16 @@
 --!strict
--- keybind display: a small chip inside a host tile, or the whole readout of a tile of its own. the key goes through one
--- listener in shell/keys, so a rebind from either looks and behaves the same
+-- the keybind chip. it sits inside a tile that toggles on click, so its hit zone is bigger than what it draws: a near
+-- miss on a small chip would start the farm instead of rebinding it
 
 local make = require("../core/make")
+local metrics = require("../core/metrics")
 
 local keychip = {}
 
-local PAD = 14
-local CHAR_WIDTH = 8.6
+local HEIGHT = 30
+local HIT_MARGIN = 8
+local TEXT_SIZE = 16
+local LISTENING = "Press a key"
 
 local function display(el: any): string
 	local value = el.value
@@ -22,45 +25,27 @@ local function display(el: any): string
 	return table.concat(parts, "+")
 end
 
-local function cycleMode(ctx: any, el: any)
-	local modes = el.spec.modes
-	if el.disabled or modes == nil or #modes < 2 then
-		return
-	end
-	local at = table.find(modes, el.value.mode) or 0
-	local mode = modes[at % #modes + 1]
-	el:set({ mode = mode })
-	ctx.notify({ title = el.label, text = "Key mode: " .. mode, seconds = 2 })
-end
-
-local function listen(ctx: any, el: any, chip: any, setListening: (boolean) -> ())
-	if el.disabled then
-		return
-	end
-	setListening(true)
-	ctx.keys:listen(function(name: string?, modifiers: { string }?)
-		if name ~= nil then
-			el:set({ key = name, modifiers = modifiers or {} })
-		end
-		setListening(false)
-		chip.refresh()
-	end, el.spec.noMouse == true)
-end
-
 function keychip.build(ctx: any, el: any): any
 	local theme = ctx.theme
 	local root = make("TextButton", {
 		Name = "Key",
-		Size = UDim2.fromOffset(52, 26),
+		Size = UDim2.fromOffset(52, 60),
 		BackgroundTransparency = 1,
 	})
-	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = root })
+	local face = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -HIT_MARGIN, 0, HEIGHT),
+		ZIndex = 4,
+		Parent = root,
+	})
+	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = face })
 	local text = make("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
-		TextSize = 15,
+		TextSize = TEXT_SIZE,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		ZIndex = 5,
-		Parent = root,
+		Parent = face,
 	})
 	theme:type(text, "text", true)
 
@@ -69,14 +54,13 @@ function keychip.build(ctx: any, el: any): any
 	local inverted = false
 
 	local function fit(shown: string)
-		local width = math.max(#shown * CHAR_WIDTH + PAD, 34)
-		root.Size = UDim2.fromOffset(width, 26)
-		chip.width = width
+		local width = math.ceil(metrics.width("textMedium", shown, TEXT_SIZE)) + 16 + HIT_MARGIN
+		root.Size = UDim2.fromOffset(math.max(width, 44), 60)
+		chip.width = root.Size.X.Offset
 	end
 
 	local function ink()
-		local token = if listening then "accent" elseif inverted then "onAccent" else "muted"
-		theme:paint(text, "TextColor3", token)
+		theme:paint(text, "TextColor3", if listening then "accent" elseif inverted then "onAccent" else "muted")
 		theme:paint(outline, "Color", if listening then "accent" elseif inverted then "onAccent" else "lineStrong")
 	end
 
@@ -95,73 +79,39 @@ function keychip.build(ctx: any, el: any): any
 	end
 	chip.refresh()
 
-	root.Activated:Connect(function()
-		if listening then
+	chip.start = function()
+		if el.disabled or listening then
 			return
 		end
-		listen(ctx, el, chip, function(on: boolean)
-			listening = on
-			if on then
-				text.Text = "Press a key"
-				fit("Press a key")
+		listening = true
+		text.Text = LISTENING
+		fit(LISTENING)
+		ink()
+		ctx.keys:listen(function(name: string?, modifiers: { string }?)
+			listening = false
+			if name ~= nil then
+				el:set({ key = name, modifiers = modifiers or {} })
 			end
-			ink()
-		end)
-	end)
+			chip.refresh()
+		end, el.spec.noMouse == true)
+	end
+	root.Activated:Connect(chip.start)
+
 	root.MouseButton2Click:Connect(function()
-		cycleMode(ctx, el)
+		local modes = el.spec.modes
+		if el.disabled or modes == nil or #modes < 2 then
+			return
+		end
+		local at = table.find(modes, el.value.mode) or 0
+		local mode = modes[at % #modes + 1]
+		el:set({ mode = mode })
+		ctx.notify({ title = el.label, text = "Key mode: " .. mode, seconds = 2 })
 	end)
 	chip.destroy = function()
 		if listening then
 			ctx.keys:cancel()
 		end
 		root:Destroy()
-	end
-	return chip
-end
-
-function keychip.big(ctx: any, el: any, parent: any): any
-	local theme = ctx.theme
-	local text = make("TextLabel", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 12, 1, -7),
-		Size = UDim2.new(1, -24, 0, 36),
-		TextSize = 32,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 3,
-		Parent = parent,
-	})
-	theme:type(text, "display")
-	local chip: any = {}
-	local listening = false
-	chip.refresh = function()
-		if listening then
-			return
-		end
-		local shown = display(el)
-		text.Text = shown
-		theme:paint(text, "TextColor3", if shown == "Unset" then "faint" else "text")
-	end
-	chip.refresh()
-	chip.start = function()
-		if listening then
-			return
-		end
-		listen(ctx, el, chip, function(on: boolean)
-			listening = on
-			if on then
-				text.Text = "Press a key"
-				theme:paint(text, "TextColor3", "accent")
-			end
-		end)
-	end
-	parent.MouseButton2Click:Connect(function()
-		cycleMode(ctx, el)
-	end)
-	chip.destroy = function()
-		if listening then
-			ctx.keys:cancel()
-		end
 	end
 	return chip
 end

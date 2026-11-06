@@ -141,7 +141,7 @@ local function open(ctx: any, el: any, anchor: any)
 		local entry = make("TextBox", {
 			Position = UDim2.fromOffset(PAD + 54, y),
 			Size = UDim2.new(1, -(2 * PAD + 54), 0, 28),
-			TextSize = 14,
+			TextSize = 18,
 			Parent = content,
 		})
 		theme:type(entry, "text", true)
@@ -226,54 +226,30 @@ end
 function colorpicker.swatch(ctx: any, el: any): any
 	local root = make("TextButton", {
 		Name = "Swatch",
-		Size = UDim2.fromOffset(32, 26),
+		Size = UDim2.fromOffset(20, 20),
 		BackgroundTransparency = 0,
 		ZIndex = 2,
 	})
 	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = root })
 	ctx.theme:paint(outline, "Color", "lineStrong")
-	local chip: any = { root = root, width = 32 }
+	local chip: any = { root = root, width = 20 }
 	chip.refresh = function()
 		root.BackgroundColor3 = el.value.color
 		root.BackgroundTransparency = el.value.alpha * 0.8
 	end
 	chip.refresh()
-	root.Activated:Connect(function()
+	chip.open = function()
 		if not el.disabled then
 			open(ctx, el, root)
 		end
-	end)
+	end
+	root.Activated:Connect(chip.open)
 	chip.setInk = function(on: boolean)
 		ctx.theme:paint(outline, "Color", if on then "onAccent" else "lineStrong")
 	end
 	chip.destroy = function()
 		root:Destroy()
 	end
-	return chip
-end
-
--- a color with a tile to itself: the bottom of the tile is the color
-function colorpicker.band(ctx: any, el: any, parent: any): any
-	local band = make("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 40),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = parent,
-	})
-	local chip: any = {}
-	chip.refresh = function()
-		band.BackgroundColor3 = el.value.color
-		band.BackgroundTransparency = el.value.alpha * 0.8
-	end
-	chip.refresh()
-	chip.open = function()
-		if not el.disabled then
-			open(ctx, el, parent)
-		end
-	end
-	chip.destroy = function() end
 	return chip
 end
 

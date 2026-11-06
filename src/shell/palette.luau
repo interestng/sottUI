@@ -8,11 +8,25 @@ local search = require("../model/search")
 
 local palette = {}
 
-local WIDTH = 560
+local WIDTH = 600
 local ITEM = 46
 local INPUT = 68
 local MAX_ROWS = 7
 local SPEED = 34
+
+local function describe(el: any): string
+	local where = el._pageName or ""
+	if el.kind == "toggle" then
+		return (if el.value then "On, " else "Off, ") .. where
+	end
+	if el.kind == "slider" then
+		return tostring(el.value) .. (el.spec.suffix or "") .. ", " .. where
+	end
+	if el.kind == "dropdown" and not el.spec.multi and el.value ~= nil then
+		return tostring((el.spec.display or tostring)(el.value)) .. ", " .. where
+	end
+	return where
+end
 
 function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el: any) -> ()): any
 	local theme = ctx.theme
@@ -43,8 +57,7 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 			if el then
 				item.root.Visible = true
 				item.name.Text = el.label
-				item.where.Text = el._pageName
-					.. (if el.section and el.section.title ~= "" then " / " .. el.section.title else "")
+				item.where.Text = describe(el)
 				item.root.BackgroundTransparency = if i == selected then 0 else 1
 				theme:paint(item.name, "TextColor3", if i == selected then "onAccent" else "text")
 				theme:paint(item.where, "TextColor3", if i == selected then "onAccent" else "muted")
@@ -62,11 +75,10 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 			return
 		end
 		close()
+		-- a toggle is one key from undoing; a button may teleport or leave, so it is only ever shown, never run blind
 		if el.kind == "toggle" and not el.disabled then
 			el:set(not el.value)
 			ctx.notify({ title = el.label, text = if el.value then "On" else "Off", seconds = 2 })
-		elseif el.kind == "button" and not el.disabled then
-			el:fire()
 		else
 			reveal(el)
 		end
@@ -75,10 +87,20 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 	local function query()
 		local text = box.Text
 		if text == "" then
+			-- the empty palette answers "what is running right now" across every page
 			results = {}
+			for _, el in elements() do
+				if el.kind == "toggle" and el.value == true then
+					table.insert(results, el)
+					if #results == MAX_ROWS then
+						break
+					end
+				end
+			end
 		else
 			results = search.rank(text, elements(), function(el: any): string
-				return el.label .. " " .. (el._pageName or "")
+				local section = el.section and el.section.title or ""
+				return el.label .. " " .. (el._pageName or "") .. " " .. section .. " " .. (el.tip or "")
 			end, MAX_ROWS)
 		end
 		selected = 1
@@ -92,11 +114,17 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 		end
 		open = true
 		local viewport = layer.AbsoluteSize
-		scrim = make("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 40, Parent = layer })
+		scrim = make("TextButton", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 0.45,
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			ZIndex = 40,
+			Parent = layer,
+		})
 		scrim.MouseButton1Down:Connect(close)
 		panel = make("Frame", {
 			Name = "Palette",
-			Position = UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor(viewport.Y * 0.2)),
+			Position = UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor(viewport.Y * 0.22)),
 			Size = UDim2.fromOffset(WIDTH, 0),
 			BackgroundTransparency = 0,
 			ClipsDescendants = true,
@@ -131,7 +159,7 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 			theme:paint(root, "BackgroundColor3", "accent")
 			local name = make("TextLabel", {
 				Position = UDim2.fromOffset(12, 0),
-				Size = UDim2.new(0.55, -12, 1, 0),
+				Size = UDim2.new(0.6, -12, 1, 0),
 				TextSize = 16,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				ZIndex = 43,
@@ -142,7 +170,7 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 			local where = make("TextLabel", {
 				AnchorPoint = Vector2.new(1, 0),
 				Position = UDim2.new(1, -12, 0, 0),
-				Size = UDim2.new(0.45, -12, 1, 0),
+				Size = UDim2.new(0.4, -12, 1, 0),
 				TextSize = 16,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				TextXAlignment = Enum.TextXAlignment.Right,

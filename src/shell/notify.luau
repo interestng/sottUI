@@ -64,27 +64,29 @@ function notify.new(ctx: any, layer: any): any
 		theme:paint(frame, "BackgroundColor3", "surface")
 		local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 		theme:paint(outline, "Color", "lineStrong")
+		local edge = make("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundTransparency = 0, ZIndex = 31, Parent = frame })
+		theme:paint(edge, "BackgroundColor3", "accent")
 		local y = 10
 		if options.title and options.title ~= "" then
 			local title = make("TextLabel", {
-				Position = UDim2.fromOffset(14, y),
-				Size = UDim2.new(1, -28, 0, 20),
-				TextSize = 15,
+				Position = UDim2.fromOffset(18, y),
+				Size = UDim2.new(1, -32, 0, 24),
+				TextSize = 22,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Text = options.title,
 				ZIndex = 31,
 				Parent = frame,
 			})
-			theme:type(title, "ui", true)
+			theme:type(title, "display")
 			theme:paint(title, "TextColor3", "text")
-			y += 22
+			y += 26
 		end
 		local body = nil
 		if options.text and options.text ~= "" then
 			body = make("TextLabel", {
-				Position = UDim2.fromOffset(14, y),
-				Size = UDim2.new(1, -28, 0, 20),
-				TextSize = 15,
+				Position = UDim2.fromOffset(18, y),
+				Size = UDim2.new(1, -32, 0, 20),
+				TextSize = 16,
 				TextWrapped = true,
 				TextYAlignment = Enum.TextYAlignment.Top,
 				RichText = true,
@@ -92,7 +94,7 @@ function notify.new(ctx: any, layer: any): any
 				ZIndex = 31,
 				Parent = frame,
 			})
-			theme:type(body, "ui")
+			theme:type(body, "text")
 			theme:paint(body, "TextColor3", "muted")
 		end
 		local item: any = {
@@ -110,7 +112,7 @@ function notify.new(ctx: any, layer: any): any
 				end
 				local height = math.ceil(body.TextBounds.Y)
 				if height > 20 then
-					body.Size = UDim2.new(1, -28, 0, height)
+					body.Size = UDim2.new(1, -32, 0, height)
 					item.height = y + height + 10
 					frame.Size = UDim2.fromOffset(WIDTH, item.height)
 					layout()

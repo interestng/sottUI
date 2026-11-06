@@ -11,6 +11,7 @@ local overlay = {}
 local SHUTTER = 34
 local TIP_DELAY = 0.55
 local TIP_WIDTH = 340
+local TIP_SPEED = 40
 local MARGIN = 8
 
 function overlay.popover(ctx: any, layer: any): any
@@ -60,7 +61,7 @@ function overlay.popover(ctx: any, layer: any): any
 			Active = true,
 			Parent = layer,
 		})
-		theme:paint(frame, "BackgroundColor3", "surface")
+		theme:paint(frame, "BackgroundColor3", "raised")
 		local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 		theme:paint(outline, "Color", "lineStrong")
 		local content = make("Frame", { Size = UDim2.fromScale(1, 1), Parent = frame })
@@ -142,13 +143,13 @@ function overlay.tooltip(ctx: any, layer: any): any
 	})
 	local text = make("TextLabel", {
 		AutomaticSize = Enum.AutomaticSize.XY,
-		TextSize = 15,
+		TextSize = 16,
 		TextWrapped = true,
 		ZIndex = 21,
 		Parent = frame,
 	})
 	make("UISizeConstraint", { MaxSize = Vector2.new(TIP_WIDTH, 400), Parent = text })
-	theme:type(text, "ui")
+	theme:type(text, "text")
 	theme:paint(text, "TextColor3", "text")
 
 	local api: any = {}
@@ -162,26 +163,35 @@ function overlay.tooltip(ctx: any, layer: any): any
 		frame.Visible = false
 	end
 
+	local place = motion.prop(frame, "Position", TIP_SPEED)
+
+	function api.showAt(self: any, anchor: any, content: string)
+		self:hide()
+		text.Text = content
+		frame.Visible = true
+		-- AutomaticSize settles a frame later; placing before that would measure the previous tip
+		task.defer(function()
+			if not frame.Visible then
+				return
+			end
+			local viewport = layer.AbsoluteSize
+			local size = frame.AbsoluteSize
+			local x = math.clamp(anchor.AbsolutePosition.X, MARGIN, viewport.X - size.X - MARGIN)
+			local below = anchor.AbsolutePosition.Y + anchor.AbsoluteSize.Y + 3
+			local above = below + size.Y + MARGIN > viewport.Y
+			local y = if above then anchor.AbsolutePosition.Y - size.Y - 3 else below
+			place:snap(UDim2.fromOffset(x, y + (if above then 8 else -8)))
+			place:to(UDim2.fromOffset(x, y))
+		end)
+	end
+
 	function api.schedule(self: any, anchor: any, content: string)
 		self:hide()
 		pending = task.delay(TIP_DELAY, function()
 			pending = nil
-			if anchor.Parent == nil then
-				return
+			if anchor.Parent ~= nil then
+				self:showAt(anchor, content)
 			end
-			text.Text = content
-			frame.Visible = true
-			task.defer(function()
-				if not frame.Visible then
-					return
-				end
-				local viewport = layer.AbsoluteSize
-				local size = frame.AbsoluteSize
-				local x = math.clamp(anchor.AbsolutePosition.X + 12, MARGIN, viewport.X - size.X - MARGIN)
-				local below = anchor.AbsolutePosition.Y + anchor.AbsoluteSize.Y + 4
-				local y = if below + size.Y + MARGIN > viewport.Y then anchor.AbsolutePosition.Y - size.Y - 4 else below
-				frame.Position = UDim2.fromOffset(x, y)
-			end)
 		end)
 	end
 

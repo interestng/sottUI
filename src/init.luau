@@ -3,6 +3,7 @@
 
 local env = require("./core/env")
 local motion = require("./core/motion")
+local obsidian = require("./compat/obsidian")
 local windowModule = require("./shell/window")
 
 local VERSION = "0.1.0"
@@ -34,6 +35,11 @@ end
 
 function sottui.current(): any
 	return registry().current
+end
+
+-- Obsidian's api over this library, for a host not written against the native one
+function sottui.obsidian(): { Library: any, SaveManager: any, ThemeManager: any }
+	return obsidian.new(sottui)
 end
 
 return sottui

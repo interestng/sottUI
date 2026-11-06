@@ -163,6 +163,12 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 		if swallow == name then
 			swallow = nil
 		end
+		for _, el in bound do
+			local value = el.value
+			if value.key == name and value.mode == "Hold" and el.spec.onRelease then
+				el.spec.onRelease(el)
+			end
+		end
 	end)
 
 	return api

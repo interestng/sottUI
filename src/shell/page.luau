@@ -1,49 +1,62 @@
 --!strict
--- pages hold models and lay them out by arithmetic: tiles pack into justified rows so every section is one solid block
--- with clean edges, and placing 300 of them is one pass with no layout objects. a tile's instances are built the first
--- time it scrolls near the viewport
+-- pages hold models and lay them out by arithmetic on a 12 column grid: columns stay aligned so what is on can be
+-- scanned, and placing 300 tiles is one pass with no layout objects. a tile's instances are built the first time it
+-- scrolls near the viewport
 
 local kinds = require("../view/kinds")
 local make = require("../core/make")
+local metrics = require("../core/metrics")
 local motion = require("../core/motion")
 local sectionModule = require("./section")
 local tileModule = require("../view/tile")
 
 local page = {}
 
-local UNIT = 160
-local GAP = 2
+local GRID = 12
+local NARROW_AT = 600
+local GAP = 3
 local SIDE = 20
-local TOP = 16
+local TOP = 14
 local BOTTOM = 28
-local HEADER = 46
-local SECTION_GAP = 30
+local HEADER = 40
+local SECTION_GAP = 26
 local HERO = 148
+local PRIMARY_HEIGHT = 76
+local STAT_HEIGHT = 66
 local NEAR = 360
 local WHEEL_STEP = 110
-local SCROLL_SPEED = 18
+local SCROLL_SPEED = 24
 local SLIDE_SPEED = 28
 
+-- in 12ths: a three column sheet, so a column of toggles is a column however a game orders them. a narrow window doubles
+-- them to two columns. text entry needs the room, and a label with a key on it is a control like any other
 local SPANS: { [string]: number } = {
-	toggle = 1,
-	button = 1,
-	key = 1,
-	color = 1,
-	stat = 1,
-	slider = 2,
-	dropdown = 2,
-	input = 2,
+	toggle = 4,
+	button = 4,
+	key = 4,
+	color = 4,
+	slider = 4,
+	dropdown = 4,
+	stat = 3,
+	input = 8,
 }
+
+local function spanOf(el: any): number?
+	if el.kind == "label" and el.addons then
+		return 4
+	end
+	return SPANS[el.kind]
+end
 
 local Page = {}
 Page.__index = Page
 
 local function textHeight(el: any, width: number): number
 	if el.kind == "divider" then
-		return 34
+		return 28
 	end
 	if not el.spec.wrap then
-		return 34
+		return 32
 	end
 	if el._measured then
 		return el._measured
@@ -86,21 +99,38 @@ function Page.section(self: any, title: string): any
 	return built
 end
 
--- several sections sharing one slot, the title being their switcher
-function Page.tabs(self: any, names: { string }): { any }
+-- several sections sharing one slot, the title being their switcher. tabs may be added one at a time
+function Page.tabset(self: any): any
 	local holder = sectionModule.new(self, "")
-	holder.tabNames = names
+	holder.tabNames = {}
 	holder.activeTab = 1
 	table.insert(self.sections, holder)
-	local out = {}
-	for index, name in names do
+	local api = {}
+	function api.tab(_: any, name: string): any
+		table.insert(holder.tabNames, name)
+		local index = #holder.tabNames
 		local child = holder:when(function()
 			return holder.activeTab == index
 		end)
 		child.title = name
-		table.insert(out, child)
+		local header = self._headers[holder]
+		if header then
+			-- built before this tab existed; the next layout rebuilds it with the full row
+			header:Destroy()
+			self._headers[holder] = nil
+		end
+		self:_invalidate()
+		return child
 	end
-	self:_invalidate()
+	return api
+end
+
+function Page.tabs(self: any, names: { string }): { any }
+	local set = self:tabset()
+	local out = {}
+	for _, name in names do
+		table.insert(out, set:tab(name))
+	end
 	return out
 end
 
@@ -180,16 +210,16 @@ local function buildHeader(self: any, section: any): any
 		local labels = {}
 		local x = 0
 		for index, name in section.tabNames do
-			local width = math.ceil(#name * 13) + 18
+			local width = math.ceil(metrics.width("textMedium", name, 18)) + 20
 			local button = make("TextButton", {
 				Position = UDim2.fromOffset(x, 0),
-				Size = UDim2.new(0, width, 1, -6),
-				TextSize = 26,
+				Size = UDim2.new(0, width, 1, -8),
+				TextSize = 18,
 				Text = name,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Parent = holder,
 			})
-			theme:type(button, "display")
+			theme:type(button, "text", true)
 			labels[index] = button
 			button.Activated:Connect(function()
 				section.activeTab = index
@@ -203,12 +233,12 @@ local function buildHeader(self: any, section: any): any
 		end
 	else
 		local title = make("TextLabel", {
-			Size = UDim2.new(1, 0, 1, -6),
-			TextSize = 26,
+			Size = UDim2.new(1, 0, 1, -8),
+			TextSize = 18,
 			Text = section.title,
 			Parent = holder,
 		})
-		theme:type(title, "display")
+		theme:type(title, "text", true)
 		theme:paint(title, "TextColor3", "text")
 	end
 	return holder
@@ -225,7 +255,8 @@ function Page.layout(self: any)
 		return
 	end
 	local inner = width - 2 * SIDE
-	local columns = math.max(math.floor((inner + GAP) / (UNIT + GAP)), 2)
+	local narrow = inner < NARROW_AT
+	local column = (inner - (GRID - 1) * GAP) / GRID
 	local y = TOP
 	local placements: { any } = {}
 
@@ -247,38 +278,51 @@ function Page.layout(self: any)
 				y += HEADER
 			end
 			local line: { any }, used = {}, 0
-			local function flush()
+			local function flush(final: boolean)
 				if #line == 0 then
 					return
 				end
-				local free = inner - (#line - 1) * GAP
-				local x = SIDE
-				for index, el in line do
-					local span = math.min(SPANS[el.kind], columns)
-					local w = if index == #line then SIDE + inner - x else math.floor(free * span / used)
-					table.insert(placements, { el = el, x = x, y = y, width = w, height = tileModule.HEIGHT })
+				local x, tallest = SIDE, 0
+				for index, entry in line do
+					local span = entry.span
+					-- only text entry can leave a hole mid section, and a wider field is no loss. a final row stays as it is
+					if index == #line and not final and entry.el.kind == "input" then
+						span += GRID - used
+					end
+					local w = span * column + (span - 1) * GAP
+					local height = entry.height
+					tallest = math.max(tallest, height)
+					table.insert(placements, { el = entry.el, x = x, y = y, width = w, height = height })
 					x += w + GAP
 				end
-				y += tileModule.HEIGHT + GAP
+				y += tallest + GAP
 				line, used = {}, 0
 			end
 			for _, el in shown do
-				local span = SPANS[el.kind]
-				if span == nil then
-					flush()
+				local base = spanOf(el)
+				if base == nil then
+					flush(false)
 					local height = textHeight(el, inner)
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
 					y += height + GAP
+				elseif el.spec.primary then
+					flush(false)
+					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = PRIMARY_HEIGHT })
+					y += PRIMARY_HEIGHT + GAP
 				else
-					local clamped = math.min(span, columns)
-					if used + clamped > columns then
-						flush()
+					local span = math.min(if narrow then base * 2 else base, GRID)
+					if used + span > GRID then
+						flush(false)
 					end
-					table.insert(line, el)
-					used += clamped
+					table.insert(line, {
+						el = el,
+						span = span,
+						height = if el.kind == "stat" then STAT_HEIGHT else tileModule.HEIGHT,
+					})
+					used += span
 				end
 			end
-			flush()
+			flush(true)
 			y += SECTION_GAP
 		end
 	end
@@ -337,7 +381,7 @@ function Page._place(self: any, view: any, item: any)
 	if slide then
 		-- tiles below a revealed dependency slide rather than jump, which is how the eye tracks what appeared
 		if view._slide == nil then
-			view._slide = tileModule.own(view, motion.prop(root, "Position", SLIDE_SPEED))
+			view._slide = view:own(motion.prop(root, "Position", SLIDE_SPEED))
 		end
 		view._slide:to(target)
 	elseif view._slide then

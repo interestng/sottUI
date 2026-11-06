@@ -12,22 +12,21 @@ local visuals = ui:page("Visuals")
 local config = ui:page("Config")
 
 local me = game:GetService("Players").LocalPlayer
-home:hero({ userId = me.UserId, title = me.DisplayName, text = "Gilded Skies, run 14. The next dungeon starts by itself." })
+home:hero({ userId = me.UserId, title = me.DisplayName, text = "Dungeon Quest" })
 local stats = home:section("This session")
 stats:stat("Kills", "412")
 stats:stat("Gold an hour", "2,104")
 stats:stat("Run time", "2:14:07")
-stats:stat("Server", "4 of 8")
-local quick = home:section("Quick")
-quick:toggle("home.farm", { label = "Auto farm", default = true })
-quick:toggle("home.afk", { label = "Anti AFK", default = true })
-quick:button("Hop server", function()
+stats:stat("Deaths", "0")
+local server = home:section("Server")
+server:button("Hop server", function()
 	ui:notify({ title = "Server hop", text = "Looking for a server with room." })
 end)
-quick:button("Rejoin", function() end)
+server:button("Rejoin", function() end)
+server:button("Copy join link", function() end)
 
 local farm = main:section("Auto farm")
-local enabled = farm:toggle("farm.enabled", { label = "Enabled", tip = "Runs the dungeon loop until you turn it off" })
+local enabled = farm:toggle("farm.enabled", { label = "Auto farm", primary = true, tip = "Runs the dungeon loop until you turn it off" })
 farm:addKey(enabled, "farm.key", { default = "F" })
 local stay = farm:toggle("farm.stay", { label = "Stay at cast range", default = true })
 farm:toggle("farm.dodge", { label = "Dodge telegraphed hits", default = true })
@@ -48,7 +47,8 @@ stayOn:slider("farm.margin", { label = "Extra margin", min = 0, max = 4, step = 
 
 local loot = main:section("Loot")
 loot:toggle("loot.collect", { label = "Collect chests", default = true })
-loot:toggle("loot.sell", { label = "Sell commons after each run" })
+loot:toggle("loot.sell", { label = "Sell commons after each run", tip = "Long names fall to two lines at a smaller size" })
+loot:toggle("loot.long", { label = "Give up on the pick after a while and farm with what you have" })
 local rarities = {}
 for i = 1, 40 do
 	rarities[i] = "Item tier " .. i

@@ -1,7 +1,7 @@
 --!strict
 -- every animation runs here, on one connection that exists only while something moves: an idle window costs zero per
--- frame. critically damped springs instead of tweens because a retarget mid flight keeps its velocity, which is what
--- makes fast hovering and dragging read as smooth rather than as a chain of restarts
+-- frame. springs instead of tweens because a retarget mid flight keeps its velocity, which is what makes fast hovering
+-- and dragging read as smooth rather than as a chain of restarts
 
 local motion = {}
 
@@ -17,8 +17,10 @@ type Impl = {
 	x: { number },
 	v: { number },
 	g: { number },
+	rest: { number },
 	n: number,
 	speed: number,
+	zeta: number,
 	write: (values: { number }) -> (),
 	encode: (value: any) -> { number },
 	live: boolean,
@@ -27,8 +29,12 @@ type Impl = {
 	done: (() -> ())?,
 }
 
--- below this a spring is visually still (sub pixel, under 1/255 of a color channel) and must stop costing frames
-local REST = 0.002
+-- what counts as visually still differs by unit: a tenth of a pixel, a quarter of a 1/255 color step, a thousandth of a
+-- scale or a transparency. a single threshold made pixel springs run on for several times their visible duration
+local PIXEL = 0.1
+local FINE = 0.001
+local COLOR = 0.001
+
 -- a hitch must not teleport anything past its goal region on the next frame
 local MAX_DT = 1 / 20
 
@@ -38,7 +44,7 @@ local connection: any = nil
 local attach: (((dt: number) -> ()) -> any)? = nil
 local speedScale = 1
 
-local codecs: { [string]: { encode: (any) -> { number }, decode: ({ number }) -> any } } = {
+local codecs: { [string]: { encode: (any) -> { number }, decode: ({ number }) -> any, rest: { number } } } = {
 	number = {
 		encode = function(v)
 			return { v }
@@ -46,6 +52,7 @@ local codecs: { [string]: { encode: (any) -> { number }, decode: ({ number }) ->
 		decode = function(x)
 			return x[1]
 		end,
+		rest = { FINE },
 	},
 	Color3 = {
 		encode = function(c)
@@ -54,6 +61,7 @@ local codecs: { [string]: { encode: (any) -> { number }, decode: ({ number }) ->
 		decode = function(x)
 			return Color3.new(math.clamp(x[1], 0, 1), math.clamp(x[2], 0, 1), math.clamp(x[3], 0, 1))
 		end,
+		rest = { COLOR, COLOR, COLOR },
 	},
 	UDim2 = {
 		encode = function(u)
@@ -62,6 +70,7 @@ local codecs: { [string]: { encode: (any) -> { number }, decode: ({ number }) ->
 		decode = function(x)
 			return UDim2.new(x[1], x[2], x[3], x[4])
 		end,
+		rest = { FINE, PIXEL, FINE, PIXEL },
 	},
 	Vector2 = {
 		encode = function(p)
@@ -70,6 +79,7 @@ local codecs: { [string]: { encode: (any) -> { number }, decode: ({ number }) ->
 		decode = function(x)
 			return Vector2.new(x[1], x[2])
 		end,
+		rest = { PIXEL, PIXEL },
 	},
 }
 
@@ -80,20 +90,39 @@ local function stopLoop()
 	end
 end
 
+-- exact integration so the curve is the same at 30 and 240 fps. critically damped is the default for anything that
+-- travels; a touch of underdamping is for the few things that should feel physical
 local function advance(s: Impl, dt: number): boolean
 	local w = s.speed * speedScale
-	local e = math.exp(-w * dt)
-	local x, v, g = s.x, s.v, s.g
+	local zeta = s.zeta
+	local x, v, g, rest = s.x, s.v, s.g, s.rest
 	local resting = true
-	for c = 1, s.n do
-		local d = x[c] - g[c]
-		local t = (v[c] + w * d) * dt
-		local nx = g[c] + (d + t) * e
-		local nv = (v[c] - w * t) * e
-		x[c] = nx
-		v[c] = nv
-		if math.abs(nx - g[c]) > REST or math.abs(nv) > REST then
-			resting = false
+	if zeta >= 1 then
+		local e = math.exp(-w * dt)
+		for c = 1, s.n do
+			local d = x[c] - g[c]
+			local t = (v[c] + w * d) * dt
+			x[c] = g[c] + (d + t) * e
+			v[c] = (v[c] - w * t) * e
+			local tolerance = rest[c]
+			if math.abs(x[c] - g[c]) > tolerance or math.abs(v[c]) > tolerance * w then
+				resting = false
+			end
+		end
+	else
+		local wd = w * math.sqrt(1 - zeta * zeta)
+		local e = math.exp(-zeta * w * dt)
+		local cosine, sine = math.cos(wd * dt), math.sin(wd * dt)
+		for c = 1, s.n do
+			local d = x[c] - g[c]
+			local b = (v[c] + zeta * w * d) / wd
+			local nd = e * (d * cosine + b * sine)
+			v[c] = e * ((b * wd - zeta * w * d) * cosine - (d * wd + zeta * w * b) * sine)
+			x[c] = g[c] + nd
+			local tolerance = rest[c]
+			if math.abs(nd) > tolerance or math.abs(v[c]) > tolerance * w then
+				resting = false
+			end
 		end
 	end
 	if resting then
@@ -157,11 +186,14 @@ end
 local Spring = {}
 Spring.__index = Spring
 
+-- abandons any pending done: whoever snaps has decided the outcome, and a stale callback from the journey it replaced
+-- would undo that decision. the loop removes a live spring on its next pass, at rest
 function Spring.snap(self: any, target: any)
 	if self.dead then
 		return
 	end
 	self.target = target
+	self.done = nil
 	local goal = self.encode(target)
 	for c = 1, self.n do
 		self.g[c] = goal[c]
@@ -169,23 +201,21 @@ function Spring.snap(self: any, target: any)
 		self.v[c] = 0
 	end
 	self.write(self.x)
-	local done = self.done
-	self.done = nil
-	if done then
-		done()
-	end
 end
 
 function Spring.to(self: any, target: any, done: (() -> ())?)
 	if self.dead then
 		return
 	end
-	self.target = target
-	self.done = done
 	if speedScale <= 0 then
 		self:snap(target)
+		if done then
+			done()
+		end
 		return
 	end
+	self.target = target
+	self.done = done
 	local goal = self.encode(target)
 	local same = not self.live
 	for c = 1, self.n do
@@ -214,7 +244,7 @@ function Spring.destroy(self: any)
 	self.done = nil
 end
 
-function motion.new(initial: any, speed: number, write: (value: any) -> ()): Spring
+function motion.new(initial: any, speed: number, write: (value: any) -> (), zeta: number?): Spring
 	local codec = codecs[typeof(initial)]
 	assert(codec, "motion: cannot animate " .. typeof(initial))
 	local x = codec.encode(initial)
@@ -227,8 +257,10 @@ function motion.new(initial: any, speed: number, write: (value: any) -> ()): Spr
 		x = x,
 		v = v,
 		g = table.clone(x),
+		rest = codec.rest,
 		n = #x,
 		speed = speed,
+		zeta = zeta or 1,
 		encode = codec.encode,
 		write = function(values: { number })
 			write(decode(values))
@@ -240,10 +272,10 @@ function motion.new(initial: any, speed: number, write: (value: any) -> ()): Spr
 	return (setmetatable(self, Spring) :: any) :: Spring
 end
 
-function motion.prop(instance: any, property: string, speed: number): Spring
+function motion.prop(instance: any, property: string, speed: number, zeta: number?): Spring
 	return motion.new(instance[property], speed, function(value: any)
 		instance[property] = value
-	end)
+	end, zeta)
 end
 
 function motion.setAttach(fn: ((dt: number) -> ()) -> any)
