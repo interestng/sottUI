@@ -27,14 +27,14 @@ local window = {}
 local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
 
-local WIDTH = 420
+local WIDTH = 520
 local DOCK = 64
 local AVATAR = 64
 -- clears the standard hotbar (measured live: its top is 65 above the screen edge); anything else, the strip can be dragged
 local BOTTOM = 76
-local WORD = 19
+local WORD = 24
 local WORD_GAP = 24
-local CHIP = 17
+local CHIP = 20
 local CHIP_PAD = 16
 local CHIP_GAP = 1
 local MORE_ROOM = 64
@@ -45,7 +45,7 @@ local RULE_HEIGHT = 28
 local FADE = 34
 local EDGE = 12
 local MAX_PANEL = 600
-local MAX_SHEET = 560
+local MAX_SHEET = 760
 local PANEL_SPEED = 38
 local OPEN_SPEED = 28
 local MARKER_SPEED = 30
@@ -646,7 +646,7 @@ function window.new(options: { [string]: any }): any
 	maid:add(gui)
 
 	local files = env.files()
-	local folder = options.folder or "sottui_dock"
+	local folder = options.folder or "sottui_dockgrid"
 	local stateFile = options.stateFile or (folder .. "/window.json")
 	local saved: any = nil
 	if files then
@@ -894,31 +894,7 @@ function window.new(options: { [string]: any }): any
 	}
 	self.ctx = ctx
 	local floating = overlay.popover(ctx, layer)
-	ctx.popover = {
-		open = function(_: any, anchor: any, w: number, h: number, build: (content: any, handle: any) -> ())
-			local page = self._showing
-			if page == nil or not page:expand(anchor, h, build) then
-				floating:open(anchor, w, h, build)
-			end
-		end,
-		close = function()
-			floating:close()
-			local page = self._showing
-			if page then
-				page:collapse()
-			end
-		end,
-		isOpen = function(): boolean
-			return floating:isOpen()
-		end,
-		key = function(_: any, name: string): boolean
-			if floating:key(name) then
-				return true
-			end
-			local page = self._showing
-			return page ~= nil and page:expansionKey(name)
-		end,
-	}
+	ctx.popover = floating
 	ctx.tooltip = overlay.tooltip(ctx, layer)
 	ctx.hover = overlay.hover(ctx)
 	ctx.notifications = notifyModule.new(ctx, layer)
@@ -1012,8 +988,8 @@ function window.new(options: { [string]: any }): any
 		self:_drawChips()
 		task.defer(function()
 			if not self.destroyed then
-				-- the sheet ends where search begins, so its edge lines up with something on the strip
-				local fit = (box.AbsolutePosition.X - dock.AbsolutePosition.X) / scale.Scale
+				-- the sheet spans the strip up to its divider, so strip and sheet read as one block
+				local fit = (close.AbsolutePosition.X - dock.AbsolutePosition.X) / scale.Scale
 				self._sheetWidth = math.clamp(math.floor(fit), WIDTH, MAX_SHEET)
 				panel.Size = UDim2.new(0, self._sheetWidth, 0, panel.Size.Y.Offset)
 				self:_syncMarker(true)
@@ -1049,9 +1025,7 @@ function window.new(options: { [string]: any }): any
 		local at = router:pointer()
 		local origin, extent = page.frame.AbsolutePosition, page.frame.AbsoluteSize
 		if at.X >= origin.X and at.Y >= origin.Y and at.X <= origin.X + extent.X and at.Y <= origin.Y + extent.Y then
-			if not page:pointerInExpansion(at) then
-				page:wheel(delta)
-			end
+			page:wheel(delta)
 		end
 	end)
 	router.keyDown:connect(function(event: any, processed: boolean)

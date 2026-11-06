@@ -1,0 +1,357 @@
+--!strict
+-- the shared body of every control: a hard edged tile whose text is the control. what makes it this design rather than
+-- a row is here: state floods the tile from the point of the press and a press compresses it. the flood is one circle
+-- clipped by the tile; it and the springs are built on first use, most tiles are never touched
+
+local make = require("../core/make")
+local motion = require("../core/motion")
+
+local tile = {}
+
+tile.PAD = 14
+tile.HEIGHT = 54
+tile.NAME = 17
+
+local WASH_SPEED = 30
+local PRESS_SPEED = 40
+local PRESS_RELEASE_DAMPING = 0.62
+local FLOOD_SPEED = 20
+local INK_SPEED = 36
+local PRESS_SCALE = 0.965
+-- past the far corner from any start point, and a critically damped spring spends its last stretch creeping, so the
+-- overshoot also sets how quickly the wave clears the tile
+local FLOOD_REACH = 2.6
+local LONG_PRESS = 0.45
+local HOVER_TINT = 0.14
+
+export type Ctx = {
+	theme: any,
+	input: any,
+	hover: any,
+	popover: any,
+	tooltip: any,
+	keys: any,
+	glyph: any,
+	touch: boolean,
+	uiScale: () -> number,
+	notify: (notice: any) -> (),
+	setScrollLocked: (locked: boolean) -> (),
+	isShowing: (el: any) -> boolean,
+}
+
+export type Tile = {
+	root: any,
+	name: any,
+	el: any,
+	ctx: Ctx,
+	chips: { any },
+	onHover: (self: Tile, on: boolean) -> (),
+	pressed: (self: Tile, on: boolean) -> (),
+	flood: (self: Tile, on: boolean, instant: boolean?) -> (),
+	tint: (self: Tile, on: boolean, instant: boolean?) -> (),
+	ink: (self: Tile, instance: any, token: string, instant: boolean?) -> (),
+	flash: (self: Tile) -> (),
+	refreshName: (self: Tile) -> (),
+	own: (self: Tile, spring: any) -> any,
+	onCleanup: (self: Tile, fn: () -> ()) -> (),
+	refresh: () -> (),
+	destroy: () -> (),
+}
+
+local Tile = {}
+Tile.__index = Tile
+
+function Tile.own(self: any, spring: any): any
+	table.insert(self._cleanups, function()
+		spring:destroy()
+	end)
+	return spring
+end
+
+function Tile.onCleanup(self: any, fn: () -> ())
+	table.insert(self._cleanups, fn)
+end
+
+local function baseColor(self: any): Color3
+	local tokens = self.ctx.theme.tokens
+	if self._lit then
+		return if self._hover then tokens.accentHover else tokens.accent
+	end
+	if self._tinted then
+		return if self._hover then tokens.accentDim:Lerp(tokens.accent, HOVER_TINT) else tokens.accentDim
+	end
+	-- a setting sits on the page over its baseline; only what acts when pressed stands up as a block
+	if self._quiet then
+		return if self._hover then tokens.raised else tokens.surface
+	end
+	return if self._hover then tokens.accentDim else tokens.raised
+end
+
+local function washTo(self: any)
+	if self._wash == nil then
+		self._wash = self:own(motion.prop(self.root, "BackgroundColor3", WASH_SPEED))
+	end
+	self._wash:to(baseColor(self))
+end
+
+local function snapBase(self: any)
+	local color = baseColor(self)
+	if self._wash then
+		self._wash:snap(color)
+	else
+		self.root.BackgroundColor3 = color
+	end
+end
+
+function Tile.onHover(self: any, on: boolean)
+	local hovering = on and not self.el.disabled
+	if self._hover == hovering then
+		return
+	end
+	self._hover = hovering
+	for _, chip in self.chips do
+		if chip.setHover then
+			chip.setHover(hovering)
+		end
+	end
+	-- mid flood the circle owns the look; the base catches up when it lands
+	if not (self._floodFrame and self._floodFrame.Visible) then
+		washTo(self)
+	end
+end
+
+function Tile.pressed(self: any, on: boolean)
+	if self._press == nil then
+		local scale = make("UIScale", { Parent = self.root })
+		self._press = self:own(motion.prop(scale, "Scale", PRESS_SPEED, PRESS_RELEASE_DAMPING))
+	end
+	self._press:to(if on then PRESS_SCALE else 1)
+end
+
+function Tile.flood(self: any, on: boolean, instant: boolean?)
+	if self._floodOn == on then
+		return
+	end
+	self._floodOn = on
+	local root = self.root
+	local size = root.AbsoluteSize
+	if instant or size.X < 1 or not root.Visible or not self.ctx.isShowing(self.el) then
+		self._lit = on
+		if self._floodFrame then
+			self._floodFrame.Visible = false
+			self._floodSpring:snap(UDim2.fromOffset(0, 0))
+		end
+		snapBase(self)
+		return
+	end
+	local circle = self._floodFrame
+	if circle == nil then
+		circle = make("Frame", {
+			Name = "Flood",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(0, 0),
+			BackgroundTransparency = 0,
+			ZIndex = 1,
+			Parent = root,
+		})
+		make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = circle })
+		self.ctx.theme:paint(circle, "BackgroundColor3", "accent")
+		self._floodFrame = circle
+		self._floodSpring = self:own(motion.prop(circle, "Size", FLOOD_SPEED))
+	end
+	local scale = self.ctx.uiScale()
+	local logical = size / scale
+	local full = math.ceil(math.sqrt(logical.X * logical.X + logical.Y * logical.Y) * FLOOD_REACH)
+	local at = self._pressAt
+	self._pressAt = nil
+	local origin = if at then (at - root.AbsolutePosition) / scale else logical / 2
+	circle.Position = UDim2.fromOffset(origin.X, origin.Y)
+	circle.Visible = true
+	if on then
+		self._floodSpring:snap(UDim2.fromOffset(0, 0))
+		self._floodSpring:to(UDim2.fromOffset(full, full), function()
+			-- lands on the circle's own colour and eases to hover from there, or a pointer on the tile shows a one frame step
+			self._lit = true
+			local hover = self._hover
+			self._hover = false
+			snapBase(self)
+			self._hover = hover
+			circle.Visible = false
+			washTo(self)
+		end)
+	else
+		self._lit = false
+		snapBase(self)
+		self._floodSpring:snap(UDim2.fromOffset(full, full))
+		self._floodSpring:to(UDim2.fromOffset(0, 0), function()
+			circle.Visible = false
+		end)
+	end
+end
+
+-- a lit child: the flood's quiet form, so on reads the same at every level without competing with its master
+function Tile.tint(self: any, on: boolean, instant: boolean?)
+	if self._tinted == on then
+		return
+	end
+	self._tinted = on
+	if instant or not self.ctx.isShowing(self.el) then
+		snapBase(self)
+	else
+		washTo(self)
+	end
+end
+
+-- a brief wave for "this one": a config action ran, the palette brought you here
+function Tile.flash(self: any)
+	if self._floodOn then
+		self:pressed(true)
+		task.delay(0.16, function()
+			if self.root.Parent then
+				self:pressed(false)
+			end
+		end)
+		return
+	end
+	self:flood(true)
+	task.delay(0.28, function()
+		if self.root.Parent and not (self.el.kind == "toggle" and self.el.value == true) then
+			self:flood(false)
+		end
+	end)
+end
+
+function Tile.ink(self: any, instance: any, token: string, instant: boolean?)
+	local tokens = self.ctx.theme.tokens
+	local spring = self._inks[instance]
+	-- a config load flips tiles nobody can see; those must not each start a flood and an ink spring
+	if instant or not self.ctx.isShowing(self.el) then
+		if spring then
+			spring:snap(tokens[token])
+		else
+			instance.TextColor3 = tokens[token]
+		end
+		return
+	end
+	if spring == nil then
+		spring = self:own(motion.prop(instance, "TextColor3", INK_SPEED))
+		self._inks[instance] = spring
+	end
+	spring:to(tokens[token])
+end
+
+-- strikethrough rather than just dimmer: off and unavailable must not look alike at a glance
+function Tile.retint(self: any)
+	snapBase(self)
+end
+
+function Tile.refreshName(self: any)
+	local el = self.el
+	if el.disabled then
+		self.name.RichText = true
+		self.name.Text = "<s>" .. el.label .. "</s>"
+	else
+		self.name.RichText = false
+		self.name.Text = el.label
+	end
+end
+
+function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?, quiet: boolean? }?): Tile
+	local settings: any = options or {}
+	local root = make("TextButton", {
+		Name = el.kind,
+		Size = UDim2.new(1, 0, 0, settings.height or tile.HEIGHT),
+		BackgroundTransparency = if settings.inert then 1 else 0,
+		ClipsDescendants = true,
+		Active = not settings.inert,
+	})
+	local name = make("TextLabel", {
+		Name = "Name",
+		Position = UDim2.fromOffset(tile.PAD, 0),
+		Size = UDim2.new(1, -2 * tile.PAD, 1, 0),
+		TextSize = tile.NAME,
+		-- two lines at one size: a shrunken label among full ones reads as a mistake
+		TextWrapped = true,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Text = el.label,
+		ZIndex = 3,
+		Parent = root,
+	})
+	ctx.theme:type(name, "text", true)
+
+	local self: any = setmetatable({
+		root = root,
+		name = name,
+		el = el,
+		ctx = ctx,
+		chips = {},
+		_cleanups = {},
+		_inks = {},
+		_hover = false,
+		_lit = false,
+		_floodOn = false,
+		_tinted = false,
+		_quiet = settings.quiet == true,
+	}, Tile)
+	root.BackgroundColor3 = baseColor(self)
+	self:refreshName()
+
+	if settings.inert then
+		self.onHover = function() end
+		self.pressed = function() end
+	else
+		root.MouseEnter:Connect(function()
+			ctx.hover:enter(self)
+		end)
+		local longPress: thread? = nil
+		root.InputBegan:Connect(function(event: any)
+			local kind = event.UserInputType
+			if kind == Enum.UserInputType.MouseButton1 then
+				if not el.disabled then
+					self._pressAt = ctx.input:pointer()
+					self:pressed(true)
+				end
+			elseif kind == Enum.UserInputType.Touch then
+				if not el.disabled then
+					self._pressAt = ctx.input:at(event)
+					self:pressed(true)
+				end
+				-- touch has no hover, so holding is how a tooltip is reached
+				longPress = task.delay(LONG_PRESS, function()
+					longPress = nil
+					local tip = if el.disabled and el.disabledTip then el.disabledTip else el.tip
+					if tip and tip ~= "" then
+						ctx.tooltip:showAt(root, tip)
+					end
+				end)
+			end
+		end)
+		-- the release can land anywhere; InputEnded on the tile misses one dragged off it and leaves it squashed
+		local disconnect = ctx.input.pointerUp:connect(function()
+			if self._press and self._press.target ~= 1 then
+				self:pressed(false)
+			end
+			if longPress then
+				task.cancel(longPress)
+				longPress = nil
+			end
+		end)
+		self:onCleanup(function()
+			disconnect()
+			if longPress then
+				task.cancel(longPress)
+			end
+		end)
+	end
+
+	self.destroy = function()
+		ctx.hover:leave(self)
+		for _, fn in self._cleanups do
+			pcall(fn)
+		end
+		root:Destroy()
+	end
+	return self
+end
+
+return tile

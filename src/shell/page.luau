@@ -1,59 +1,98 @@
 --!strict
--- a page is one column laid out by arithmetic, no layout objects. a row's instances are built the first time it scrolls
--- near the viewport. a dropdown or colour opens inline under its row and pushes the rest down: on a single column there
--- is nothing to float over
+-- pages hold models and lay them out by arithmetic on a 12 column grid: columns stay aligned so what is on can be
+-- scanned, and placing 300 tiles is one pass with no layout objects. a tile's instances are built the first time it
+-- scrolls near the viewport
 
 local kinds = require("../view/kinds")
 local make = require("../core/make")
 local metrics = require("../core/metrics")
 local motion = require("../core/motion")
-local rowModule = require("../view/row")
 local sectionModule = require("./section")
+local tileModule = require("../view/tile")
 
 local page = {}
 
-local TOP = 0
-local BOTTOM = 34
-local FLAT_BOTTOM = 6
+local GRID = 12
+local NARROW_AT = 600
+local GAP = 8
+local TEXT_GAP = 2
+local SIDE = 20
+local TOP = 14
+local BOTTOM = 40
+local FLAT_BOTTOM = 16
 local THUMB_LINGER = 0.9
-local HEADER = 52
-local SECTION_GAP = 18
-local MASTER_GAP = 2
+local HEADER = 40
+local SECTION_GAP = 22
+local HERO = 148
+-- a master is a modest word until it is on, then it takes the page: the size change is half of what makes on feel on
+local MASTER_OFF = 60
+local MASTER_ON = 84
+local MASTER_GAP = 0
+local AFTER_MASTER = 0
+local STAT_HEIGHT = 66
 local NEAR = 360
-local WHEEL_STEP = 100
+local WHEEL_STEP = 110
 local SCROLL_SPEED = 24
 local SLIDE_SPEED = 28
-local EXPAND_SPEED = 30
+
+-- in 12ths: a three column sheet, so a column of toggles is a column however a game orders them. a narrow window doubles
+-- them to two columns. text entry needs the room, and a label with a key on it is a control like any other
+local SPANS: { [string]: number } = {
+	toggle = 4,
+	button = 4,
+	key = 4,
+	color = 4,
+	slider = 4,
+	dropdown = 4,
+	stat = 3,
+	input = 8,
+}
+
+-- px a tile wants so its name stays on one line: name, padding, and whatever sits to its right
+local function needs(el: any): number
+	local kind = el.kind
+	if kind == "stat" or kind == "input" then
+		return 0
+	end
+	local right = 26
+	if kind == "slider" then
+		right = kinds.readoutWidth(el) + 12
+	elseif kind == "dropdown" then
+		right = 96
+	end
+	for _, addon in el.addons or {} do
+		if not addon.spec.chipless then
+			right += if addon.kind == "key" then 58 else 28
+		end
+	end
+	return metrics.width("textMedium", el.label, tileModule.NAME) * 1.05 + 2 * tileModule.PAD + right
+end
+
+local function spanOf(el: any): number?
+	if el.kind == "label" and el.addons then
+		return 4
+	end
+	return SPANS[el.kind]
+end
 
 local Page = {}
 Page.__index = Page
 
-local function heightOf(el: any, width: number): number
-	local kind = el.kind
-	if kind == "slider" then
-		return kinds.SLIDER_HEIGHT
-	end
-	if kind == "stat" then
-		return 36
-	end
-	if kind == "divider" then
+local function textHeight(el: any, width: number): number
+	if el.kind == "divider" then
+		-- a bare divider is only air in a sheet that has no rules
 		return if el.label == "" then 8 else 28
 	end
-	if kind == "label" and not el.addons then
-		if not el.spec.wrap then
-			return 30
-		end
-		if el._measured then
-			return el._measured
-		end
-		local plain = string.gsub(el.label, "<[^>]+>", "")
-		local lines = math.ceil(metrics.width("text", plain, 16) / math.max(width - 2 * rowModule.PAD, 40))
-		return lines * 21 + 12
+	if not el.spec.wrap then
+		return 32
 	end
-	if kind == "toggle" and el.spec.primary then
-		return kinds.MASTER_HEIGHT
+	if el._measured then
+		return el._measured
 	end
-	return rowModule.HEIGHT
+	-- close enough to place it; the built tile reports its real height and the page corrects itself
+	local perLine = math.max(math.floor(width / 7.6), 10)
+	local plain = string.gsub(el.label, "<[^>]+>", "")
+	return math.ceil(#plain / perLine) * 21 + 12
 end
 
 function Page.nextId(self: any): number
@@ -106,6 +145,7 @@ function Page.tabset(self: any): any
 		child.title = name
 		local header = self._headers[holder]
 		if header then
+			-- built before this tab existed; the next layout rebuilds it with the full row
 			header:Destroy()
 			self._headers[holder] = nil
 		end
@@ -124,16 +164,72 @@ function Page.tabs(self: any, names: { string }): { any }
 	return out
 end
 
--- this design's person lives in the spine, always; a page has no hero block. the text goes to the column's own header
+-- the person, large, at the top of a page. userId shows their avatar; the text can change while it is up
 function Page.hero(self: any, options: { userId: number?, title: string, text: string? }): any
-	self.window:_setPerson(options)
+	self._hero = options
+	self:_invalidate()
+	local view = self._heroView
 	return {
 		set = function(_: any, title: string?, text: string?)
 			options.title = title or options.title
 			options.text = text or options.text
-			self.window:_setPerson(options)
+			local built = self._heroView or view
+			if built then
+				built.refresh()
+			end
 		end,
 	}
+end
+
+local function buildHero(self: any): any
+	local ctx = self.window.ctx
+	local theme = ctx.theme
+	local options = self._hero
+	local root = make("Frame", { Name = "Hero", Parent = self.canvas })
+	local frame = make("Frame", {
+		Size = UDim2.fromOffset(HERO - 16, HERO - 16),
+		BackgroundTransparency = 0,
+		ClipsDescendants = true,
+		Parent = root,
+	})
+	theme:paint(frame, "BackgroundColor3", "accent")
+	if options.userId then
+		make("ImageLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Image = string.format("rbxthumb://type=AvatarBust&id=%d&w=420&h=420", options.userId),
+			Parent = frame,
+		})
+	end
+	local name = make("TextLabel", {
+		Position = UDim2.fromOffset(HERO + 2, 16),
+		Size = UDim2.new(1, -(HERO + 2), 0, 68),
+		TextSize = 64,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Parent = root,
+	})
+	theme:type(name, "display")
+	theme:paint(name, "TextColor3", "text")
+	local line = make("TextLabel", {
+		Position = UDim2.fromOffset(HERO + 2, 88),
+		Size = UDim2.new(1, -(HERO + 2), 0, 44),
+		TextSize = 17,
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Parent = root,
+	})
+	theme:type(line, "text")
+	theme:paint(line, "TextColor3", "muted")
+	local view = {
+		root = root,
+		refresh = function()
+			name.Text = options.title
+			line.Text = options.text or ""
+		end,
+	}
+	view.refresh()
+	return view
 end
 
 local function buildHeader(self: any, section: any): any
@@ -142,18 +238,18 @@ local function buildHeader(self: any, section: any): any
 	local holder = make("Frame", { Name = "Header", Parent = self.canvas })
 	if section.tabNames then
 		local labels = {}
-		local x = rowModule.PAD
+		local x = 0
 		for index, name in section.tabNames do
-			local width = math.ceil(metrics.width("display", name, 15)) + 18
+			local width = math.ceil(metrics.width("textMedium", name, 18)) + 20
 			local button = make("TextButton", {
 				Position = UDim2.fromOffset(x, 0),
-				Size = UDim2.new(0, width, 1, -6),
-				TextSize = 15,
+				Size = UDim2.new(0, width, 1, -8),
+				TextSize = 18,
 				Text = name,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Parent = holder,
 			})
-			theme:type(button, "display")
+			theme:type(button, "text", true)
 			labels[index] = button
 			button.Activated:Connect(function()
 				section.activeTab = index
@@ -167,10 +263,8 @@ local function buildHeader(self: any, section: any): any
 		end
 	else
 		local title = make("TextLabel", {
-			Position = UDim2.fromOffset(rowModule.PAD, 0),
-			Size = UDim2.new(1, -2 * rowModule.PAD, 1, -6),
-			TextSize = 23,
-			TextYAlignment = Enum.TextYAlignment.Bottom,
+			Size = UDim2.new(1, 0, 1, -6),
+			TextSize = 26,
 			Text = section.title,
 			Parent = holder,
 		})
@@ -185,101 +279,132 @@ function Page.layout(self: any, live: boolean?)
 	if frame == nil then
 		return
 	end
+	-- the first layout builds the page, nothing has anywhere to animate from
 	self._live = live == true and self._settled == true and self.active
 	local scale = self.window.ctx.uiScale()
 	local width = frame.AbsoluteSize.X / scale
 	if width < 1 then
 		return
 	end
+	local inner = width - 2 * SIDE
+	local narrow = inner < NARROW_AT
+	local column = (inner - (GRID - 1) * GAP) / GRID
 	local y = TOP
 	local placements: { any } = {}
-	local expansion = self._expansion
-	if expansion then
-		expansion.y = nil
-	end
-	local lastFolded = false
 
+	if self._hero then
+		table.insert(placements, { hero = true, x = SIDE, y = y, width = inner, height = HERO })
+		y += HERO
+	end
+
+	local lastFolded = false
 	for _, section in self.sections do
-		local rows: { any } = {}
+		local shown: { any } = {}
 		for _, el in section.rows do
 			if section.flat or el:shown() then
-				table.insert(rows, el)
+				table.insert(shown, el)
 			end
 		end
-		if #rows > 0 or section.tabNames then
+		if #shown > 0 or section.tabNames then
 			if (section.title ~= "" or section.tabNames) and not section.masterElement then
+				-- a heading after a stack of masters needs the air they do not
 				if lastFolded then
 					y += SECTION_GAP - MASTER_GAP
 				end
-				table.insert(placements, { section = section, y = y, height = HEADER })
+				table.insert(placements, { section = section, x = SIDE, y = y, width = inner, height = HEADER })
 				y += HEADER
 			end
-			for _, el in rows do
-				local height = heightOf(el, width)
-				table.insert(placements, { el = el, y = y, height = height })
-				y += height
-				if expansion and expansion.el == el then
-					expansion.y = y
-					y += expansion.height
+			local previousMaster = false
+			local line: { any }, used = {}, 0
+			local function flush()
+				if #line == 0 then
+					return
+				end
+				local x, tallest = SIDE, 0
+				-- a short row keeps its columns: stretched cells put thirds over halves and no gutter lined up
+				for _, entry in line do
+					local span = entry.span
+					local w = span * column + (span - 1) * GAP
+					local height = entry.height
+					tallest = math.max(tallest, height)
+					table.insert(placements, { el = entry.el, x = x, y = y, width = w, height = height })
+					x += w + GAP
+				end
+				y += tallest + GAP
+				line, used = {}, 0
+			end
+			for _, el in shown do
+				local base = spanOf(el)
+				if base == nil then
+					flush()
+					-- air after a master is the master's to give; a bare divider straight under it would double it
+					if el.kind == "divider" and el.label == "" and previousMaster then
+						continue
+					end
+					local height = textHeight(el, inner)
+					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
+					y += height + TEXT_GAP
+				elseif el.spec.primary then
+					flush()
+					local height = if el.value == true then MASTER_ON else MASTER_OFF
+					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
+					y += height + GAP + AFTER_MASTER
+					previousMaster = true
+				else
+					local span = math.min(if narrow then base * 2 else base, GRID)
+					-- a long name takes more columns instead of wrapping or shrinking beside its neighbours
+					while span < GRID and needs(el) > span * column + (span - 1) * GAP do
+						span += if narrow then GRID - span else 4
+					end
+					if used + span > GRID then
+						flush()
+					end
+					previousMaster = false
+					table.insert(line, {
+						el = el,
+						span = span,
+						height = if el.kind == "stat" then STAT_HEIGHT else tileModule.HEIGHT,
+					})
+					used += span
 				end
 			end
-			local folded = section.masterElement ~= nil and #rows == 1
-			y += if folded then MASTER_GAP else SECTION_GAP
+			flush()
+			-- folded masters stack as a list of words; only something with content under it needs air after it
+			local folded = section.masterElement ~= nil and #shown == 1
+			if folded then
+				y += MASTER_GAP - AFTER_MASTER
+			else
+				y += SECTION_GAP
+			end
 			lastFolded = folded
 		end
 	end
 
-	-- its row is gone (a master folded, a tab switched): an open list has nothing left to hang from
-	if expansion and expansion.y == nil then
-		self._live = false
-		self:collapse()
-		return
-	end
-
 	-- a result list ends at its last row; only a page that can scroll needs room for the fade
-	local contentHeight = y + (if self.sections[1] and self.sections[1].flat then FLAT_BOTTOM else BOTTOM)
-	if self._emptyText then
-		contentHeight = math.max(contentHeight, 54)
-	end
+	local flat = self.sections[1] and self.sections[1].flat
+	local contentHeight = y - SECTION_GAP + (if flat then FLAT_BOTTOM else BOTTOM)
 	frame.CanvasSize = UDim2.fromOffset(0, contentHeight)
-	-- a shorter page clamps the canvas at once; the scroll spring has to agree or the next wheel notch is swallowed
-	local limit = math.max(contentHeight - frame.AbsoluteSize.Y / scale, 0)
-	if self._scrollTarget and self._scrollTarget > limit then
-		self._scrollTarget = limit
-		self._scroll:snap(limit)
-	end
 	self._contentHeight = contentHeight
+	self.window:_contentChanged(contentHeight, live)
 	self._placements = placements
-	self._width = width
-	if expansion then
-		local target = UDim2.fromOffset(0, expansion.y or 0)
-		if self._live then
-			expansion.at:to(target)
-		else
-			expansion.at:snap(target)
-		end
-		expansion.frame.Size = UDim2.new(1, 0, 0, expansion.frame.Size.Y.Offset)
-	end
 	self:_applyPlacements()
 	self:_materialize(true)
 	self:_refreshThumb()
-	if self.active then
-		self.window:_contentChanged(contentHeight, self._live)
-	end
 	self._live = false
 	self._settled = self._settled or self.active
 end
 
--- options open and close by their height, in step with the rows below sliding: the column unfolds
-local function growTo(view: any, height: number, done: (() -> ())?)
+-- options open and close by their height, in step with the tiles below sliding: the page unfolds rather than swapping
+-- one arrangement for another
+local function growTo(view: any, width: number, height: number, done: (() -> ())?)
 	if view._grow == nil then
 		view._grow = view:own(motion.prop(view.root, "Size", SLIDE_SPEED))
 	end
-	view._grow:to(UDim2.new(1, 0, 0, height), done)
+	view._grow:to(UDim2.fromOffset(width, height), done)
 end
 
-local function setHeight(view: any, height: number)
-	local size = UDim2.new(1, 0, 0, height)
+local function setSize(view: any, width: number, height: number)
+	local size = UDim2.fromOffset(width, height)
 	if view._grow then
 		view._grow:snap(size)
 	else
@@ -290,25 +415,18 @@ end
 function Page._applyPlacements(self: any)
 	local placed = {}
 	for _, item in self._placements do
-		if item.section then
+		if item.hero then
+			if self._heroView then
+				self._heroView.root.Position = UDim2.fromOffset(item.x, item.y)
+				self._heroView.root.Size = UDim2.fromOffset(item.width, item.height)
+			end
+		elseif item.section then
 			placed[item.section] = true
 			local header = self._headers[item.section]
 			if header then
 				header.Visible = true
-				header.Size = UDim2.new(1, 0, 0, item.height)
-				local target = UDim2.fromOffset(0, item.y)
-				local slide = self._headerSlides[item.section]
-				if self._live and header.Position ~= target then
-					if slide == nil then
-						slide = motion.prop(header, "Position", SLIDE_SPEED)
-						self._headerSlides[item.section] = slide
-					end
-					slide:to(target)
-				elseif slide then
-					slide:snap(target)
-				else
-					header.Position = target
-				end
+				header.Position = UDim2.fromOffset(item.x, item.y)
+				header.Size = UDim2.fromOffset(item.width, item.height)
 			end
 		else
 			placed[item.el] = true
@@ -327,7 +445,7 @@ function Page._applyPlacements(self: any)
 		if not placed[key] and view.root.Visible and not view._folding then
 			if self._live then
 				view._folding = true
-				growTo(view, 0, function()
+				growTo(view, view.root.Size.X.Offset, 0, function()
 					view._folding = false
 					view.root.Visible = false
 				end)
@@ -340,7 +458,7 @@ end
 
 function Page._place(self: any, view: any, item: any)
 	local root = view.root
-	local target = UDim2.fromOffset(0, item.y)
+	local target = UDim2.fromOffset(item.x, item.y)
 	local live = self._live
 	local revealing = live and not root.Visible
 	local refolding = view._folding == true
@@ -348,12 +466,16 @@ function Page._place(self: any, view: any, item: any)
 	root.Visible = true
 
 	if revealing then
-		setHeight(view, 0)
-		growTo(view, item.height)
+		setSize(view, item.width, 0)
+		growTo(view, item.width, item.height)
 	elseif refolding then
-		growTo(view, item.height)
+		growTo(view, item.width, item.height)
+	elseif live and view._grow == nil and root.Size.Y.Offset ~= item.height then
+		growTo(view, item.width, item.height)
+	elseif live and view._grow and view._grow.target.Y.Offset ~= item.height then
+		growTo(view, item.width, item.height)
 	else
-		setHeight(view, item.height)
+		setSize(view, item.width, item.height)
 	end
 
 	if live and not revealing and root.Position ~= target then
@@ -374,6 +496,7 @@ function Page._materialize(self: any, force: boolean?)
 	if frame == nil or placements == nil or not self.active then
 		return
 	end
+	-- CanvasPosition is in scaled screen pixels, everything here is in the tiles' own units
 	local scale = self.window.ctx.uiScale()
 	local top = frame.CanvasPosition.Y / scale
 	if not force and self._lastSync and math.abs(top - self._lastSync) < NEAR / 3 then
@@ -384,147 +507,37 @@ function Page._materialize(self: any, force: boolean?)
 	for _, item in placements do
 		local y = item.y
 		if y + item.height >= lo and y <= hi then
-			if item.section then
+			if item.hero then
+				if self._heroView == nil then
+					local view = buildHero(self)
+					view.root.Position = UDim2.fromOffset(item.x, y)
+					view.root.Size = UDim2.fromOffset(item.width, item.height)
+					self._heroView = view
+				end
+			elseif item.section then
 				if self._headers[item.section] == nil then
 					local header = buildHeader(self, item.section)
-					header.Position = UDim2.fromOffset(0, y)
-					header.Size = UDim2.new(1, 0, 0, item.height)
+					header.Position = UDim2.fromOffset(item.x, y)
+					header.Size = UDim2.fromOffset(item.width, item.height)
 					self._headers[item.section] = header
 				end
 			elseif self._views[item.el] == nil then
-				-- a search may have claimed it last, and the row is built differently on a flat list
 				item.el._shownOn = self
 				local ok, view = xpcall(kinds.build, debug.traceback, self.window.ctx, item.el)
 				if ok then
-					view.root.Position = UDim2.fromOffset(0, y)
-					view.root.Size = UDim2.new(1, 0, 0, if self._live then 0 else item.height)
+					view.root.Position = UDim2.fromOffset(item.x, y)
+					view.root.Size = UDim2.fromOffset(item.width, if self._live then 0 else item.height)
 					view.root.Parent = self.canvas
 					self._views[item.el] = view
-					self._rows[view.root] = item.el
 					if self._live then
-						growTo(view, item.height)
+						growTo(view, item.width, item.height)
 					end
 				else
-					warn("sottUI: row " .. tostring(item.el.id) .. " failed: " .. tostring(view))
+					warn("sottUI: tile " .. tostring(item.el.id) .. " failed: " .. tostring(view))
 				end
 			end
 		end
 	end
-end
-
--- the inline counterpart of a popover: same handle, so the list and picker code does not know which it got
-function Page.expand(self: any, anchor: any, height: number, build: (content: any, handle: any) -> ()): boolean
-	local node = anchor
-	local el = nil
-	while node and node ~= self.canvas do
-		if self._rows[node] then
-			el = self._rows[node]
-			break
-		end
-		node = node.Parent
-	end
-	if el == nil then
-		return false
-	end
-	local previous = self._expansion
-	self:collapse()
-	if previous and previous.el == el then
-		return true
-	end
-	local ctx = self.window.ctx
-	local frame = make("Frame", {
-		Name = "Expansion",
-		Size = UDim2.new(1, 0, 0, 0),
-		BackgroundTransparency = 0,
-		ClipsDescendants = true,
-		ZIndex = 2,
-		Parent = self.canvas,
-	})
-	ctx.theme:paint(frame, "BackgroundColor3", "base")
-	local content = make("Frame", { Size = UDim2.new(1, 0, 0, height), Parent = frame })
-	local expansion: any = {
-		el = el,
-		frame = frame,
-		height = height,
-		at = motion.prop(frame, "Position", SLIDE_SPEED),
-		grow = motion.prop(frame, "Size", EXPAND_SPEED),
-	}
-	self._expansion = expansion
-	local handle = {
-		close = function()
-			if self._expansion == expansion then
-				self:collapse()
-			end
-		end,
-		resize = function(newHeight: number)
-			if self._expansion ~= expansion or expansion.height == newHeight then
-				return
-			end
-			expansion.height = newHeight
-			content.Size = UDim2.new(1, 0, 0, newHeight)
-			expansion.grow:to(UDim2.new(1, 0, 0, newHeight))
-			self:_invalidate()
-		end,
-		onKey = function(fn: (string) -> ())
-			expansion.onKey = fn
-		end,
-		onRefresh = function(fn: () -> ())
-			expansion.onRefresh = fn
-		end,
-	}
-	self:layout(true)
-	expansion.at:snap(UDim2.fromOffset(0, expansion.y or 0))
-	build(content, handle)
-	expansion.grow:to(UDim2.new(1, 0, 0, height))
-	-- a list opened near the bottom scrolls itself into view rather than opening off screen
-	local scale = ctx.uiScale()
-	local viewport = self.frame.AbsoluteSize.Y / scale
-	local top = self._scrollTarget or self.frame.CanvasPosition.Y / scale
-	local bottom = (expansion.y or 0) + height
-	if bottom > top + viewport then
-		self:scrollTo(bottom - viewport + 12)
-	end
-	return true
-end
-
-function Page.collapse(self: any)
-	local expansion = self._expansion
-	if expansion == nil then
-		return
-	end
-	self._expansion = nil
-	expansion.grow:to(UDim2.new(1, 0, 0, 0), function()
-		expansion.grow:destroy()
-		expansion.at:destroy()
-		expansion.frame:Destroy()
-	end)
-	self:layout(true)
-end
-
-function Page.expansionKey(self: any, name: string): boolean
-	local expansion = self._expansion
-	if expansion == nil then
-		return false
-	end
-	if name == "Escape" then
-		self:collapse()
-		return true
-	end
-	-- only what a list answers to: anything else, Ctrl+K included, belongs to the window
-	if expansion.onKey and (name == "Up" or name == "Down" or name == "Return") then
-		expansion.onKey(name)
-		return true
-	end
-	return false
-end
-
-function Page.pointerInExpansion(self: any, at: Vector2): boolean
-	local expansion = self._expansion
-	if expansion == nil then
-		return false
-	end
-	local origin, extent = expansion.frame.AbsolutePosition, expansion.frame.AbsoluteSize
-	return at.X >= origin.X and at.Y >= origin.Y and at.X <= origin.X + extent.X and at.Y <= origin.Y + extent.Y
 end
 
 function Page._refreshThumb(self: any)
@@ -539,8 +552,8 @@ function Page._refreshThumb(self: any)
 		thumb.Visible = false
 		return
 	end
-	-- shows while something is moving, then gets out of the way: at rest it would sit across the mint bands
 	thumb.Visible = true
+	-- shows while something is moving, then gets out of the way
 	self._thumbStamp = (self._thumbStamp or 0) + 1
 	local stamp = self._thumbStamp
 	task.delay(THUMB_LINGER, function()
@@ -551,8 +564,8 @@ function Page._refreshThumb(self: any)
 	local height = math.max(viewport * viewport / content, 40)
 	local travel = viewport - height
 	local top = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)
-	thumb.Size = UDim2.new(0, 2, 0, height)
-	thumb.Position = UDim2.new(1, -4, 0, top * travel)
+	thumb.Size = UDim2.new(0, 3, 0, height)
+	thumb.Position = UDim2.new(1, -6, 0, top * travel)
 end
 
 function Page.scrollTo(self: any, y: number, instant: boolean?)
@@ -641,25 +654,23 @@ function Page.mount(self: any, host: any)
 	end)
 end
 
--- this page's rows are whatever it is handed, wherever they live: search results, what is on. a row found here is the
--- same element as on its own page, with a view of its own
+-- a page whose rows are other pages' elements: what is running, what was searched
 function Page.showList(self: any, list: { any }, empty: string?)
 	self.sections = { { title = "", rows = list, flat = true } }
 	for _, el in list do
 		el._shownOn = self
 	end
-	self._emptyText = empty
 	if self.frame then
 		if self._empty == nil then
 			local theme = self.window.ctx.theme
 			self._empty = make("TextLabel", {
-				Position = UDim2.fromOffset(rowModule.PAD, 8),
-				Size = UDim2.new(1, -2 * rowModule.PAD, 0, 36),
+				Position = UDim2.fromOffset(SIDE, 12),
+				Size = UDim2.new(1, -2 * SIDE, 0, 36),
 				TextSize = 17,
 				Parent = self.frame,
 			})
 			theme:type(self._empty, "text")
-			theme:paint(self._empty, "TextColor3", "faint")
+			theme:paint(self._empty, "TextColor3", "muted")
 		end
 		self._empty.Text = empty or ""
 		self._empty.Visible = empty ~= nil
@@ -698,13 +709,6 @@ function Page.destroy(self: any)
 		view.destroy()
 	end
 	self._views = {}
-	for _, slide in self._headerSlides do
-		slide:destroy()
-	end
-	if self._expansion then
-		self._expansion.grow:destroy()
-		self._expansion.at:destroy()
-	end
 	if self._scroll then
 		self._scroll:destroy()
 	end
@@ -724,9 +728,7 @@ function page.new(window: any, name: string): any
 		_ids = 0,
 		_dirty = false,
 		_headers = {},
-		_headerSlides = {},
 		_views = {},
-		_rows = {},
 		_placements = nil,
 	}, Page)
 end

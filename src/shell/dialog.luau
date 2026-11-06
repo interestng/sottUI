@@ -20,7 +20,7 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	local ctx = self.ctx
 	local theme = ctx.theme
 	local layer = self._layer
-	local width = options.width or self.width
+	local width = options.width or 460
 	local maxBody = options.maxHeight or 340
 	local TILE = 60
 
@@ -32,9 +32,10 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 		Parent = layer,
 	})
 	local scrimFade = motion.prop(scrim, "BackgroundTransparency", 22)
+	scrimFade:to(0.4)
 	local panel = make("Frame", {
-		-- over the column, not over the game: it unfolds where the eye already is and the world stays visible
-		Position = ctx.dialogAt(width),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(width, 0),
 		BackgroundTransparency = 0,
 		ClipsDescendants = true,
@@ -46,12 +47,12 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	-- the layer is unscaled, but everything inside measures itself through the window's scale
 	make("UIScale", { Scale = ctx.uiScale(), Parent = panel })
 	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = panel })
-	theme:paint(outline, "Color", "line")
+	theme:paint(outline, "Color", "lineStrong")
 
 	local title = make("TextLabel", {
 		Position = UDim2.fromOffset(20, 16),
 		Size = UDim2.new(1, -40, 0, 40),
-		TextSize = 24,
+		TextSize = 36,
 		Text = options.title or "",
 		ZIndex = 52,
 		Parent = panel,
@@ -133,17 +134,17 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	local footerY = y + bodyHeight + 12
 	local done = make("TextButton", {
 		Position = UDim2.fromOffset(20, footerY),
-		Size = UDim2.new(1, -40, 0, 46),
+		Size = UDim2.new(1, -40, 0, 54),
 		BackgroundTransparency = 0,
-		TextSize = 17,
+		TextSize = 28,
 		Text = options.done or "Done",
 		ZIndex = 52,
 		Parent = panel,
 	})
-	theme:type(done, "text", true)
-	theme:paint(done, "BackgroundColor3", "raised")
-	theme:paint(done, "TextColor3", "text")
-	local total = footerY + 46 + 14
+	theme:type(done, "display")
+	theme:paint(done, "BackgroundColor3", "text")
+	theme:paint(done, "TextColor3", "base")
+	local total = footerY + 54 + 20
 	local shutter: any = motion.prop(panel, "Size", SHUTTER_SPEED)
 	shutter:to(UDim2.fromOffset(width, total))
 
