@@ -1608,7 +1608,7 @@ end if ad.autoShow~=false then task.defer(function()az:setOpen(true)end)end
 return az end function r.setVersion(ad)s=ad end return r end function a.C()local
 aa=a.cache.C if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end
 end end local aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae=
-'0.4.2-board'local function registry()local af=aa.global('getgenv')local ag=if
+'0.4.3-board'local function registry()local af=aa.global('getgenv')local ag=if
 type(af)=='function'then af()else _G local ah=ag.__sottui if type(ah)~='table'
 then ah={current=nil}ag.__sottui=ah end return ah end local af={version=ae,
 motion=ab}ad.setVersion('v'..ae)function af.window(ag)local ah=table.clone(ag or
