@@ -54,6 +54,20 @@ local function newRow(ctx: any, el: any, options: any?): any
 	local settings = options or {}
 	settings.indent = settings.indent or indentOf(el)
 	local view: any = rowModule.new(ctx, el, settings)
+	-- out of its section a bare "FOV" could be anything: in a result list the row says whose it is
+	local shownOn = el._shownOn
+	if shownOn and shownOn.sections[1] and shownOn.sections[1].flat then
+		local owner = el.section and (el.section._root or el.section)
+		local master = owner and owner.masterElement
+		if master and master ~= el then
+			local refreshName = view.refreshName
+			view.refreshName = function(this: any)
+				refreshName(this)
+				this.name.Text = master.label .. " " .. el.label
+			end
+			view:refreshName()
+		end
+	end
 	if settings.indent > 0 then
 		-- a dim stretch of the rail under an open master, so its block reads as one line with the lit rows brighter on it
 		local stretch = make("Frame", {
@@ -156,9 +170,21 @@ function builders.toggle(ctx: any, el: any): any
 	local function draw(instant: boolean)
 		local on = el.value == true
 		view:lit(on, instant)
-		view:ink(view.name, if el.disabled then "faint" elseif on then "text" else "muted", instant)
+		local flooded = master and on
+		view:ink(
+			view.name,
+			if el.disabled then "faint" elseif flooded then "onAccent" elseif on then "text" else "muted",
+			instant
+		)
 		state.Text = if on then "on" else "off"
-		view:ink(state, if el.disabled then "line" elseif on then "accent" else "faint", instant)
+		view:ink(
+			state,
+			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "faint",
+			instant
+		)
+		for _, chip in view.chips do
+			chip.setInk(flooded)
+		end
 		if peek then
 			peek.Visible = not on and el.section.hasOptions == true
 			chevronDown.Visible = not el.section.peeking

@@ -190,11 +190,15 @@ end
 
 -- what is on across every page: the answer to the question you opened the menu to ask
 function Window._fillOn(self: any)
-	local list = {}
+	-- features first: a passive option being on says nothing, so they only show when no feature is running
+	local list, options = {}, {}
 	for _, el in self.ordered do
 		if el.kind == "toggle" and el.value == true then
-			table.insert(list, el)
+			table.insert(if el.spec.primary then list else options, el)
 		end
+	end
+	if #list == 0 then
+		list = options
 	end
 	self._onPage:showList(list, if #list == 0 then "Nothing is on" else nil)
 end
