@@ -21,8 +21,11 @@ local BOTTOM = 28
 local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
-local PRIMARY_HEIGHT = 84
+-- a master is a modest word until it is on, then it takes the page: the size change is half of what makes on feel on
+local MASTER_OFF = 60
+local MASTER_ON = 84
 local MASTER_GAP = 5
+local AFTER_MASTER = 5
 local STAT_HEIGHT = 66
 local NEAR = 360
 local WHEEL_STEP = 110
@@ -291,6 +294,7 @@ function Page.layout(self: any, live: boolean?)
 		y += HERO
 	end
 
+	local lastFolded = false
 	for _, section in self.sections do
 		local shown: { any } = {}
 		for _, el in section.rows do
@@ -300,20 +304,24 @@ function Page.layout(self: any, live: boolean?)
 		end
 		if #shown > 0 or section.tabNames then
 			if (section.title ~= "" or section.tabNames) and not section.masterElement then
+				-- a heading after a stack of masters needs the air they do not
+				if lastFolded then
+					y += SECTION_GAP - MASTER_GAP
+				end
 				table.insert(placements, { section = section, x = SIDE, y = y, width = inner, height = HEADER })
 				y += HEADER
 			end
+			local previousMaster = false
 			local line: { any }, used = {}, 0
-			local function flush(final: boolean)
+			local function flush()
 				if #line == 0 then
 					return
 				end
 				local x, tallest = SIDE, 0
 				for index, entry in line do
 					local span = entry.span
-					-- a hole mid section is closed by widening the tile beside it. a final row stays as it is, a lone toggle
-					-- stretched across the page would read as a master
-					if index == #line and not final then
+					-- no holes: the last tile in a row takes what is left, the sheet keeps both its edges
+					if index == #line then
 						span += GRID - used
 					end
 					local w = span * column + (span - 1) * GAP
@@ -328,14 +336,20 @@ function Page.layout(self: any, live: boolean?)
 			for _, el in shown do
 				local base = spanOf(el)
 				if base == nil then
-					flush(true)
+					flush()
+					-- air after a master is the master's to give; a bare divider straight under it would double it
+					if el.kind == "divider" and el.label == "" and previousMaster then
+						continue
+					end
 					local height = textHeight(el, inner)
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
 					y += height + GAP
 				elseif el.spec.primary then
-					flush(true)
-					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = PRIMARY_HEIGHT })
-					y += PRIMARY_HEIGHT + GAP
+					flush()
+					local height = if el.value == true then MASTER_ON else MASTER_OFF
+					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
+					y += height + GAP + AFTER_MASTER
+					previousMaster = true
 				else
 					local span = math.min(if narrow then base * 2 else base, GRID)
 					-- a long name takes more columns instead of wrapping or shrinking beside its neighbours
@@ -343,8 +357,9 @@ function Page.layout(self: any, live: boolean?)
 						span += if narrow then GRID - span else 4
 					end
 					if used + span > GRID then
-						flush(false)
+						flush()
 					end
+					previousMaster = false
 					table.insert(line, {
 						el = el,
 						span = span,
@@ -353,9 +368,15 @@ function Page.layout(self: any, live: boolean?)
 					used += span
 				end
 			end
-			flush(true)
+			flush()
 			-- folded masters stack as a list of words; only something with content under it needs air after it
-			y += if section.masterElement and #shown == 1 then MASTER_GAP else SECTION_GAP
+			local folded = section.masterElement ~= nil and #shown == 1
+			if folded then
+				y += MASTER_GAP - AFTER_MASTER
+			else
+				y += SECTION_GAP
+			end
+			lastFolded = folded
 		end
 	end
 
@@ -445,6 +466,10 @@ function Page._place(self: any, view: any, item: any)
 		setSize(view, item.width, 0)
 		growTo(view, item.width, item.height)
 	elseif refolding then
+		growTo(view, item.width, item.height)
+	elseif live and view._grow == nil and root.Size.Y.Offset ~= item.height then
+		growTo(view, item.width, item.height)
+	elseif live and view._grow and view._grow.target.Y.Offset ~= item.height then
 		growTo(view, item.width, item.height)
 	else
 		setSize(view, item.width, item.height)

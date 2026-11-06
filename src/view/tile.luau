@@ -72,12 +72,8 @@ end
 
 local function baseColor(self: any): Color3
 	local tokens = self.ctx.theme.tokens
-	local face = self._face
 	if self._lit then
 		return if self._hover then tokens.accentHover else tokens.accent
-	end
-	if face == "action" then
-		return if self._hover then tokens.raised else tokens.base
 	end
 	return if self._hover then tokens.raised else tokens.surface
 end
@@ -238,7 +234,7 @@ function Tile.refreshName(self: any)
 	end
 end
 
-function tile.new(ctx: Ctx, el: any, options: { height: number?, face: string?, inert: boolean? }?): Tile
+function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean? }?): Tile
 	local settings: any = options or {}
 	local root = make("TextButton", {
 		Name = el.kind,
@@ -267,7 +263,6 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, face: string?, 
 		el = el,
 		ctx = ctx,
 		chips = {},
-		_face = settings.face,
 		_cleanups = {},
 		_inks = {},
 		_hover = false,

@@ -28,6 +28,8 @@ local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/
 
 local BAR = 64
 local NAV_SIZE = 34
+local NAV_SIZE_NARROW = 24
+local NARROW_NAV_AT = 760
 local LOGO_SIZE = 26
 local NAV_GAP = 22
 local DEFAULT_SIZE = Vector2.new(900, 640)
@@ -568,6 +570,18 @@ function window.new(options: { [string]: any }): any
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = navList,
 	})
+	-- the sign that there are more pages than fit
+	local navFade = make("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.new(0, 36, 1, 0),
+		BackgroundTransparency = 0,
+		Visible = false,
+		ZIndex = 3,
+		Parent = navClip,
+	})
+	theme:paint(navFade, "BackgroundColor3", "base")
+	make("UIGradient", { Transparency = NumberSequence.new(1, 0), Parent = navFade })
 	local marker = make("Frame", {
 		Name = "Marker",
 		AnchorPoint = Vector2.new(0, 1),
@@ -692,6 +706,9 @@ function window.new(options: { [string]: any }): any
 		uiScale = function(): number
 			return scale.Scale
 		end,
+		popoverTop = function(): number
+			return self.position.Y + BAR * scale.Scale
+		end,
 		isShowing = function(el: any): boolean
 			if not self.isOpen then
 				return false
@@ -804,6 +821,12 @@ function window.new(options: { [string]: any }): any
 		local right = if subtitle.Visible then named else 176
 		navClip.Position = UDim2.fromOffset(left, 0)
 		navClip.Size = UDim2.new(1, -(left + right), 0, BAR)
+		-- a narrow window shrinks the words before it starts hiding them
+		local size = if width < NARROW_NAV_AT then NAV_SIZE_NARROW else NAV_SIZE
+		for _, item in self._navItems do
+			item.TextSize = size
+		end
+		navFade.Visible = navList.AbsoluteSize.X / current > width - left - right
 		self:_syncMarker(true)
 	end
 	self._fitBar = fitBar

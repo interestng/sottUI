@@ -14,7 +14,9 @@ local kinds = {}
 
 local PAD = tileModule.PAD
 local READOUT = 22
-local MASTER_NAME = 42
+local MASTER_NAME_OFF = 28
+local MASTER_NAME_ON = 42
+local MASTER_TYPE_SPEED = 28
 local FILL_SPEED = 42
 local FILL_DRAG_SPEED = 90
 local DRAG_START = 3
@@ -87,8 +89,9 @@ function builders.toggle(ctx: any, el: any): any
 	local markSize = if master then MASTER_MARK else MARK
 	if master then
 		theme:type(view.name, "display")
-		view.name.TextSize = MASTER_NAME
+		view.name.TextSize = if el.value == true then MASTER_NAME_ON else MASTER_NAME_OFF
 		view.name.TextWrapped = false
+		view._nameSize = view:own(motion.prop(view.name, "TextSize", MASTER_TYPE_SPEED))
 	end
 
 	-- colour alone is not enough on a dim tile: off must read as off, not as unavailable or as a button
@@ -137,6 +140,12 @@ function builders.toggle(ctx: any, el: any): any
 		local flooded = master and on
 		if master then
 			view:flood(on, instant)
+			local size = if on then MASTER_NAME_ON else MASTER_NAME_OFF
+			if instant or not ctx.isShowing(el) then
+				view._nameSize:snap(size)
+			else
+				view._nameSize:to(size)
+			end
 		end
 		view:ink(
 			view.name,
@@ -504,21 +513,10 @@ function builders.input(ctx: any, el: any): any
 	return view
 end
 
--- outlined and hollow: filled means state, an outline with a chevron means it does something once
+-- no mark and bright ink: a tile with nothing to report is one that does something when pressed
 function builders.button(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el, { face = "action" })
-	local theme = ctx.theme
+	local view: any = tileModule.new(ctx, el)
 	local armed: thread? = nil
-
-	local outline = make("UIStroke", {
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = view.root,
-	})
-	theme:paint(outline, "Color", "lineStrong")
-	local mark = ctx.glyph.chevron(view.root, "muted", "right")
-	mark.AnchorPoint = Vector2.new(1, 0.5)
-	mark.Position = UDim2.new(1, -PAD, 0.5, 0)
-	reserveRight(view, CHEVRON)
 
 	local function draw()
 		view:refreshName()

@@ -49,8 +49,12 @@ function overlay.popover(ctx: any, layer: any): any
 		local left = if width > anchorSize.X then anchorPos.X + anchorSize.X - width else anchorPos.X
 		local x = math.clamp(left, MARGIN, viewport.X - width - MARGIN)
 		local below = anchorPos.Y + anchorSize.Y + 2
-		local flip = below + height + MARGIN > viewport.Y and anchorPos.Y - height - 2 > MARGIN
-		local y = if flip then anchorPos.Y - height - 2 else math.min(below, viewport.Y - height - MARGIN)
+		-- stays under the header: navigation and the close button remain reachable with a list open
+		local ceiling = math.max(ctx.popoverTop(), MARGIN)
+		local flip = below + height + MARGIN > viewport.Y and anchorPos.Y - height - 2 > ceiling
+		local y = if flip
+			then anchorPos.Y - height - 2
+			else math.max(math.min(below, viewport.Y - height - MARGIN), ceiling)
 
 		local catcher = make("TextButton", {
 			Name = "Catcher",
