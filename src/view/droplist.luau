@@ -90,8 +90,8 @@ function droplist.open(ctx: any, el: any, anchor: any)
 					item.root.Position = UDim2.new(0, 4, 0, (index - 1) * ITEM + 4)
 					item.text.Text = display(option)
 					local picked = isPicked(el, option)
-					theme:paint(item.text, "TextColor3", if picked then "onAccent" else "text")
-					theme:paint(item.root, "BackgroundColor3", if picked then "accent" else "line")
+					theme:paint(item.text, "TextColor3", if picked then "accent" else "text")
+					theme:paint(item.root, "BackgroundColor3", if picked then "accentDim" else "lineStrong")
 					item.root.BackgroundTransparency = if picked or index == highlighted then 0 else 1
 				end
 			end
@@ -146,6 +146,7 @@ function droplist.open(ctx: any, el: any, anchor: any)
 				Visible = false,
 				Parent = canvas,
 			})
+			make("UICorner", { CornerRadius = UDim.new(0, 7), Parent = root })
 			local text = make("TextLabel", {
 				Position = UDim2.fromOffset(10, 0),
 				Size = UDim2.new(1, -20, 1, 0),

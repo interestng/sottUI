@@ -40,6 +40,8 @@ function overlay.popover(ctx: any, layer: any): any
 
 	function api.open(_: any, anchor: any, width: number, height: number, build: (content: any, handle: any) -> ())
 		close()
+		-- a tip left up from hovering the row would sit on top of the list
+		ctx.tooltip:hide()
 		local viewport = layer.AbsoluteSize
 		-- a Position in the layer differs from AbsolutePosition by the layer's own origin, which is the topbar inset
 		local anchorPos, anchorSize = anchor.AbsolutePosition - layer.AbsolutePosition, anchor.AbsoluteSize
