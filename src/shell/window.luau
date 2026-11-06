@@ -493,7 +493,7 @@ function window.new(options: { [string]: any }): any
 		Size = UDim2.new(1, -(AVATAR + 20 + 56), 1, 0),
 		TextSize = 26,
 		Text = "",
-		PlaceholderText = options.subtitle or "Find a setting",
+		PlaceholderText = "Find a setting",
 		ClipsDescendants = true,
 		ZIndex = 3,
 		Parent = bar,
@@ -533,6 +533,20 @@ function window.new(options: { [string]: any }): any
 		Parent = words,
 	})
 	theme:paint(marker, "BackgroundColor3", "accent")
+	local place = make("TextLabel", {
+		Name = "Place",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -18, 0, 0),
+		Size = UDim2.new(0, 200, 1, 0),
+		TextSize = 15,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Text = options.subtitle or "",
+		ZIndex = 2,
+		Parent = words,
+	})
+	theme:type(place, "text")
+	theme:paint(place, "TextColor3", "faint")
 
 	local panel = make("Frame", {
 		Name = "Panel",

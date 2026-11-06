@@ -63,9 +63,17 @@ function search.settings(query: string, items: { any }, limit: number): { any }
 	table.sort(hits, function(a, b)
 		return a.score > b.score
 	end)
-	local out = {}
-	for i = 1, math.min(limit, #hits) do
-		out[i] = hits[i].item
+	-- a key or colour draws inside its host's row, so a hit on one is a hit on that row: listing it again gave "Walk speed" twice
+	local out, seen = {}, {}
+	for _, hit in hits do
+		local row = hit.item.host or hit.item
+		if not seen[row] then
+			seen[row] = true
+			table.insert(out, row)
+			if #out == limit then
+				break
+			end
+		end
 	end
 	return out
 end
