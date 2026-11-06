@@ -25,7 +25,7 @@ local VALUE_SIZE = 17
 local CHEVRON = 22
 local MASTER_MARK = 16
 local TRACK = 1
-local BAR = 3
+local BAR = 4
 local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local STAT_VALUE = 34
@@ -128,6 +128,9 @@ function builders.toggle(ctx: any, el: any): any
 			end
 			for _, chip in view.chips do
 				chip.setInk(false)
+				if chip.setMuted then
+					chip.setMuted(not on)
+				end
 			end
 		end
 		view.root.Activated:Connect(function()
