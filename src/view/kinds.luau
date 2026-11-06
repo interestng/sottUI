@@ -48,7 +48,19 @@ end
 local function newRow(ctx: any, el: any, options: any?): any
 	local settings = options or {}
 	settings.indent = settings.indent or indentOf(el)
-	return rowModule.new(ctx, el, settings)
+	local view: any = rowModule.new(ctx, el, settings)
+	if settings.indent > 0 then
+		-- a dim stretch of the rail under an open master, so its block reads as one line with the lit rows brighter on it
+		local stretch = make("Frame", {
+			Name = "Stretch",
+			Size = UDim2.new(0, 3, 1, 0),
+			BackgroundTransparency = 0,
+			ZIndex = 1,
+			Parent = view.root,
+		})
+		ctx.theme:paint(stretch, "BackgroundColor3", "accentDim")
+	end
+	return view
 end
 
 local function addons(view: any, ctx: any, el: any, inner: number): number

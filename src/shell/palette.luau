@@ -65,8 +65,8 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 				item.name.Text = el.label
 				item.where.Text = describe(el)
 				item.root.BackgroundTransparency = if i == selected then 0 else 1
-				theme:paint(item.name, "TextColor3", if i == selected then "onAccent" else "text")
-				theme:paint(item.where, "TextColor3", if i == selected then "onAccent" else "muted")
+				theme:paint(item.name, "TextColor3", if i == selected then "text" else "muted")
+				theme:paint(item.where, "TextColor3", "faint")
 			else
 				item.root.Visible = false
 			end
@@ -161,7 +161,7 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 				ZIndex = 42,
 				Parent = panel,
 			})
-			theme:paint(root, "BackgroundColor3", "accent")
+			theme:paint(root, "BackgroundColor3", "raised")
 			local name = make("TextLabel", {
 				Position = UDim2.fromOffset(12, 0),
 				Size = UDim2.new(0.6, -12, 1, 0),
