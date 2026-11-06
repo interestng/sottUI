@@ -717,7 +717,17 @@ function Page.fitHeight(self: any, limit: number): number
 			end
 		end
 	end
-	return if best > 0 then best + FIT_PAD else limit
+	if best == 0 then
+		return limit
+	end
+	-- never past where the next thing starts, or a sliver of it shows
+	local nextTop = math.huge
+	for _, item in self._placements do
+		if item.y >= best and item.y < nextTop then
+			nextTop = item.y
+		end
+	end
+	return math.min(best + FIT_PAD, nextTop)
 end
 
 function Page.setActive(self: any, active: boolean)

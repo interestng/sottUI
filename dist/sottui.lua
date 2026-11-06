@@ -1280,30 +1280,31 @@ _emptyVisible=ac~=nil end aa:_invalidate()end function F.adopt(aa)for ab,ac in
 aa._views do ab._view=ac ab._shownOn=aa if ac.refresh then ac.refresh()end for G
 ,H in ac.addonChips or{}do G._view=H if H.refresh then H.refresh()end end end
 end function F.fitHeight(aa,ab)local ac=0 for G,H in aa._placements or{}do if H.
-el then local I=H.y+H.height if I+r<=ab and I>ac then ac=I end end end return if
-ac>0 then ac+r else ab end function F.setActive(aa,ab)aa.active=ab if aa.frame
-then aa.frame.Visible=ab if not ab then aa.thumb.Visible=false end end if ab
-then aa:layout()end end function F.destroy(aa)aa.destroyed=true for ab,ac in aa.
-_views do ac.destroy()end aa._views={}if aa._scroll then aa._scroll:destroy()end
-if aa.frame then aa.frame:Destroy()aa.thumb:Destroy()end end function h.new(aa,
-ab)return setmetatable({name=ab,window=aa,sections={},active=false,destroyed=
-false,_ids=0,_dirty=false,_headers={},_views={},_placements=nil},F)end return h
-end function a.y()local aa=a.cache.y if not aa then aa={c=__modImpl()}a.cache.y=
-aa end return aa.c end end do local function __modImpl()local aa=a.f()local ab=
-UDim2.fromOffset(16,72)local ac=44 return function(b,c,d)local e=aa('TextButton'
-,{Name='Open',Position=ab,Size=UDim2.fromOffset(ac,ac),BackgroundTransparency=0,
-TextSize=24,Text='s',Visible=false,ZIndex=50,Parent=b})c:type(e,'display')c:
-paint(e,'BackgroundColor3','accent')c:paint(e,'TextColor3','onAccent')e.
-Activated:Connect(d)return e end end function a.z()local aa=a.cache.z if not aa
-then aa={c=__modImpl()}a.cache.z=aa end return aa.c end end do local function 
-__modImpl()local aa=a.n()local ab={}local function rgb(ac)return Color3.fromRGB(
-bit32.band(bit32.rshift(ac,16),255),bit32.band(bit32.rshift(ac,8),255),bit32.
-band(ac,255))end local ac={base=rgb(0x7100d),surface=rgb(0x141c18),raised=rgb(
-0x1e2b25),line=rgb(0x1a2d27),lineStrong=rgb(0x2f4a40),text=rgb(0xebe8da),muted=
-rgb(0xb4c2b8),faint=rgb(0x5f756b),accent=rgb(0x7ee0c4),accentHover=rgb(0x9bebd4)
-,accentDim=rgb(0x1f4a3e),onAccent=rgb(0xb1a13),danger=rgb(0xe5604d)}local b=
-'rbxasset://fonts/families/BuilderSans.json'local c=
-'rbxasset://fonts/families/RobotoCondensed.json'local d={}d.__index=d function
+el then local I=H.y+H.height if I+r<=ab and I>ac then ac=I end end end if ac==0
+then return ab end local G=math.huge for H,I in aa._placements do if I.y>=ac and
+I.y<G then G=I.y end end return math.min(ac+r,G)end function F.setActive(aa,ab)
+aa.active=ab if aa.frame then aa.frame.Visible=ab if not ab then aa.thumb.
+Visible=false end end if ab then aa:layout()end end function F.destroy(aa)aa.
+destroyed=true for ab,ac in aa._views do ac.destroy()end aa._views={}if aa.
+_scroll then aa._scroll:destroy()end if aa.frame then aa.frame:Destroy()aa.thumb
+:Destroy()end end function h.new(aa,ab)return setmetatable({name=ab,window=aa,
+sections={},active=false,destroyed=false,_ids=0,_dirty=false,_headers={},_views=
+{},_placements=nil},F)end return h end function a.y()local aa=a.cache.y if not
+aa then aa={c=__modImpl()}a.cache.y=aa end return aa.c end end do local function 
+__modImpl()local aa=a.f()local ab=UDim2.fromOffset(16,72)local ac=44 return
+function(b,c,d)local e=aa('TextButton',{Name='Open',Position=ab,Size=UDim2.
+fromOffset(ac,ac),BackgroundTransparency=0,TextSize=24,Text='s',Visible=false,
+ZIndex=50,Parent=b})c:type(e,'display')c:paint(e,'BackgroundColor3','accent')c:
+paint(e,'TextColor3','onAccent')e.Activated:Connect(d)return e end end function
+a.z()local aa=a.cache.z if not aa then aa={c=__modImpl()}a.cache.z=aa end return
+aa.c end end do local function __modImpl()local aa=a.n()local ab={}local 
+function rgb(ac)return Color3.fromRGB(bit32.band(bit32.rshift(ac,16),255),bit32.
+band(bit32.rshift(ac,8),255),bit32.band(ac,255))end local ac={base=rgb(0x7100d),
+surface=rgb(0x141c18),raised=rgb(0x1e2b25),line=rgb(0x1a2d27),lineStrong=rgb(
+0x2f4a40),text=rgb(0xebe8da),muted=rgb(0xb4c2b8),faint=rgb(0x5f756b),accent=rgb(
+0x7ee0c4),accentHover=rgb(0x9bebd4),accentDim=rgb(0x1f4a3e),onAccent=rgb(0xb1a13
+),danger=rgb(0xe5604d)}local b='rbxasset://fonts/families/BuilderSans.json'local
+c='rbxasset://fonts/families/RobotoCondensed.json'local d={}d.__index=d function
 ab.defaults()return table.clone(ac)end function ab.new(e)local f=(ab.defaults())
 for g,h in(e or{})do f[g]=h end local g={tokens=f,fonts={text=b,display=c},
 changed=aa.new(),_paints={},_types={},_count=0}return((setmetatable(g,d)))end
@@ -1591,7 +1592,7 @@ end if ad.autoShow~=false then task.defer(function()az:setOpen(true)end)end
 return az end function r.setVersion(ad)s=ad end return r end function a.C()local
 aa=a.cache.C if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end
 end end local aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae=
-'0.3.4-dock'local function registry()local af=aa.global('getgenv')local ag=if
+'0.3.5-dock'local function registry()local af=aa.global('getgenv')local ag=if
 type(af)=='function'then af()else _G local ah=ag.__sottui if type(ah)~='table'
 then ah={current=nil}ag.__sottui=ah end return ah end local af={version=ae,
 motion=ab}ad.setVersion('v'..ae)function af.window(ag)local ah=table.clone(ag or
