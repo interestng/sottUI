@@ -26,17 +26,26 @@ local window = {}
 local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
 
-local WIDTH = 640
-local BAR = 76
-local AVATAR = 76
-local WORDS = 44
-local WORD = 16
-local WORD_GAP = 22
-local MAX_PANEL = 560
-local TOP = 0.14
+local WIDTH = 420
+local DOCK = 64
+local AVATAR = 64
+local BOTTOM = 24
+local WORD = 19
+local WORD_GAP = 24
+local CHIP = 17
+local CHIP_PAD = 14
+local CHIP_HEIGHT = 36
+local CHIP_GAP = 6
+local SEARCH = 110
+local CLOSE = 44
+local EDGE = 12
+local MAX_PANEL = 600
 local PANEL_SPEED = 30
 local OPEN_SPEED = 28
 local MARKER_SPEED = 30
+local SHEET_SPEED = 34
+local DOCK_SPEED = 30
+local MAX_CHIPS = 6
 local MAX_RESULTS = 24
 local NAME_LENGTH = 12
 
@@ -82,23 +91,103 @@ function Window._registerElement(self: any, el: any, page: any, public: boolean)
 			if self._showing == self._onPage and self.isOpen then
 				self:_fillOn()
 			end
+			if el.spec.primary then
+				self:_drawChips()
+			end
 		end)
+		if el.spec.primary and el.value == true then
+			self:_drawChips()
+		end
 	end
+end
+
+-- what is running lives on the dock itself: readable with every sheet closed, and one click turns it off
+function Window._drawChips(self: any)
+	if self._chipsQueued or self.destroyed then
+		return
+	end
+	self._chipsQueued = true
+	task.defer(function()
+		self._chipsQueued = false
+		if self.destroyed then
+			return
+		end
+		local running = {}
+		for _, el in self.ordered do
+			if el.kind == "toggle" and el.spec.primary and el.value == true then
+				table.insert(running, el)
+			end
+		end
+		for _, chip in self._chips do
+			chip:Destroy()
+		end
+		table.clear(self._chips)
+		local theme = self.ctx.theme
+		local function add(text: string, order: number, onPress: () -> ())
+			local width = math.ceil(metrics.width("display", text, CHIP)) + 2 * CHIP_PAD
+			local chip = make("TextButton", {
+				Name = "Chip",
+				Size = UDim2.fromOffset(width, CHIP_HEIGHT),
+				BackgroundTransparency = 0,
+				TextSize = CHIP,
+				Text = text,
+				LayoutOrder = order,
+				ZIndex = 3,
+				Parent = self._row,
+			})
+			theme:type(chip, "display")
+			theme:paint(chip, "BackgroundColor3", "accent")
+			theme:paint(chip, "TextColor3", "onAccent")
+			chip.Activated:Connect(onPress)
+			table.insert(self._chips, chip)
+		end
+		for index, el in running do
+			if index > MAX_CHIPS then
+				add("+" .. (#running - MAX_CHIPS), 100 + index, function()
+					self:_fillOn()
+					self:_show(self._onPage)
+				end)
+				break
+			end
+			add(el.label, 100 + index, function()
+				el:set(false)
+			end)
+		end
+	end)
 end
 
 function Window._setPerson(self: any, options: any)
 	self._person = options
 end
 
--- the panel is as long as what is in it: one result, one line
+-- the sheet is as long as what is in it: one result, one line
 function Window._contentChanged(self: any, content: number, live: boolean?)
-	local available = self._gui.AbsoluteSize.Y * (1 - TOP) / self._scale.Scale - BAR - WORDS - 24
+	if self._showing == nil then
+		return
+	end
+	local scale = self._scale.Scale
+	local available = self._gui.AbsoluteSize.Y / scale - DOCK - BOTTOM / scale - EDGE
 	local height = math.min(content, MAX_PANEL, available)
-	local size = UDim2.new(1, 0, 0, height)
+	local size = UDim2.new(0, WIDTH, 0, height)
 	if live then
 		self._panelSize:to(size)
 	else
 		self._panelSize:snap(size)
+	end
+end
+
+-- the sheet rises out of the dock directly over what opened it, so the eye never has to travel to find it
+function Window._placeSheet(self: any, item: any, instant: boolean)
+	local scale = self._scale.Scale
+	local viewport = self._gui.AbsoluteSize.X
+	local width = WIDTH * scale
+	local center = item.AbsolutePosition.X - self._gui.AbsolutePosition.X + item.AbsoluteSize.X / 2
+	local x = math.clamp(center - width / 2, EDGE, math.max(viewport - width - EDGE, EDGE))
+	local target = UDim2.new(0, math.floor(x), 1, -math.floor(BOTTOM + DOCK * scale))
+	if instant then
+		self._sheetAt:snap(target)
+	else
+		self._sheetAt:to(target)
 	end
 end
 
@@ -114,10 +203,30 @@ function Window._show(self: any, page: any, instant: boolean?)
 		previous:setActive(false)
 	end
 	self._showing = page
+	local anchor = self._words[page] or self._box
+	-- a sheet opening from nothing starts where it belongs; only one already up travels
+	self:_placeSheet(anchor, instant == true or previous == nil)
 	page:setActive(true)
 	page:adopt()
 	self:_syncMarker(instant)
 	self:_saveState()
+end
+
+function Window._hideSheet(self: any)
+	local previous = self._showing
+	if previous == nil then
+		return
+	end
+	self.ctx.hover.clear()
+	self.ctx.popover:close()
+	self.keys:cancel()
+	self._showing = nil
+	self._panelSize:to(UDim2.new(0, WIDTH, 0, 0), function()
+		if self._showing == nil then
+			previous:setActive(false)
+		end
+	end)
+	self:_syncMarker()
 end
 
 function Window._syncMarker(self: any, instant: boolean?)
@@ -125,7 +234,9 @@ function Window._syncMarker(self: any, instant: boolean?)
 	local active = nil
 	for page, item in self._words do
 		local on = self._showing == page
-		tint(item, "TextColor3", if on then "text" else "faint")
+		if item:IsA("TextButton") and item.Text ~= "" then
+			tint(item, "TextColor3", if on then "text" else "muted")
+		end
 		if on then
 			active = item
 		end
@@ -135,47 +246,58 @@ function Window._syncMarker(self: any, instant: boolean?)
 		return
 	end
 	local scale = self._scale.Scale
-	local x = (active.AbsolutePosition.X - self._wordList.AbsolutePosition.X) / scale
-	local position = UDim2.fromOffset(x, WORDS - 4)
+	local x = (active.AbsolutePosition.X - self._dock.AbsolutePosition.X) / scale
+	local position = UDim2.fromOffset(x, 0)
 	local size = UDim2.fromOffset(active.AbsoluteSize.X / scale, 3)
-	if instant then
+	if instant or self._markerSize.target == nil or self._markerSize.target.X.Offset == 0 then
 		self._markerAt:snap(position)
-		self._markerSize:snap(size)
 	else
 		self._markerAt:to(position)
+	end
+	if instant then
+		self._markerSize:snap(size)
+	else
 		self._markerSize:to(size)
 	end
 end
 
-local function addWord(self: any, page: any, name: string, order: number)
-	local theme = self.ctx.theme
-	local width = math.ceil(metrics.width("textMedium", name, WORD)) + 2
-	local item = make("TextButton", {
-		Name = name,
-		Size = UDim2.fromOffset(width, WORDS),
-		TextSize = WORD,
-		Text = name,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		LayoutOrder = order,
-		Parent = self._wordList,
-	})
-	theme:type(item, "text", true)
-	theme:paint(item, "TextColor3", "faint")
+local function bindWord(self: any, page: any, item: any)
 	self._words[page] = item
 	item.Activated:Connect(function()
 		if self._box.Text ~= "" then
 			self._box.Text = ""
 		end
-		self:_show(page)
+		if self._showing == page then
+			self:_hideSheet()
+		else
+			self:_show(page)
+		end
 	end)
+end
+
+local function addWord(self: any, page: any, name: string, order: number)
+	local theme = self.ctx.theme
+	local width = math.ceil(metrics.width("display", name, WORD)) + 2
+	local item = make("TextButton", {
+		Name = name,
+		Size = UDim2.new(0, width, 1, 0),
+		TextSize = WORD,
+		Text = name,
+		LayoutOrder = order,
+		ZIndex = 3,
+		Parent = self._row,
+	})
+	theme:type(item, "display")
+	theme:paint(item, "TextColor3", "muted")
+	bindWord(self, page, item)
 	item.MouseEnter:Connect(function()
 		if self._showing ~= page then
-			self.ctx.tint(item, "TextColor3", "muted")
+			self.ctx.tint(item, "TextColor3", "text")
 		end
 	end)
 	item.MouseLeave:Connect(function()
 		if self._showing ~= page then
-			self.ctx.tint(item, "TextColor3", "faint")
+			self.ctx.tint(item, "TextColor3", "muted")
 		end
 	end)
 end
@@ -183,7 +305,12 @@ end
 function Window.page(self: any, name: string): any
 	local built = pageModule.new(self, name)
 	table.insert(self.pages, built)
-	addWord(self, built, name, #self.pages + 1)
+	-- your face is the way home: one less word on a strip that stays over the game
+	if name == "Home" and self._homeAvatar then
+		bindWord(self, built, self._homeAvatar)
+	else
+		addWord(self, built, name, 2 + #self.pages)
+	end
 	built:mount(self._panel)
 	return built
 end
@@ -205,8 +332,9 @@ end
 
 function Window._query(self: any, text: string)
 	if text == "" then
-		self:_fillOn()
-		self:_show(self._onPage)
+		if self._showing == self._resultsPage then
+			self:_hideSheet()
+		end
 		self._resultsPage:showList({})
 		return
 	end
@@ -252,24 +380,19 @@ function Window.setOpen(self: any, open: boolean)
 	if not open and self._dialogClose then
 		self._dialogClose()
 	end
-	local closed = UDim2.new(0.5, 0, TOP, -16)
 	if open then
 		self._root.Visible = true
 		self._modal.Visible = true
 		self:_guardCursor(true)
-		self._at:to(UDim2.new(0.5, 0, TOP, 0))
-		self:_fillOn()
-		self:_show(self._onPage, true)
-		self._reveal:to(UDim2.new(1, 0, 1, 0))
-		if not self.ctx.touch then
-			self._box:CaptureFocus()
-		end
+		self._at:to(UDim2.new(0.5, 0, 1, -BOTTOM))
+		self:_drawChips()
+		-- no focus and no sheet on open: the keyboard stays with the game until you ask for the menu's
 	else
 		self._modal.Visible = false
 		self:_guardCursor(false)
 		self._box:ReleaseFocus()
-		self._at:to(closed)
-		self._reveal:to(UDim2.new(1, 0, 0, 0), function()
+		self:_hideSheet()
+		self._at:to(UDim2.new(0.5, 0, 1, DOCK), function()
 			if not self.isOpen then
 				self._root.Visible = false
 			end
@@ -319,7 +442,9 @@ function Window.setTheme(self: any, partial: { [string]: Color3 })
 end
 
 function Window.setScale(self: any, scale: number)
-	self._scale.Scale = math.clamp(scale, 0.7, 1.5)
+	local value = math.clamp(scale, 0.7, 1.5)
+	self._scale.Scale = value
+	self._panelScale.Scale = value
 	self:_saveState()
 end
 
@@ -431,7 +556,7 @@ function window.new(options: { [string]: any }): any
 	maid:add(gui)
 
 	local files = env.files()
-	local folder = options.folder or "sottui_command"
+	local folder = options.folder or "sottui_dock"
 	local stateFile = options.stateFile or (folder .. "/window.json")
 	local saved: any = nil
 	if files then
@@ -443,15 +568,14 @@ function window.new(options: { [string]: any }): any
 		saved = {}
 	end
 
+	-- the whole screen so the dock and sheet can be placed against its edges; it takes no input itself
 	local root = make("Frame", {
 		Name = "Root",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, TOP, -16),
-		Size = UDim2.fromOffset(WIDTH, BAR + WORDS),
+		Size = UDim2.fromScale(1, 1),
 		Visible = false,
 		Parent = gui,
 	})
-	local scale = make("UIScale", { Scale = tonumber(saved.scale) or 1, Parent = root })
+	local startScale = tonumber(saved.scale) or 1
 	local layer = make("Frame", { Name = "Layer", Size = UDim2.fromScale(1, 1), ZIndex = 100, Parent = gui })
 	local modal = make("TextButton", {
 		Name = "Modal",
@@ -461,20 +585,42 @@ function window.new(options: { [string]: any }): any
 		Parent = root,
 	})
 
-	local bar = make("TextButton", {
-		Name = "Bar",
-		Size = UDim2.new(1, 0, 0, BAR),
+	local dock = make("Frame", {
+		Name = "Dock",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, DOCK),
+		Size = UDim2.fromOffset(400, DOCK),
 		BackgroundTransparency = 0,
+		ClipsDescendants = true,
+		Active = true,
 		ZIndex = 3,
 		Parent = root,
 	})
-	theme:paint(bar, "BackgroundColor3", "surface")
-	local avatar = make("Frame", {
+	theme:paint(dock, "BackgroundColor3", "surface")
+	local scale = make("UIScale", { Scale = startScale, Parent = dock })
+	local row = make("Frame", {
+		Name = "Row",
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 3,
+		Parent = dock,
+	})
+	local rowLayout = make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, WORD_GAP),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = row,
+	})
+
+	local avatar = make("TextButton", {
+		Name = "Avatar",
 		Size = UDim2.fromOffset(AVATAR, AVATAR),
 		BackgroundTransparency = 0,
 		ClipsDescendants = true,
+		Text = "",
+		LayoutOrder = 1,
 		ZIndex = 3,
-		Parent = bar,
+		Parent = row,
 	})
 	theme:paint(avatar, "BackgroundColor3", "accent")
 	local localPlayer = env.service("Players").LocalPlayer
@@ -488,76 +634,46 @@ function window.new(options: { [string]: any }): any
 			Parent = avatar,
 		})
 	end
+
 	local box = make("TextBox", {
-		Position = UDim2.fromOffset(AVATAR + 20, 0),
-		Size = UDim2.new(1, -(AVATAR + 20 + 56), 1, 0),
-		TextSize = 26,
+		Name = "Search",
+		Size = UDim2.new(0, SEARCH, 1, 0),
+		TextSize = WORD,
 		Text = "",
-		PlaceholderText = "Find a setting",
+		PlaceholderText = "Search",
+		ClearTextOnFocus = false,
 		ClipsDescendants = true,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		LayoutOrder = 300,
 		ZIndex = 3,
-		Parent = bar,
+		Parent = row,
 	})
 	theme:type(box, "display")
 	theme:paint(box, "TextColor3", "text")
-	theme:paint(box, "PlaceholderColor3", "faint")
+	theme:paint(box, "PlaceholderColor3", "muted")
 
-	local words = make("Frame", {
-		Name = "Words",
-		Position = UDim2.fromOffset(0, BAR),
-		Size = UDim2.new(1, 0, 0, WORDS),
-		BackgroundTransparency = 0,
-		ClipsDescendants = true,
-		ZIndex = 2,
-		Parent = root,
-	})
-	theme:paint(words, "BackgroundColor3", "base")
-	local wordList = make("Frame", {
-		Name = "List",
-		Position = UDim2.fromOffset(18, 0),
-		Size = UDim2.new(1, -18, 1, 0),
-		ZIndex = 2,
-		Parent = words,
-	})
-	make("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, WORD_GAP),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = wordList,
-	})
 	local marker = make("Frame", {
-		Position = UDim2.fromOffset(18, WORDS - 4),
+		Name = "Marker",
 		Size = UDim2.fromOffset(0, 3),
 		BackgroundTransparency = 0,
-		ZIndex = 3,
-		Parent = words,
+		ZIndex = 4,
+		Parent = dock,
 	})
 	theme:paint(marker, "BackgroundColor3", "accent")
-	local place = make("TextLabel", {
-		Name = "Place",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -18, 0, 0),
-		Size = UDim2.new(0, 200, 1, 0),
-		TextSize = 15,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Text = options.subtitle or "",
-		ZIndex = 2,
-		Parent = words,
-	})
-	theme:type(place, "text")
-	theme:paint(place, "TextColor3", "faint")
 
 	local panel = make("Frame", {
-		Name = "Panel",
-		Position = UDim2.fromOffset(0, BAR + WORDS),
-		Size = UDim2.new(1, 0, 0, 0),
+		Name = "Sheet",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, -(BOTTOM + DOCK)),
+		Size = UDim2.new(0, WIDTH, 0, 0),
 		BackgroundTransparency = 0,
 		ClipsDescendants = true,
 		Active = true,
+		ZIndex = 2,
 		Parent = root,
 	})
 	theme:paint(panel, "BackgroundColor3", "base")
+	local panelScale = make("UIScale", { Scale = startScale, Parent = panel })
 	local self: any = setmetatable({
 		ctx = nil,
 		pages = {},
@@ -573,10 +689,14 @@ function window.new(options: { [string]: any }): any
 		_layer = layer,
 		_modal = modal,
 		_scale = scale,
+		_panelScale = panelScale,
 		_box = box,
 		_panel = panel,
+		_dock = dock,
+		_row = row,
+		_homeAvatar = avatar,
+		_chips = {},
 		_words = {},
-		_wordList = wordList,
 		_subtitleText = options.subtitle,
 		_files = files,
 		_stateFile = stateFile,
@@ -602,13 +722,13 @@ function window.new(options: { [string]: any }): any
 		end,
 		dialogAt = function(): UDim2
 			local viewport = layer.AbsoluteSize
-			return UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor(viewport.Y * TOP))
+			return UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor(viewport.Y * 0.2))
 		end,
 		isShowing = function(el: any): boolean
-			if not self.isOpen then
+			if not self.isOpen or self._showing == nil then
 				return false
 			end
-			return self._showing == nil or el._shownOn == self._showing or el._page == self._showing
+			return el._shownOn == self._showing or el._page == self._showing
 		end,
 		setScrollLocked = function(locked: boolean)
 			local page = self._showing
@@ -655,29 +775,24 @@ function window.new(options: { [string]: any }): any
 	end)
 	ctx.keys = self.keys
 
-	self._at = maid:add(motion.prop(root, "Position", OPEN_SPEED))
+	self._at = maid:add(motion.prop(dock, "Position", OPEN_SPEED))
 	self._panelSize = maid:add(motion.prop(panel, "Size", PANEL_SPEED))
+	self._sheetAt = maid:add(motion.prop(panel, "Position", SHEET_SPEED))
 	self._markerAt = maid:add(motion.prop(marker, "Position", MARKER_SPEED))
 	self._markerSize = maid:add(motion.prop(marker, "Size", MARKER_SPEED))
-	-- opening scales nothing and fades nothing: the words and the panel hold still and the height arrives
-	self._reveal = maid:add(motion.new(UDim2.new(1, 0, 1, 0), OPEN_SPEED, function(value: UDim2)
-		words.Visible = value.Y.Scale > 0.5
-		panel.Visible = value.Y.Scale > 0.5
-		bar.BackgroundTransparency = 1 - math.clamp(value.Y.Scale * 2, 0, 1)
-	end))
+	local dockSize = maid:add(motion.prop(dock, "Size", DOCK_SPEED))
 
 	self._onPage = pageModule.new(self, "On")
 	self._resultsPage = pageModule.new(self, "Results")
 	self._onPage:mount(panel)
 	self._resultsPage:mount(panel)
-	addWord(self, self._onPage, "On now", 1)
 
 	local close = make("TextButton", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -8, 0.5, 0),
-		Size = UDim2.fromOffset(44, 44),
+		Name = "Close",
+		Size = UDim2.new(0, CLOSE, 1, 0),
+		LayoutOrder = 400,
 		ZIndex = 4,
-		Parent = bar,
+		Parent = row,
 	})
 	local crossIcon = ctx.glyph.cross(close, "muted")
 	crossIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -691,18 +806,25 @@ function window.new(options: { [string]: any }): any
 		self:_query(box.Text)
 	end)
 
-	bar.InputBegan:Connect(function(event: any)
-		local kind = event.UserInputType
-		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
-			return
+	-- the strip is exactly as wide as what is on it, so a chip arriving parts the words around the centre
+	local dockSized = false
+	local function fitDock()
+		local width = rowLayout.AbsoluteContentSize.X / scale.Scale
+		local target = UDim2.fromOffset(math.ceil(width), DOCK)
+		if dockSized and self.isOpen then
+			dockSize:to(target)
+		else
+			dockSize:snap(target)
 		end
-		local from = if kind == Enum.UserInputType.Touch then router:at(event) else router:pointer()
-		local origin = root.AbsolutePosition - gui.AbsolutePosition + Vector2.new(root.AbsoluteSize.X / 2, 0)
-		router:capture(function(at: Vector2)
-			local delta = at - from
-			self._at:snap(UDim2.fromOffset(origin.X + delta.X, origin.Y + delta.Y))
+		dockSized = true
+		task.defer(function()
+			if not self.destroyed then
+				self:_syncMarker(true)
+			end
 		end)
-	end)
+	end
+	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitDock)
+	task.defer(fitDock)
 
 	router.moved:connect(function(at: Vector2)
 		ctx.hover:verify(at)
@@ -737,6 +859,10 @@ function window.new(options: { [string]: any }): any
 		end
 		if name == "Escape" and box.Text ~= "" then
 			box.Text = ""
+			return
+		end
+		if name == "Escape" and self._showing then
+			self:_hideSheet()
 			return
 		end
 		if processed or router:typing() then
