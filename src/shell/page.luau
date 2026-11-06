@@ -9,13 +9,13 @@ local wheel = require("../view/wheel")
 
 local page = {}
 
-local REACH = 7
+local REACH = 5
 local STEP = 72
 local SQUEEZE = 0.05
-local SIZE_STEP = 0.16
-local SIZE_MIN = 0.38
+local SIZE_STEP = 0.13
+local SIZE_MIN = 0.56
 local FADE_START = 0.75
-local FADE_STEP = 0.24
+local FADE_STEP = 0.22
 local FOCUS_SPEED = 20
 local BLEND_SPEED = 24
 local MAX_WIDTH = 820
@@ -238,7 +238,8 @@ function Page.place(self: any)
 			local size = math.max(1 - SIZE_STEP * distance, SIZE_MIN) * scale
 			local fade = math.clamp((distance - FADE_START) * FADE_STEP, 0, 1)
 			view.root.Visible = true
-			view.root.Size = UDim2.fromOffset(width / scale, wheel.HEIGHT)
+			-- divided by its own scale so every row ends at the same right edge, whatever size it is drawn at
+			view.root.Size = UDim2.fromOffset(width / size, wheel.HEIGHT)
 			view.place(x, middle + y, size, fade)
 			view.setFocused(el == self._focusEl and distance < 0.5)
 		end

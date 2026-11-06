@@ -26,7 +26,8 @@ local window = {}
 local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
 
-local DIM = 0.24
+local DIM = 0.3
+local BACKDROP = 1180
 local SHADE_SPEED = 18
 local NAV_SIZE = 22
 local NAV_GAP = 28
@@ -438,6 +439,24 @@ function window.new(options: { [string]: any }): any
 		Visible = false,
 		Parent = root,
 	})
+	-- deepest behind the words and feathered at the sides: the column stays legible over a bright sky, the world still shows
+	local backdrop = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.new(0, BACKDROP, 1, 0),
+		BackgroundTransparency = 0,
+		Parent = root,
+	})
+	theme:paint(backdrop, "BackgroundColor3", "base")
+	make("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.22, 0.12),
+			NumberSequenceKeypoint.new(0.78, 0.12),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = backdrop,
+	})
 	local stage = make("Frame", {
 		Name = "Stage",
 		Size = UDim2.fromScale(1, 1),
@@ -611,6 +630,7 @@ function window.new(options: { [string]: any }): any
 	self._markerSize = maid:add(motion.prop(marker, "Size", MARKER_SPEED))
 	self._shade = maid:add(motion.new(1, SHADE_SPEED, function(value: number)
 		root.BackgroundTransparency = value
+		backdrop.BackgroundTransparency = if value >= 1 then 1 else 0
 	end))
 	self._lift = maid:add(motion.prop(stage, "Position", SHADE_SPEED))
 
