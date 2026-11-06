@@ -33,8 +33,10 @@ local NAV_SIZE_NARROW = 24
 local NARROW_NAV_AT = 760
 local LOGO_SIZE = 26
 local NAV_GAP = 22
-local DEFAULT_SIZE = Vector2.new(900, 640)
+local DEFAULT_SIZE = Vector2.new(760, 620)
 local MIN_SIZE = Vector2.new(560, 400)
+local PAGE_FADE = 30
+local PAGE_FADE_INSET = 12
 local SHUTTER_OPEN_SPEED = 20
 local SHUTTER_CLOSE_SPEED = 30
 -- one duration for the three things a page change moves, or they read as separate events
@@ -479,7 +481,7 @@ function window.new(options: { [string]: any }): any
 	local theme = themeModule.new(options.theme)
 	local router = inputModule.new()
 	local uis = env.service("UserInputService")
-	local touch = uis.TouchEnabled and not uis.MouseEnabled
+	local touch = options.touch == true or (uis.TouchEnabled and not uis.MouseEnabled)
 
 	local gui = make("ScreenGui", {
 		Name = randomName(),
@@ -613,6 +615,24 @@ function window.new(options: { [string]: any }): any
 		Parent = clip,
 	})
 	local pageHost = make("Frame", { Name = "Pages", Size = UDim2.fromScale(1, 1), Parent = body })
+	local fade = make("Frame", {
+		Name = "Fade",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, -PAGE_FADE_INSET, 0, PAGE_FADE),
+		BackgroundTransparency = 0,
+		ZIndex = 7,
+		Parent = body,
+	})
+	theme:paint(fade, "BackgroundColor3", "base")
+	make("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		}),
+		Parent = fade,
+	})
 	local wipe = make("Frame", {
 		Name = "Wipe",
 		Size = UDim2.fromScale(1, 1),
@@ -903,6 +923,10 @@ function window.new(options: { [string]: any }): any
 			return
 		end
 		local name = event.KeyCode.Name
+		-- this press finished a rebind; it must not also close or clear anything
+		if self.keys:swallowed(name) then
+			return
+		end
 		if self._palette:key(name) or ctx.popover:key(name) then
 			return
 		end
