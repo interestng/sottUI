@@ -1182,7 +1182,7 @@ do local function __modImpl()local aa=a.m()local ab=a.f()local ac=a.j()local ad=
 a.b()local ae=a.p()local af={}local ag=14 local ah=14 local ai=14 local aj=12
 local ak=560 local al=6 local am=14 local an=42 local ao=3 local b=16 local c=14
 local d=16 local e=112 local f=360 local g=110 local h=24 local i=26 local j=18
-local k=24 local l=10 local m=84 local n=3 local o=4 local p=40 local q={}q.
+local k=24 local l=10 local m=44 local n=3 local o=4 local p=40 local q={}q.
 __index=q function q.nextId(r)r._ids+=1 return r._ids end function q._register(r
 ,s,t)s._relayout=function()r:_invalidate()end r.window:_registerElement(s,r,t)
 end function q._invalidate(r)if r._dirty then return end r._dirty=true task.
@@ -1617,7 +1617,7 @@ O then aE._opener=b(P,L,function()aE:setOpen(true)end)end if I.autoShow~=false
 then task.defer(function()aE:setOpen(true)end)end return aE end function f.
 setVersion(ap)g=ap end return f end function a.C()local aa=a.cache.C if not aa
 then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()
-local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.6.4-sections'local 
+local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.6.5-sections'local 
 function registry()local af=aa.global('getgenv')local ag=if type(af)=='function'
 then af()else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}
 ag.__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion(
