@@ -343,8 +343,9 @@ function Page.layout(self: any, live: boolean?)
 		local height = (if titled then HEAD else CARD_PAD) + body + (if #rows > 0 then CARD_PAD - ROW_GAP else 0)
 		table.insert(placements, { card = section, x = x, y = y, width = cardWidth, height = height })
 		if master then
-			kinds.measure(master, cardWidth)
-			table.insert(placements, { el = master, x = x, y = y, width = cardWidth, height = HEAD })
+			kinds.measure(master, rowWidth)
+			-- on the rows' own edges, so a title and its switch line up with what is under them
+			table.insert(placements, { el = master, x = x + CARD_PAD, y = y, width = rowWidth, height = HEAD })
 		elseif titled then
 			table.insert(placements, {
 				section = section,

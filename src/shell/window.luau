@@ -46,7 +46,6 @@ local SEARCH = 168
 local SEARCH_HEIGHT = 30
 local CLOSE = 30
 local RIGHT_PAD = 9
-local TOP_GAP = 18
 local MARKER = 2
 local SIZE_SPEED = 22
 local OPEN_SPEED = 20
