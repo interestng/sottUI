@@ -308,6 +308,9 @@ function Element.setLabel(self: any, text: string)
 			relayout()
 		end
 	end
+	if self._onLabel then
+		self._onLabel()
+	end
 	redraw(self)
 end
 

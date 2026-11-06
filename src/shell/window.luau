@@ -98,8 +98,13 @@ function Window._registerElement(self: any, el: any, page: any, public: boolean)
 				self:_drawChips()
 			end
 		end)
-		if el.spec.primary and el.value == true then
-			self:_drawChips()
+		if el.spec.primary then
+			el._onLabel = function()
+				self:_drawChips()
+			end
+			if el.value == true then
+				self:_drawChips()
+			end
 		end
 	end
 end
@@ -574,7 +579,7 @@ function window.new(options: { [string]: any }): any
 	local theme = themeModule.new(options.theme)
 	local router = inputModule.new()
 	local uis = env.service("UserInputService")
-	local touch = uis.TouchEnabled and not uis.MouseEnabled
+	local touch = options.touch == true or (uis.TouchEnabled and not uis.MouseEnabled)
 
 	local gui = make("ScreenGui", {
 		Name = randomName(),
@@ -799,9 +804,9 @@ function window.new(options: { [string]: any }): any
 		popoverTop = function(): number
 			return 8
 		end,
-		dialogAt = function(): UDim2
+		dialogAt = function(width: number): UDim2
 			local viewport = layer.AbsoluteSize
-			return UDim2.fromOffset(math.floor((viewport.X - WIDTH) / 2), math.floor(viewport.Y * 0.2))
+			return UDim2.fromOffset(math.floor((viewport.X - width * scale.Scale) / 2), math.floor(viewport.Y * 0.2))
 		end,
 		isShowing = function(el: any): boolean
 			if not self.isOpen or self._showing == nil then
@@ -932,6 +937,10 @@ function window.new(options: { [string]: any }): any
 			return
 		end
 		local name = event.KeyCode.Name
+		-- this press finished a rebind; it must not also close or clear anything
+		if self.keys:swallowed(name) then
+			return
+		end
 		if ctx.popover:key(name) then
 			return
 		end
