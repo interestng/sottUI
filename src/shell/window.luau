@@ -96,6 +96,7 @@ function Window._contentChanged(self: any, content: number, live: boolean?)
 	local available = self._gui.AbsoluteSize.Y * (1 - TOP) / self._scale.Scale - BAR - WORDS - 24
 	local height = math.min(content, MAX_PANEL, available)
 	local size = UDim2.new(1, 0, 0, height)
+	self._panelFade.Visible = content > height
 	if live then
 		self._panelSize:to(size)
 	else
@@ -562,6 +563,25 @@ function window.new(options: { [string]: any }): any
 		Parent = root,
 	})
 	theme:paint(panel, "BackgroundColor3", "base")
+	local panelFade = make("Frame", {
+		Name = "Fade",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 34),
+		BackgroundTransparency = 0,
+		Visible = false,
+		ZIndex = 20,
+		Parent = panel,
+	})
+	theme:paint(panelFade, "BackgroundColor3", "base")
+	make("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		}),
+		Parent = panelFade,
+	})
 	local self: any = setmetatable({
 		ctx = nil,
 		pages = {},
@@ -579,6 +599,7 @@ function window.new(options: { [string]: any }): any
 		_scale = scale,
 		_box = box,
 		_panel = panel,
+		_panelFade = panelFade,
 		_words = {},
 		_wordList = wordList,
 		_subtitleText = options.subtitle,

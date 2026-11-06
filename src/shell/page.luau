@@ -13,7 +13,7 @@ local sectionModule = require("./section")
 local page = {}
 
 local TOP = 6
-local BOTTOM = 18
+local BOTTOM = 34
 local HEADER = 44
 local SECTION_GAP = 18
 local MASTER_GAP = 2
