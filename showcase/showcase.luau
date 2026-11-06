@@ -102,15 +102,6 @@ esp:addColor(boxes, "esp.boxColor", { default = Color3.fromRGB(255, 84, 32), alp
 esp:color("esp.team", { label = "Team color", default = Color3.fromRGB(64, 160, 255) })
 esp:slider("esp.distance", { label = "Max distance", min = 100, max = 5000, step = 50, default = 1500, suffix = " st" })
 
-local bulk = visuals:section("Stress")
-for i = 1, 200 do
-	if i % 7 == 0 then
-		bulk:slider("bulk.s" .. i, { label = "Stress slider " .. i, default = i % 100 })
-	else
-		bulk:toggle("bulk.t" .. i, { label = "Stress toggle " .. i, default = i % 5 == 0 })
-	end
-end
-
 local menu = config:section("Menu")
 menu:key("menu.key", { label = "Open menu", default = "RightShift" })
 menu:slider("menu.scale", {
@@ -129,7 +120,7 @@ saved:dropdown("config.list", { label = "Saved", options = { "farm", "boss only"
 saved:button("Save", function()
 	ui:notify({ title = "Saved", text = "farm" })
 end)
-saved:button("Open a dialog", function()
+saved:button("Pick targets", function()
 	ui:dialog({ title = "Targets", text = "Picks apply right away." }, function(section: any)
 		section:toggle("dialog.a", { label = "Bosses first", default = true })
 		section:toggle("dialog.b", { label = "Skip elites" })

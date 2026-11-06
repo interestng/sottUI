@@ -1,7 +1,6 @@
 --!strict
--- the window: no sidebar and no card. page names set in display type are the navigation, the rest is the tiles. the
--- frame opens by rolling its height behind a signal edge (ClipsDescendants plus one spring, no transparency on hundreds
--- of children and no CanvasGroup softening the text), and a page change is a single wipe crossing the body
+-- the whole screen is the menu while it is open: the game dims, and one column of huge words turns like a wheel. one
+-- thing at a time, in the middle, large. nothing else needs to be on screen, so nothing else is
 
 local dialogModule = require("./dialog")
 local env = require("../core/env")
@@ -11,6 +10,7 @@ local inputModule = require("../core/input")
 local keysModule = require("./keys")
 local maidModule = require("../core/maid")
 local make = require("../core/make")
+local metrics = require("../core/metrics")
 local motion = require("../core/motion")
 local notifyModule = require("./notify")
 local overlay = require("./overlay")
@@ -26,24 +26,17 @@ local window = {}
 local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
 
-local BAR = 64
-local NAV_SIZE = 34
-local NAV_SIZE_NARROW = 24
-local NARROW_NAV_AT = 760
-local LOGO_SIZE = 26
-local NAV_GAP = 22
-local DEFAULT_SIZE = Vector2.new(900, 640)
-local MIN_SIZE = Vector2.new(560, 400)
-local SHUTTER_OPEN_SPEED = 20
-local SHUTTER_CLOSE_SPEED = 30
--- one duration for the three things a page change moves, or they read as separate events
-local PAGE_SPEED = 22
-local SLIDE_DISTANCE = 26
--- the marker travels as two edges: the leading one runs ahead and the trailing one catches up, so the bar stretches
--- between words and settles back. the shutter and wipe edges share that mint, this is what makes them one gesture
-local EDGE_LEAD = 34
-local EDGE_TRAIL = 17
+local DIM = 0.24
+local SHADE_SPEED = 18
+local NAV_SIZE = 22
+local NAV_GAP = 28
+local MARGIN = 48
+local AVATAR = 76
+local SPIN_PAGE = 5
+local SPIN_OPEN = 7
 local NAME_LENGTH = 12
+local MARKER_SPEED = 28
+local WIDTH_FOR_PALETTE = 560
 
 local Window = {}
 Window.__index = Window
@@ -79,40 +72,39 @@ function Window._registerElement(self: any, el: any, page: any, public: boolean)
 	if el.kind ~= "divider" and el.kind ~= "label" and el.kind ~= "stat" then
 		table.insert(self.ordered, el)
 	end
+	el:on(function()
+		local view = page:viewOf(el)
+		if view then
+			view.refresh()
+		end
+	end)
 end
 
--- the marker measures the word it sits under, so it survives the font swap and long page names
+function Window._setPerson(self: any, options: any)
+	self._personName.Text = options.title or ""
+	self._personLine.RichText = true
+	self._personLine.Text = options.text or ""
+end
+
+-- how far along the wheel, in the one place the page's position is ever spelled out
+function Window._reportCount(self: any, _page: any) end
+
 function Window._syncMarker(self: any, instant: boolean?)
 	local item = self._navItems[self.current]
 	if item == nil then
 		return
 	end
-	local scale = self._scale.Scale
 	local list = self._navList
-	local left = (item.AbsolutePosition.X - list.AbsolutePosition.X) / scale
-	local right = left + item.AbsoluteSize.X / scale
-	-- pages past the right edge scroll into view, by only as much as it takes to show the active word whole
-	local visible = self._navClip.AbsoluteSize.X / scale
-	local offset = self._navScroll.target
-	if right + offset > visible then
-		offset = visible - right
-	end
-	if left + offset < 0 then
-		offset = -left
-	end
-	offset = math.min(offset, 0)
+	local x = item.AbsolutePosition.X - list.AbsolutePosition.X
+	local position = UDim2.fromOffset(x, NAV_SIZE + 12)
+	local size = UDim2.fromOffset(item.AbsoluteSize.X, 3)
 	if instant then
-		self._edgeLeft:snap(left)
-		self._edgeRight:snap(right)
-		self._navScroll:snap(offset)
-		return
+		self._markerAt:snap(position)
+		self._markerSize:snap(size)
+	else
+		self._markerAt:to(position)
+		self._markerSize:to(size)
 	end
-	local forward = right > self._edgeRight.target
-	self._edgeLeft.speed = if forward then EDGE_TRAIL else EDGE_LEAD
-	self._edgeRight.speed = if forward then EDGE_LEAD else EDGE_TRAIL
-	self._edgeLeft:to(left)
-	self._edgeRight:to(right)
-	self._navScroll:to(offset)
 end
 
 function Window.page(self: any, name: string): any
@@ -120,12 +112,13 @@ function Window.page(self: any, name: string): any
 	table.insert(self.pages, built)
 	local index = #self.pages
 	local theme = self.ctx.theme
+	local width = math.ceil(metrics.width("display", name, NAV_SIZE)) + 4
 	local item = make("TextButton", {
 		Name = name,
-		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.fromOffset(width, NAV_SIZE + 10),
 		TextSize = NAV_SIZE,
 		Text = name,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = index,
 		Parent = self._navList,
 	})
@@ -145,7 +138,7 @@ function Window.page(self: any, name: string): any
 			self.ctx.tint(item, "TextColor3", "faint")
 		end
 	end)
-	built:mount(self._pageHost)
+	built:mount(self._stage)
 	if self.current == nil then
 		self:show(index, true)
 	end
@@ -157,7 +150,6 @@ function Window.show(self: any, index: number, instant: boolean?)
 	if target == nil or self.current == index then
 		return
 	end
-	self.ctx.hover.clear()
 	self.ctx.popover:close()
 	self.keys:cancel()
 	local tint = self.ctx.tint
@@ -172,20 +164,9 @@ function Window.show(self: any, index: number, instant: boolean?)
 	target:setActive(true)
 	self:_syncMarker(instant)
 	self:_saveState()
-	if instant then
-		return
+	if not instant then
+		target:spinIn(if forward then -SPIN_PAGE else SPIN_PAGE)
 	end
-	-- one opaque block crossing the body stands in for fading hundreds of tiles, and it is the transition's character
-	local direction = if forward then 1 else -1
-	self._pageSlide:snap(UDim2.fromOffset(SLIDE_DISTANCE * direction, 0))
-	self._pageSlide:to(UDim2.new())
-	self._wipe.Visible = true
-	self._wipeEdge.AnchorPoint = Vector2.new(if forward then 1 else 0, 0)
-	self._wipeEdge.Position = UDim2.fromScale(if forward then 1 else 0, 0)
-	self._wipeAt:snap(UDim2.fromScale(0, 0))
-	self._wipeAt:to(UDim2.fromScale(-1.02 * direction, 0), function()
-		self._wipe.Visible = false
-	end)
 end
 
 function Window.showPage(self: any, name: string)
@@ -205,33 +186,15 @@ function Window.reveal(self: any, el: any)
 	if not self.isOpen then
 		self:setOpen(true)
 	end
+	self.ctx.popover:close()
 	self:showPage(page.name)
 	local host = el.host or el
-	-- a setting folded under an off master has no place on the page until it is opened
 	local owner = el.section and (el.section._root or el.section)
 	if owner and owner.masterElement and owner.masterElement.value ~= true and host ~= owner.masterElement then
 		owner.peeking = true
-		local masterView = page:viewOf(owner.masterElement)
-		if masterView then
-			masterView.refresh()
-		end
+		page:rebuild()
 	end
-	page:layout()
-	local y = page:rowY(host)
-	if y then
-		page:scrollTo(y - 60)
-		-- after the scroll lands, or the wave plays where the eye has not arrived yet
-		task.delay(0.26, function()
-			local view = page:viewOf(host)
-			if view and view.root.Parent then
-				view:flash()
-			end
-		end)
-	end
-end
-
-function Window._targetSize(self: any): UDim2
-	return if self.collapsed then UDim2.new(1, 0, 0, BAR) else UDim2.fromScale(1, 1)
+	page:focusOn(host)
 end
 
 function Window.setOpen(self: any, open: boolean)
@@ -239,7 +202,6 @@ function Window.setOpen(self: any, open: boolean)
 		return
 	end
 	self.isOpen = open
-	self.ctx.hover.clear()
 	self.ctx.popover:close()
 	self._palette.close()
 	self.ctx.tooltip:hide()
@@ -247,21 +209,22 @@ function Window.setOpen(self: any, open: boolean)
 	if not open and self._dialogClose then
 		self._dialogClose()
 	end
-	self._shutterEdge.Visible = true
+	local page = self.pages[self.current]
 	if open then
 		self._root.Visible = true
 		self._modal.Visible = true
 		self:_guardCursor(true)
-		self._shutter.speed = SHUTTER_OPEN_SPEED
-		self._shutter:to(self:_targetSize(), function()
-			self._shutterEdge.Visible = false
-		end)
+		self._shade:to(DIM)
+		self._lift:to(UDim2.fromScale(0, 0))
+		if page then
+			page:rebuild()
+			page:spinIn(SPIN_OPEN)
+		end
 	else
 		self._modal.Visible = false
 		self:_guardCursor(false)
-		self._shutter.speed = SHUTTER_CLOSE_SPEED
-		self._shutter:to(UDim2.new(1, 0, 0, 0), function()
-			self._shutterEdge.Visible = false
+		self._lift:to(UDim2.new(0, 0, 0, 40))
+		self._shade:to(1, function()
 			if not self.isOpen then
 				self._root.Visible = false
 			end
@@ -299,13 +262,6 @@ function Window.toggle(self: any)
 	self:setOpen(not self.isOpen)
 end
 
-function Window.collapse(self: any, collapsed: boolean)
-	self.collapsed = collapsed
-	self._shutter:to(self:_targetSize())
-	self._grip.Visible = not collapsed
-	self:_saveState()
-end
-
 function Window.notify(self: any, options: any)
 	if self.destroyed then
 		return
@@ -319,22 +275,16 @@ end
 
 function Window.setScale(self: any, scale: number)
 	self._scale.Scale = math.clamp(scale, 0.7, 1.5)
-	self:_clamp()
+	local page = self.pages[self.current]
+	if page then
+		page:place()
+	end
 	self:_saveState()
 end
 
 function Window.setSubtitle(self: any, text: string)
-	self._subtitleLabel.Text = text
-end
-
-function Window._clamp(self: any)
-	local viewport = self._gui.AbsoluteSize
-	local size = self.size * self._scale.Scale
-	-- the header must stay grabbable; the rest may hang off the edge if the user wants it there
-	local x = math.clamp(self.position.X, 0, math.max(viewport.X - size.X, 0))
-	local y = math.clamp(self.position.Y, 0, math.max(viewport.Y - size.Y, 0))
-	self.position = Vector2.new(x, y)
-	self._root.Position = UDim2.fromOffset(x, y)
+	self._subtitleText = text
+	self._personLine.Text = text
 end
 
 function Window._saveState(self: any)
@@ -343,7 +293,6 @@ function Window._saveState(self: any)
 		return
 	end
 	self._stateQueued = true
-	-- a drag fires this per frame; only the last position matters
 	task.delay(0.5, function()
 		self._stateQueued = false
 		if self.destroyed then
@@ -353,13 +302,8 @@ function Window._saveState(self: any)
 		store.write(
 			self._stateFile,
 			encode({
-				x = self.position.X,
-				y = self.position.Y,
-				w = self.size.X,
-				h = self.size.Y,
 				page = currentPage and currentPage.name,
 				scale = self._scale.Scale,
-				collapsed = self.collapsed,
 			})
 		)
 	end)
@@ -390,7 +334,6 @@ function Window.find(self: any, id: string): any
 	return self.elements[id]
 end
 
--- plain values for every saved element, page or no page. the caller picks the file and format
 function Window.snapshot(self: any): { [string]: any }
 	local out = {}
 	for id, el in self.elements do
@@ -442,28 +385,6 @@ function Window.destroy(self: any)
 	end
 end
 
-local function headerButton(ctx: any, parent: any, x: number, draw: (holder: any, token: string) -> any): any
-	local button = make("TextButton", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, x, 0.5, 0),
-		Size = UDim2.fromOffset(44, BAR),
-		BackgroundTransparency = 1,
-		Parent = parent,
-	})
-	ctx.theme:paint(button, "BackgroundColor3", "raised")
-	local icon = draw(button, "muted")
-	icon.AnchorPoint = Vector2.new(0.5, 0.5)
-	icon.Position = UDim2.fromScale(0.5, 0.5)
-	local wash = motion.prop(button, "BackgroundTransparency", 28)
-	button.MouseEnter:Connect(function()
-		wash:to(0)
-	end)
-	button.MouseLeave:Connect(function()
-		wash:to(1)
-	end)
-	return button
-end
-
 function window.new(options: { [string]: any }): any
 	local registry = options._registry
 	if registry and registry.current then
@@ -489,7 +410,7 @@ function window.new(options: { [string]: any }): any
 	maid:add(gui)
 
 	local files = env.files()
-	local folder = options.folder or "sottui"
+	local folder = options.folder or "sottui_stage"
 	local stateFile = options.stateFile or (folder .. "/window.json")
 	local saved: any = nil
 	if files then
@@ -501,36 +422,15 @@ function window.new(options: { [string]: any }): any
 		saved = {}
 	end
 
-	local viewport = gui.AbsoluteSize
-	local size = Vector2.new(
-		math.clamp(tonumber(saved.w) or DEFAULT_SIZE.X, MIN_SIZE.X, math.max(viewport.X, MIN_SIZE.X)),
-		math.clamp(tonumber(saved.h) or DEFAULT_SIZE.Y, MIN_SIZE.Y, math.max(viewport.Y, MIN_SIZE.Y))
-	)
-	local startScale = tonumber(saved.scale) or (if viewport.X < 800 then 0.8 else 1)
-	local position = Vector2.new(
-		tonumber(saved.x) or math.floor((viewport.X - size.X * startScale) / 2),
-		tonumber(saved.y) or math.floor((viewport.Y - size.Y * startScale) / 2)
-	)
-
-	local root = make("Frame", {
+	-- the stage dims the game with the brand's own ground, so the world behind reads as night, not as a grey film
+	local root = make("TextButton", {
 		Name = "Root",
-		Size = UDim2.fromOffset(size.X, size.Y),
-		Position = UDim2.fromOffset(position.X, position.Y),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
 		Parent = gui,
 	})
-	local scale = make("UIScale", { Scale = startScale, Parent = root })
-	local clip = make("Frame", {
-		Name = "Clip",
-		Size = UDim2.new(1, 0, 0, 0),
-		BackgroundTransparency = 0,
-		ClipsDescendants = true,
-		Active = true,
-		Parent = root,
-	})
-	theme:paint(clip, "BackgroundColor3", "base")
-
-	local layer = make("Frame", { Name = "Layer", Size = UDim2.fromScale(1, 1), ZIndex = 100, Parent = gui })
-	-- releases the mouse in games that lock it; visible only while the menu is open
+	theme:paint(root, "BackgroundColor3", "base")
 	local modal = make("TextButton", {
 		Name = "Modal",
 		Size = UDim2.fromOffset(0, 0),
@@ -538,31 +438,38 @@ function window.new(options: { [string]: any }): any
 		Visible = false,
 		Parent = root,
 	})
-
-	local bar = make("TextButton", { Name = "Bar", Size = UDim2.new(1, 0, 0, BAR), Parent = clip })
-	local title = make("TextLabel", {
-		AutomaticSize = Enum.AutomaticSize.X,
-		Position = UDim2.fromOffset(20, 0),
-		Size = UDim2.fromOffset(0, BAR),
-		TextSize = LOGO_SIZE,
-		Text = options.title or "sottoro",
-		Parent = bar,
-	})
-	theme:type(title, "display")
-	theme:paint(title, "TextColor3", "accent")
-
-	local navClip = make("Frame", {
-		Name = "NavClip",
-		Size = UDim2.new(1, 0, 0, BAR),
+	local stage = make("Frame", {
+		Name = "Stage",
+		Size = UDim2.fromScale(1, 1),
 		ClipsDescendants = true,
-		Parent = clip,
+		Parent = root,
 	})
-	local navRail = make("Frame", { Name = "NavRail", Size = UDim2.fromScale(1, 1), Parent = navClip })
-	local navList = make("Frame", {
-		Name = "NavList",
+
+	local layer = make("Frame", { Name = "Layer", Size = UDim2.fromScale(1, 1), ZIndex = 100, Parent = gui })
+
+	local logo = make("TextLabel", {
 		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 1, 0),
-		Parent = navRail,
+		Position = UDim2.fromOffset(MARGIN, 60),
+		Size = UDim2.fromOffset(0, NAV_SIZE + 10),
+		TextSize = NAV_SIZE,
+		Text = options.title or "sottoro",
+		ZIndex = 5,
+		Parent = root,
+	})
+	theme:type(logo, "display")
+	theme:paint(logo, "TextColor3", "accent")
+	local nav = make("Frame", {
+		Name = "Nav",
+		Position = UDim2.fromOffset(MARGIN + 130, 60),
+		Size = UDim2.new(1, -(MARGIN * 2 + 130 + 140), 0, NAV_SIZE + 18),
+		ZIndex = 5,
+		Parent = root,
+	})
+	local navList = make("Frame", {
+		Name = "List",
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 5,
+		Parent = nav,
 	})
 	make("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
@@ -570,95 +477,60 @@ function window.new(options: { [string]: any }): any
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = navList,
 	})
-	-- the sign that there are more pages than fit
-	local navFade = make("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.new(0, 36, 1, 0),
-		BackgroundTransparency = 0,
-		Visible = false,
-		ZIndex = 3,
-		Parent = navClip,
-	})
-	theme:paint(navFade, "BackgroundColor3", "base")
-	make("UIGradient", { Transparency = NumberSequence.new(1, 0), Parent = navFade })
 	local marker = make("Frame", {
 		Name = "Marker",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(0, 0, 0, 4),
+		Position = UDim2.fromOffset(0, NAV_SIZE + 12),
+		Size = UDim2.fromOffset(0, 3),
 		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = navRail,
+		ZIndex = 6,
+		Parent = nav,
 	})
 	theme:paint(marker, "BackgroundColor3", "accent")
 
-	local rule = make("Frame", {
-		Position = UDim2.new(0, 0, 0, BAR - 1),
-		Size = UDim2.new(1, 0, 0, 1),
-		BackgroundTransparency = 0,
-		Parent = clip,
-	})
-	theme:paint(rule, "BackgroundColor3", "line")
-
-	local body = make("Frame", {
-		Name = "Body",
-		Position = UDim2.fromOffset(0, BAR),
-		Size = UDim2.new(1, 0, 1, -BAR),
-		ClipsDescendants = true,
-		Parent = clip,
-	})
-	local pageHost = make("Frame", { Name = "Pages", Size = UDim2.fromScale(1, 1), Parent = body })
-	local wipe = make("Frame", {
-		Name = "Wipe",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 0,
-		Visible = false,
-		ZIndex = 8,
-		Parent = body,
-	})
-	theme:paint(wipe, "BackgroundColor3", "base")
-	local wipeEdge = make("Frame", {
-		Size = UDim2.new(0, 8, 1, 0),
-		BackgroundTransparency = 0,
-		ZIndex = 9,
-		Parent = wipe,
-	})
-	theme:paint(wipeEdge, "BackgroundColor3", "accent")
-
-	local shutterEdge = make("Frame", {
+	-- the person, bottom left, large enough to be them
+	local avatar = make("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 4),
+		Position = UDim2.new(0, MARGIN, 1, -36),
+		Size = UDim2.fromOffset(AVATAR, AVATAR),
 		BackgroundTransparency = 0,
-		Visible = false,
-		ZIndex = 12,
-		Parent = clip,
+		ClipsDescendants = true,
+		ZIndex = 5,
+		Parent = root,
 	})
-	theme:paint(shutterEdge, "BackgroundColor3", "accent")
-
-	local grip = make("TextButton", {
-		Name = "Grip",
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.fromScale(1, 1),
-		Size = UDim2.fromOffset(20, 20),
-		ZIndex = 6,
-		Parent = clip,
-	})
-	for index, spec in
-		{ { UDim2.new(1, -3, 1, -3), UDim2.fromOffset(10, 2) }, { UDim2.new(1, -3, 1, -3), UDim2.fromOffset(2, 10) } }
-	do
-		local tick = make("Frame", {
-			AnchorPoint = Vector2.new(1, 1),
-			Position = spec[1],
-			Size = spec[2],
-			BackgroundTransparency = 0,
-			ZIndex = 7,
-			Name = "Tick" .. index,
-			Parent = grip,
+	theme:paint(avatar, "BackgroundColor3", "accent")
+	local localPlayer = env.service("Players").LocalPlayer
+	if localPlayer then
+		make("ImageLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Image = string.format("rbxthumb://type=AvatarBust&id=%d&w=150&h=150", localPlayer.UserId),
+			ZIndex = 5,
+			Parent = avatar,
 		})
-		theme:paint(tick, "BackgroundColor3", "lineStrong")
 	end
+	local personName = make("TextLabel", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, MARGIN + AVATAR + 14, 1, -62),
+		Size = UDim2.fromOffset(480, 36),
+		TextSize = 30,
+		Text = if localPlayer then localPlayer.DisplayName else "",
+		ZIndex = 5,
+		Parent = root,
+	})
+	theme:type(personName, "display")
+	theme:paint(personName, "TextColor3", "text")
+	local personLine = make("TextLabel", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, MARGIN + AVATAR + 14, 1, -38),
+		Size = UDim2.fromOffset(480, 22),
+		TextSize = 17,
+		Text = options.subtitle or "",
+		ZIndex = 5,
+		Parent = root,
+	})
+	theme:type(personLine, "text")
+	theme:paint(personLine, "TextColor3", "muted")
 
 	local self: any = setmetatable({
 		ctx = nil,
@@ -667,31 +539,27 @@ function window.new(options: { [string]: any }): any
 		ordered = {},
 		current = nil,
 		isOpen = false,
-		collapsed = saved.collapsed == true,
 		destroyed = false,
-		size = size,
-		position = position,
 		visibilityChanged = signal.new(),
 		_maid = maid,
 		_gui = gui,
 		_root = root,
-		_clip = clip,
+		_stage = stage,
 		_layer = layer,
 		_modal = modal,
-		_scale = scale,
-		_navClip = navClip,
+		-- the same shape as a UIScale for whoever reads it; the page multiplies it into every row's own scale
+		_scale = { Scale = tonumber(saved.scale) or 1 },
 		_navList = navList,
 		_navItems = {},
-		_pageHost = pageHost,
-		_wipe = wipe,
-		_wipeEdge = wipeEdge,
-		_shutterEdge = shutterEdge,
-		_grip = grip,
+		_personName = personName,
+		_personLine = personLine,
+		_subtitleText = options.subtitle,
 		_files = files,
 		_stateFile = stateFile,
 		_savedPage = saved.page,
 		_dialogIds = 0,
 		_registry = registry,
+		width = 460,
 	}, Window)
 	if registry then
 		registry.current = self
@@ -701,28 +569,30 @@ function window.new(options: { [string]: any }): any
 		theme = theme,
 		input = router,
 		touch = touch,
+		assets = {},
 		glyph = glyphModule.new(theme),
 		tint = tintModule.new(theme),
 		uiScale = function(): number
-			return scale.Scale
+			return 1
 		end,
 		popoverTop = function(): number
-			return self.position.Y + BAR * scale.Scale
+			return 8
 		end,
-		isShowing = function(el: any): boolean
-			if not self.isOpen then
-				return false
-			end
-			local page = el._page or (el.host and el.host._page)
-			-- no page means a dialog, which is only ever built open
-			return page == nil or page == self.pages[self.current]
+		paletteAt = function(): UDim2
+			local viewport = layer.AbsoluteSize
+			return UDim2.fromOffset(math.floor((viewport.X - WIDTH_FOR_PALETTE) / 2), math.floor(viewport.Y * 0.2))
 		end,
-		setScrollLocked = function(locked: boolean)
-			local page = self.pages[self.current]
-			if page and page.frame and touch then
-				page.frame.ScrollingEnabled = not locked
-			end
+		paletteWidth = function(): number
+			return WIDTH_FOR_PALETTE
 		end,
+		dialogAt = function(): UDim2
+			local viewport = layer.AbsoluteSize
+			return UDim2.fromOffset(math.floor((viewport.X - 460) / 2), math.floor(viewport.Y * 0.18))
+		end,
+		isShowing = function(): boolean
+			return self.isOpen
+		end,
+		setScrollLocked = function() end,
 	}
 	self.ctx = ctx
 	ctx.popover = overlay.popover(ctx, layer)
@@ -737,26 +607,12 @@ function window.new(options: { [string]: any }): any
 	end)
 	ctx.keys = self.keys
 
-	local function drawMarker()
-		local left, right = self._markerLeft, self._markerRight
-		marker.Position = UDim2.new(0, left, 1, 0)
-		marker.Size = UDim2.new(0, math.max(right - left, 0), 0, 4)
-	end
-	self._markerLeft, self._markerRight = 0, 0
-	self._edgeLeft = maid:add(motion.new(0, EDGE_LEAD, function(x: number)
-		self._markerLeft = x
-		drawMarker()
+	self._markerAt = maid:add(motion.prop(marker, "Position", MARKER_SPEED))
+	self._markerSize = maid:add(motion.prop(marker, "Size", MARKER_SPEED))
+	self._shade = maid:add(motion.new(1, SHADE_SPEED, function(value: number)
+		root.BackgroundTransparency = value
 	end))
-	self._edgeRight = maid:add(motion.new(0, EDGE_LEAD, function(x: number)
-		self._markerRight = x
-		drawMarker()
-	end))
-	self._navScroll = maid:add(motion.new(0, EDGE_LEAD, function(x: number)
-		navRail.Position = UDim2.fromOffset(x, 0)
-	end))
-	self._pageSlide = maid:add(motion.prop(pageHost, "Position", PAGE_SPEED))
-	self._wipeAt = maid:add(motion.prop(wipe, "Position", PAGE_SPEED))
-	self._shutter = maid:add(motion.prop(clip, "Size", SHUTTER_OPEN_SPEED))
+	self._lift = maid:add(motion.prop(stage, "Position", SHADE_SPEED))
 
 	self._palette = paletteModule.new(ctx, layer, function(): { any }
 		return self.ordered
@@ -764,26 +620,29 @@ function window.new(options: { [string]: any }): any
 		self:reveal(el)
 	end)
 
-	local closeButton = headerButton(ctx, bar, 0, function(holder: any, token: string)
-		return ctx.glyph.cross(holder, token)
-	end)
-	closeButton.Activated:Connect(function()
+	local close = make("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -MARGIN + 8, 0, 58),
+		Size = UDim2.fromOffset(34, 34),
+		ZIndex = 5,
+		Parent = root,
+	})
+	local crossIcon = ctx.glyph.cross(close, "muted")
+	crossIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	crossIcon.Position = UDim2.fromScale(0.5, 0.5)
+	crossIcon.ZIndex = 5
+	close.Activated:Connect(function()
 		self:setOpen(false)
 	end)
-	local collapseButton = headerButton(ctx, bar, -44, function(holder: any, token: string)
-		return ctx.glyph.dash(holder, token)
-	end)
-	collapseButton.Activated:Connect(function()
-		self:collapse(not self.collapsed)
-	end)
 	local find = make("TextButton", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -96, 0.5, 0),
-		Size = UDim2.fromOffset(64, BAR),
-		TextSize = 17,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -(MARGIN + 34), 0, 60),
+		Size = UDim2.fromOffset(70, NAV_SIZE + 10),
+		TextSize = 18,
 		Text = "Search",
 		TextXAlignment = Enum.TextXAlignment.Right,
-		Parent = bar,
+		ZIndex = 5,
+		Parent = root,
 	})
 	theme:type(find, "text", true)
 	theme:paint(find, "TextColor3", "muted")
@@ -796,97 +655,35 @@ function window.new(options: { [string]: any }): any
 	find.Activated:Connect(function()
 		self._palette:toggle()
 	end)
-	local subtitle = make("TextLabel", {
-		AutomaticSize = Enum.AutomaticSize.X,
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -176, 0.5, 0),
-		Size = UDim2.fromOffset(0, BAR),
-		TextSize = 17,
-		Text = options.subtitle or "",
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Parent = bar,
-	})
-	theme:type(subtitle, "text")
-	theme:paint(subtitle, "TextColor3", "faint")
-	self._subtitleLabel = subtitle
 
-	-- the words get what the logo and controls leave. the game name yields first, it is on the Home page anyway
-	local function fitBar()
-		local current = scale.Scale
-		local width = root.AbsoluteSize.X / current
-		local left = 20 + title.AbsoluteSize.X / current + 24
-		local words = navList.AbsoluteSize.X / current
-		local named = 176 + subtitle.AbsoluteSize.X / current + 20
-		subtitle.Visible = options.subtitle ~= nil and left + words + named <= width
-		local right = if subtitle.Visible then named else 176
-		navClip.Position = UDim2.fromOffset(left, 0)
-		navClip.Size = UDim2.new(1, -(left + right), 0, BAR)
-		-- a narrow window shrinks the words before it starts hiding them
-		local size = if width < NARROW_NAV_AT then NAV_SIZE_NARROW else NAV_SIZE
-		for _, item in self._navItems do
-			item.TextSize = size
-		end
-		navFade.Visible = navList.AbsoluteSize.X / current > width - left - right
-		self:_syncMarker(true)
-	end
-	self._fitBar = fitBar
-	title:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitBar)
-	subtitle:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitBar)
-	root:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitBar)
-	navList:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitBar)
-	task.defer(fitBar)
-
-	bar.InputBegan:Connect(function(event: any)
-		local kind = event.UserInputType
-		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
-			return
-		end
-		local from = if kind == Enum.UserInputType.Touch then router:at(event) else router:pointer()
-		local origin = self.position
-		router:capture(function(at: Vector2)
-			self.position = origin + (at - from)
-			self:_clamp()
-			self:_saveState()
-		end)
-	end)
-
-	grip.InputBegan:Connect(function(event: any)
-		local kind = event.UserInputType
-		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
-			return
-		end
-		local from = if kind == Enum.UserInputType.Touch then router:at(event) else router:pointer()
-		local origin = self.size
-		router:capture(function(at: Vector2)
-			local current = scale.Scale
-			local grown = origin + (at - from) / current
-			local limit = (gui.AbsoluteSize - self.position) / current
-			self.size = Vector2.new(
-				math.clamp(grown.X, MIN_SIZE.X, math.max(limit.X, MIN_SIZE.X)),
-				math.clamp(grown.Y, MIN_SIZE.Y, math.max(limit.Y, MIN_SIZE.Y))
-			)
-			root.Size = UDim2.fromOffset(math.floor(self.size.X), math.floor(self.size.Y))
-			self:_saveState()
-		end)
-	end)
-
-	router.moved:connect(function(at: Vector2)
-		ctx.hover:verify(at)
-	end)
 	router.wheel:connect(function(delta: number)
 		if not self.isOpen or ctx.popover:isOpen() or self._palette:isOpen() then
 			return
 		end
 		local page = self.pages[self.current]
-		if page == nil or page.frame == nil then
-			return
-		end
-		local at = router:pointer()
-		local origin, extent = page.frame.AbsolutePosition, page.frame.AbsoluteSize
-		if at.X >= origin.X and at.Y >= origin.Y and at.X <= origin.X + extent.X and at.Y <= origin.Y + extent.Y then
-			page:wheel(delta)
+		if page then
+			page:step(if delta > 0 then -1 else 1)
 		end
 	end)
+	-- a finger drags the wheel; a settled finger is a tap, which the row itself handled
+	if touch then
+		root.InputBegan:Connect(function(event: any)
+			if event.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
+			local page = self.pages[self.current]
+			if page == nil then
+				return
+			end
+			local from = router:at(event)
+			local base = page._target or 1
+			router:capture(function(at: Vector2)
+				local rows = math.round((from.Y - at.Y) / 64)
+				page:scrollTo(base + rows)
+				page:place()
+			end, nil, event)
+		end)
+	end
 	router.keyDown:connect(function(event: any, processed: boolean)
 		if event.UserInputType ~= Enum.UserInputType.Keyboard then
 			return
@@ -899,72 +696,45 @@ function window.new(options: { [string]: any }): any
 			self._dialogClose()
 			return
 		end
-		if processed or router:typing() then
+		if processed or router:typing() or not self.isOpen then
 			return
 		end
-		if self.isOpen and name == "K" then
-			if uis:IsKeyDown(Enum.KeyCode.LeftControl) or uis:IsKeyDown(Enum.KeyCode.RightControl) then
-				self._palette:toggle()
+		local page = self.pages[self.current]
+		if name == "K" and (uis:IsKeyDown(Enum.KeyCode.LeftControl) or uis:IsKeyDown(Enum.KeyCode.RightControl)) then
+			self._palette:toggle()
+		elseif page and name == "Up" then
+			page:step(-1)
+		elseif page and name == "Down" then
+			page:step(1)
+		elseif page and (name == "Left" or name == "Right") then
+			local view = page:current()
+			if view then
+				view.nudge(if name == "Left" then -1 else 1)
 			end
+		elseif page and name == "Return" then
+			local view = page:current()
+			if view then
+				view.act()
+			end
+		elseif name == "Tab" then
+			self:show((self.current % #self.pages) + 1)
 		end
 	end)
 
 	maid:add(gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		self:_clamp()
+		local page = self.pages[self.current]
+		if page then
+			page:place()
+		end
 	end))
 	maid:add(theme.changed:connect(function()
 		for _, page in self.pages do
 			for _, view in page._views do
-				pcall(function()
-					view:retint()
-					view.refresh()
-				end)
+				pcall(view.refresh)
 			end
 		end
 	end))
 
-	-- a phone has no menu key: closing must leave something to tap
-	if touch then
-		local chip = make("TextButton", {
-			Name = "Reopen",
-			Position = UDim2.fromOffset(16, 80),
-			Size = UDim2.fromOffset(112, 44),
-			BackgroundTransparency = 0,
-			TextSize = 22,
-			Text = options.title or "sottoro",
-			Visible = false,
-			Parent = gui,
-		})
-		theme:type(chip, "display")
-		theme:paint(chip, "BackgroundColor3", "accent")
-		theme:paint(chip, "TextColor3", "onAccent")
-		local moved = false
-		chip.InputBegan:Connect(function(event: any)
-			if event.UserInputType ~= Enum.UserInputType.Touch then
-				return
-			end
-			moved = false
-			local from = router:at(event)
-			local origin = chip.AbsolutePosition - gui.AbsolutePosition
-			router:capture(function(at: Vector2)
-				local delta = at - from
-				if delta.Magnitude > 8 then
-					moved = true
-					chip.Position = UDim2.fromOffset(origin.X + delta.X, origin.Y + delta.Y)
-				end
-			end)
-		end)
-		chip.Activated:Connect(function()
-			if not moved then
-				self:setOpen(true)
-			end
-		end)
-		self.visibilityChanged:connect(function(open: boolean)
-			chip.Visible = not open
-		end)
-	end
-
-	-- the menu toggle lives in the same registry as every other bind
 	local hostSection = sectionModule.new({
 		window = self,
 		nextId = function()
@@ -993,8 +763,6 @@ function window.new(options: { [string]: any }): any
 	motion.setAttach(function(step: (number) -> ()): any
 		return runService.PreRender:Connect(step)
 	end)
-
-	self:_clamp()
 
 	if options.fonts ~= false and files then
 		maid:add(task.defer(function()
