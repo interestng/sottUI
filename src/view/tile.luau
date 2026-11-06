@@ -1,29 +1,24 @@
 --!strict
--- the shared body of every control: a hard edged tile whose text is the control. what makes it this design rather than
--- a row is here: state floods the tile from the point of the press and a press compresses it. the flood is one circle
--- clipped by the tile; it and the springs are built on first use, most tiles are never touched
+-- the shared body of every control: a soft pad whose colours ease between states and which gives under a press. springs
+-- are built on first use, most tiles are never touched
 
 local make = require("../core/make")
 local motion = require("../core/motion")
 
 local tile = {}
 
-tile.PAD = 14
-tile.HEIGHT = 54
-tile.NAME = 17
+tile.PAD = 12
+tile.HEIGHT = 38
+tile.NAME = 14
+tile.RADIUS = 8
 
-local WASH_SPEED = 30
+local WASH_SPEED = 22
 local PRESS_SPEED = 40
-local PRESS_RELEASE_DAMPING = 0.62
-local FLOOD_SPEED = 20
-local INK_SPEED = 36
-local PRESS_SCALE = 0.965
--- past the far corner from any start point, and a critically damped spring spends its last stretch creeping, so the
--- overshoot also sets how quickly the wave clears the tile
-local FLOOD_REACH = 2.6
+local PRESS_RELEASE_DAMPING = 0.7
+local INK_SPEED = 26
+local PRESS_SCALE = 0.97
 local LONG_PRESS = 0.45
-local HOVER_TINT = 0.14
-local OFF_LIFT = 0.3
+local FLASH = 0.28
 
 export type Ctx = {
 	theme: any,
@@ -49,7 +44,6 @@ export type Tile = {
 	onHover: (self: Tile, on: boolean) -> (),
 	pressed: (self: Tile, on: boolean) -> (),
 	flood: (self: Tile, on: boolean, instant: boolean?) -> (),
-	tint: (self: Tile, on: boolean, instant: boolean?) -> (),
 	ink: (self: Tile, instance: any, token: string, instant: boolean?) -> (),
 	flash: (self: Tile) -> (),
 	refreshName: (self: Tile) -> (),
@@ -78,16 +72,7 @@ local function baseColor(self: any): Color3
 	if self._lit then
 		return if self._hover then tokens.accentHover else tokens.accent
 	end
-	if self._tinted then
-		return if self._hover then tokens.accentDim:Lerp(tokens.accent, HOVER_TINT) else tokens.accentDim
-	end
-	-- a setting sits on the page over its baseline; only what acts when pressed stands up as a block
-	if self._quiet then
-		return if self._hover then tokens.raised else tokens.surface
-	end
-	-- a clear step above the panel: off has to look like a switch, not like an empty space
-	local rest = tokens.raised:Lerp(tokens.accentDim, OFF_LIFT)
-	return if self._hover then tokens.accentDim else rest
+	return if self._hover then tokens.lineStrong else tokens.raised
 end
 
 local function washTo(self: any)
@@ -117,10 +102,7 @@ function Tile.onHover(self: any, on: boolean)
 			chip.setHover(hovering)
 		end
 	end
-	-- mid flood the circle owns the look; the base catches up when it lands
-	if not (self._floodFrame and self._floodFrame.Visible) then
-		washTo(self)
-	end
+	washTo(self)
 end
 
 function Tile.pressed(self: any, on: boolean)
@@ -131,94 +113,24 @@ function Tile.pressed(self: any, on: boolean)
 	self._press:to(if on then PRESS_SCALE else 1)
 end
 
+-- a corner radius cannot clip a child, so the fill eases across the whole pad instead of spreading from the press
 function Tile.flood(self: any, on: boolean, instant: boolean?)
-	if self._floodOn == on then
+	if self._lit == on then
 		return
 	end
-	self._floodOn = on
-	local root = self.root
-	local size = root.AbsoluteSize
-	if instant or size.X < 1 or not root.Visible or not self.ctx.isShowing(self.el) then
-		self._lit = on
-		if self._floodFrame then
-			self._floodFrame.Visible = false
-			self._floodSpring:snap(UDim2.fromOffset(0, 0))
-		end
-		snapBase(self)
-		return
-	end
-	local circle = self._floodFrame
-	if circle == nil then
-		circle = make("Frame", {
-			Name = "Flood",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Size = UDim2.fromOffset(0, 0),
-			BackgroundTransparency = 0,
-			ZIndex = 1,
-			Parent = root,
-		})
-		make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = circle })
-		self.ctx.theme:paint(circle, "BackgroundColor3", "accent")
-		self._floodFrame = circle
-		self._floodSpring = self:own(motion.prop(circle, "Size", FLOOD_SPEED))
-	end
-	local scale = self.ctx.uiScale()
-	local logical = size / scale
-	local full = math.ceil(math.sqrt(logical.X * logical.X + logical.Y * logical.Y) * FLOOD_REACH)
-	local at = self._pressAt
-	self._pressAt = nil
-	local origin = if at then (at - root.AbsolutePosition) / scale else logical / 2
-	circle.Position = UDim2.fromOffset(origin.X, origin.Y)
-	circle.Visible = true
-	if on then
-		self._floodSpring:snap(UDim2.fromOffset(0, 0))
-		self._floodSpring:to(UDim2.fromOffset(full, full), function()
-			-- lands on the circle's own colour and eases to hover from there, or a pointer on the tile shows a one frame step
-			self._lit = true
-			local hover = self._hover
-			self._hover = false
-			snapBase(self)
-			self._hover = hover
-			circle.Visible = false
-			washTo(self)
-		end)
-	else
-		self._lit = false
-		snapBase(self)
-		self._floodSpring:snap(UDim2.fromOffset(full, full))
-		self._floodSpring:to(UDim2.fromOffset(0, 0), function()
-			circle.Visible = false
-		end)
-	end
-end
-
--- a lit child: the flood's quiet form, so on reads the same at every level without competing with its master
-function Tile.tint(self: any, on: boolean, instant: boolean?)
-	if self._tinted == on then
-		return
-	end
-	self._tinted = on
-	if instant or not self.ctx.isShowing(self.el) then
+	self._lit = on
+	if instant or not self.root.Visible or not self.ctx.isShowing(self.el) then
 		snapBase(self)
 	else
 		washTo(self)
 	end
 end
 
--- a brief wave for "this one": a config action ran, the palette brought you here
+-- a brief wave for "this one ran"
 function Tile.flash(self: any)
-	if self._floodOn then
-		self:pressed(true)
-		task.delay(0.16, function()
-			if self.root.Parent then
-				self:pressed(false)
-			end
-		end)
-		return
-	end
 	self:flood(true)
-	task.delay(0.28, function()
-		if self.root.Parent and not (self.el.kind == "toggle" and self.el.value == true) then
+	task.delay(FLASH, function()
+		if self.root.Parent then
 			self:flood(false)
 		end
 	end)
@@ -227,7 +139,7 @@ end
 function Tile.ink(self: any, instance: any, token: string, instant: boolean?)
 	local tokens = self.ctx.theme.tokens
 	local spring = self._inks[instance]
-	-- a config load flips tiles nobody can see; those must not each start a flood and an ink spring
+	-- a config load flips tiles nobody can see; those must not each start a spring
 	if instant or not self.ctx.isShowing(self.el) then
 		if spring then
 			spring:snap(tokens[token])
@@ -243,11 +155,13 @@ function Tile.ink(self: any, instance: any, token: string, instant: boolean?)
 	spring:to(tokens[token])
 end
 
--- strikethrough rather than just dimmer: off and unavailable must not look alike at a glance
 function Tile.retint(self: any)
-	snapBase(self)
+	if not self._inert then
+		snapBase(self)
+	end
 end
 
+-- strikethrough rather than just dimmer: off and unavailable must not look alike at a glance
 function Tile.refreshName(self: any)
 	local el = self.el
 	if el.disabled then
@@ -259,7 +173,7 @@ function Tile.refreshName(self: any)
 	end
 end
 
-function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?, quiet: boolean? }?): Tile
+function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean? }?): Tile
 	local settings: any = options or {}
 	local root = make("TextButton", {
 		Name = el.kind,
@@ -268,13 +182,14 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 		ClipsDescendants = true,
 		Active = not settings.inert,
 	})
+	if not settings.inert then
+		make("UICorner", { CornerRadius = UDim.new(0, tile.RADIUS), Parent = root })
+	end
 	local name = make("TextLabel", {
 		Name = "Name",
 		Position = UDim2.fromOffset(tile.PAD, 0),
 		Size = UDim2.new(1, -2 * tile.PAD, 1, 0),
 		TextSize = tile.NAME,
-		-- two lines at one size: a shrunken label among full ones reads as a mistake
-		TextWrapped = true,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Text = el.label,
 		ZIndex = 3,
@@ -292,9 +207,7 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 		_inks = {},
 		_hover = false,
 		_lit = false,
-		_floodOn = false,
-		_tinted = false,
-		_quiet = settings.quiet == true,
+		_inert = settings.inert == true,
 	}, Tile)
 	root.BackgroundColor3 = baseColor(self)
 	self:refreshName()
@@ -311,12 +224,10 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 			local kind = event.UserInputType
 			if kind == Enum.UserInputType.MouseButton1 then
 				if not el.disabled then
-					self._pressAt = ctx.input:pointer()
 					self:pressed(true)
 				end
 			elseif kind == Enum.UserInputType.Touch then
 				if not el.disabled then
-					self._pressAt = ctx.input:at(event)
 					self:pressed(true)
 				end
 				-- touch has no hover, so holding is how a tooltip is reached

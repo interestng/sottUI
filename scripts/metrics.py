@@ -1,7 +1,7 @@
 # writes src/core/metrics.luau from the shipped fonts: python scripts/metrics.py
 from fontTools.ttLib import TTFont
 
-FACES = {"display": "fonts/display-800.ttf", "text": "fonts/text-400.ttf", "textMedium": "fonts/text-500.ttf"}
+FACES = {"display": "fonts/display-600.ttf", "text": "fonts/text-400.ttf", "textMedium": "fonts/text-500.ttf", "mono": "fonts/mono-500.ttf"}
 
 out = [
     "--!strict",

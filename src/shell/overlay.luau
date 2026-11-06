@@ -73,6 +73,7 @@ function overlay.popover(ctx: any, layer: any): any
 			Parent = layer,
 		})
 		theme:paint(frame, "BackgroundColor3", "raised")
+		make("UICorner", { CornerRadius = UDim.new(0, 10), Parent = frame })
 		local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 		theme:paint(outline, "Color", "lineStrong")
 		local content = make("Frame", { Size = UDim2.fromScale(1, 1), Parent = frame })
@@ -143,6 +144,7 @@ function overlay.tooltip(ctx: any, layer: any): any
 		Parent = layer,
 	})
 	theme:paint(frame, "BackgroundColor3", "raised")
+	make("UICorner", { CornerRadius = UDim.new(0, 8), Parent = frame })
 	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 	theme:paint(outline, "Color", "lineStrong")
 	make("UIPadding", {

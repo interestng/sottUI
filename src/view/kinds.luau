@@ -1,6 +1,6 @@
 --!strict
--- builds the tile for each element kind. every builder only reads the model; state flows model -> refresh, never the
--- other way, so a config load, a keybind and a click all draw the same
+-- the desk's controls. every builder only reads the model; state flows model -> refresh, never the other way, so a config
+-- load, a keybind and a click all draw the same. measure() answers a control's size before any instance exists
 
 local colorpicker = require("./colorpicker")
 local droplist = require("./droplist")
@@ -13,61 +13,200 @@ local tileModule = require("./tile")
 local kinds = {}
 
 local PAD = tileModule.PAD
-local READOUT = 17
-local MASTER_NAME_OFF = 28
-local MASTER_NAME_ON = 28
-local MASTER_TYPE_SPEED = 28
-local FILL_SPEED = 42
-local FILL_DRAG_SPEED = 90
+local RADIUS = tileModule.RADIUS
+local PAD_HEIGHT = tileModule.HEIGHT
+local NAME = tileModule.NAME
+local PAD_WIDTH = 132
+local MAX_PAD_WIDTH = 230
+local LED_ROOM = 28
+local LED = 7
+local GLOW = 26
+local GLOW_REST = 0.3
+local GLOW_SPEED = 20
+local CAPTION = 13
+local CAPTION_ROW = 20
+local OPTION_STEP = PAD_HEIGHT + 4
+local MAX_INLINE_OPTIONS = 3
+local KEY_ROOM = 8
+
+local FADER_MIN = 60
+local READOUT = 14
+local READOUT_ROW = 22
+local LABEL_ROW = 20
+local RAIL = 4
+local CAP_WIDTH = 34
+local CAP_HEIGHT = 24
+local CAP_HALF = CAP_HEIGHT / 2
+local TICK_WIDTH = 30
+local TICK_STEP = 12
+local FILL_SPEED = 30
+local FILL_DRAG_SPEED = 80
 local DRAG_START = 3
-local READOUT_GAP = 12
-local VALUE_SIZE = 17
-local CHEVRON = 22
-local TRACK = 1
-local BAR = 3
-local SLIDER_BAR = 2
-local HEAD_WIDTH = 4
-local HEAD_HEIGHT = 12
-local INPUT_HEIGHT = 34
-local INPUT_TEXT = 17
-local TEXT_ROW = 16
-local PEEK_WIDTH = 50
--- a key chip's box starts inside its hit area; this lines the box up with the name above it
-local CHIP_INSET = 3
-local POSTER_TOP = 8
-local POSTER_NAME = 36
+local OFF_FILL = 0.72
+
+local INPUT_WIDTH = 210
+local STAT_WIDTH = 170
+local STAT_HEIGHT = 30
+local WRAP_WIDTH = 300
+local LINE_HEIGHT = 22
+local DIVIDER = 22
+local MASTER_TEXT = 15
 
 local builders: { [string]: (ctx: any, el: any) -> any } = {}
 
--- colour dots then key chips, right to left from inner. returns the room taken
-local function addons(view: any, ctx: any, el: any, inner: number, poster: boolean?): number
-	local used = inner
+local function listed(el: any): boolean
+	local shownOn = el._shownOn
+	local first = shownOn and shownOn.sections[1]
+	return first ~= nil and first.flat == true
+end
+
+local function ownerOf(el: any): any
+	local section = el.section
+	return section and (section._root or section).masterElement
+end
+
+local function shownLabel(el: any): string
+	local master = ownerOf(el)
+	if listed(el) and master and master ~= el then
+		return master.label .. " " .. el.label
+	end
+	return el.label
+end
+
+local function textWidth(text: string, size: number): number
+	return metrics.width("textMedium", (string.gsub(text, "<[^>]+>", "")), size)
+end
+
+local function addonRoom(el: any): number
+	local room = 0
+	for _, addon in el.addons or {} do
+		if not addon.spec.chipless then
+			if addon.kind == "key" then
+				local value = addon.value
+				local shown = if value and value.key ~= "None" then value.key else "Unset"
+				room += metrics.width("mono", shown, 12) + 16 + KEY_ROOM + 6
+			else
+				room += colorpicker.DOT_SPACE
+			end
+		end
+	end
+	return room
+end
+
+-- inline options read at a glance and take one click, but a list that can change or run long needs its popover
+local function isInline(el: any): boolean
+	local spec = el.spec
+	local count = #spec.options
+	if spec.multi or count > MAX_INLINE_OPTIONS or el._inline == false then
+		el._inline = false
+		return false
+	end
+	if el._inline == nil then
+		el._inline = count >= 2 and el.value ~= nil
+	end
+	return el._inline
+end
+
+-- the form a dropdown is built in; a change means the page has to rebuild its view
+function kinds.form(el: any): any
+	return if el.kind == "dropdown" then isInline(el) else nil
+end
+
+local function formatted(el: any, value: number): string
+	local spec = el.spec
+	if spec.format then
+		local ok, text = pcall(spec.format, el, value)
+		if ok and text ~= nil then
+			return tostring(text)
+		end
+	end
+	return string.format("%." .. (spec.decimals or 0) .. "f", value) .. (spec.suffix or "")
+end
+
+local function readoutWidth(el: any): number
+	local spec = el.spec
+	local widest = 0
+	for _, value in { spec.min, spec.max, el.value } do
+		widest = math.max(widest, metrics.width("mono", formatted(el, value), READOUT))
+	end
+	return math.ceil(widest) + 2
+end
+
+-- { width, height, fader }: a fader takes the strip's full height, the rest flow down columns
+function kinds.measure(el: any): any
+	local kind = el.kind
+	if kind == "slider" then
+		local width = math.max(FADER_MIN, textWidth(shownLabel(el), CAPTION) + 8, readoutWidth(el) + 8)
+		return { width = math.ceil(width), fader = true }
+	elseif kind == "toggle" or kind == "key" or kind == "color" or (kind == "label" and el.addons) then
+		local width = LED_ROOM + textWidth(shownLabel(el), NAME) + PAD + addonRoom(el)
+		return { width = math.clamp(math.ceil(width), PAD_WIDTH, MAX_PAD_WIDTH), height = PAD_HEIGHT }
+	elseif kind == "button" then
+		return {
+			width = math.clamp(math.ceil(textWidth(el.label, NAME) + 2 * PAD), PAD_WIDTH, MAX_PAD_WIDTH),
+			height = PAD_HEIGHT,
+		}
+	elseif kind == "dropdown" then
+		local display = el.spec.display or tostring
+		local widest = textWidth(shownLabel(el), CAPTION)
+		for _, option in el.spec.options do
+			widest = math.max(widest, textWidth(display(option), NAME) + LED_ROOM + PAD)
+		end
+		if isInline(el) then
+			return {
+				width = math.clamp(math.ceil(widest), PAD_WIDTH, MAX_PAD_WIDTH),
+				height = CAPTION_ROW + #el.spec.options * OPTION_STEP - 4,
+			}
+		end
+		return { width = math.clamp(math.ceil(widest), 150, MAX_PAD_WIDTH), height = CAPTION_ROW + PAD_HEIGHT }
+	elseif kind == "input" then
+		return { width = INPUT_WIDTH, height = CAPTION_ROW + PAD_HEIGHT }
+	elseif kind == "stat" then
+		return { width = STAT_WIDTH, height = STAT_HEIGHT }
+	elseif kind == "divider" then
+		return if el.label == "" then { width = 0, height = 4 } else { width = 0, height = DIVIDER }
+	elseif kind == "label" then
+		if el.spec.wrap then
+			if el._measured then
+				return { width = WRAP_WIDTH, height = el._measured }
+			end
+			local plain = string.gsub(el.label, "<[^>]+>", "")
+			local perLine = math.floor(WRAP_WIDTH / 7)
+			return { width = WRAP_WIDTH, height = math.ceil(#plain / perLine) * LINE_HEIGHT + 6 }
+		end
+		return { width = math.min(math.ceil(textWidth(el.label, NAME)) + 4, WRAP_WIDTH), height = LINE_HEIGHT + 4 }
+	end
+	return { width = PAD_WIDTH, height = PAD_HEIGHT }
+end
+
+-- what a master's switch needs along the strip's foot
+function kinds.masterWidth(el: any): number
+	return math.ceil(96 + addonRoom(el))
+end
+
+-- colour dots then key chips, right to left from the pad's edge. returns the room taken
+local function addons(view: any, ctx: any, el: any): number
+	local used = 0
 	local placed: { any } = {}
 	-- a chip's width changes with what it shows ("Press a key"), which moves its neighbours and the name's limit
 	local function reflow()
-		local offset = inner
+		local offset = 0
 		for _, chip in placed do
-			if poster then
-				chip.root.Position = UDim2.new(0, PAD - CHIP_INSET + offset, 1, 0)
-			else
-				chip.root.Position = UDim2.new(1, -(PAD + offset), 0.5, 0)
-			end
+			chip.root.Position = UDim2.new(1, -(PAD - 4 + offset), 0.5, 0)
 			offset += chip.width + chip.gap
 		end
-		if not poster then
-			view.name.Size = UDim2.new(1, -(2 * PAD + offset), 1, 0)
+		if view.onReserve then
+			view.onReserve(offset)
 		end
 	end
 	local function place(addon: any, chip: any)
-		chip.root.AnchorPoint = if poster then Vector2.new(0, 1) else Vector2.new(1, 0.5)
-		chip.root.Position = if poster
-			then UDim2.new(0, PAD - CHIP_INSET + used, 1, 0)
-			else UDim2.new(1, -(PAD + used), 0.5, 0)
+		chip.root.AnchorPoint = Vector2.new(1, 0.5)
+		chip.root.Position = UDim2.new(1, -(PAD - 4 + used), 0.5, 0)
 		chip.root.ZIndex = 4
 		chip.root.Parent = view.root
 		chip.gap = if addon.kind == "key" then 6 else 0
 		chip.onFit = reflow
-		used += chip.width
+		used += chip.width + chip.gap
 		table.insert(placed, chip)
 		addon._view = chip
 		view.addonChips = view.addonChips or {}
@@ -86,146 +225,75 @@ local function addons(view: any, ctx: any, el: any, inner: number, poster: boole
 	for _, addon in el.addons or {} do
 		if addon.kind == "key" and not addon.spec.chipless then
 			place(addon, keychip.build(ctx, addon))
-			used += 6
 		end
 	end
 	return used
 end
 
-local function reserveRight(view: any, width: number)
-	view.name.Size = UDim2.new(1, -(2 * PAD + width), 1, 0)
-end
-
--- every setting is a name over one line: a slider's line fills to its value, a toggle's is empty or full, a list's only
--- marks the cell. the line is at the very bottom and thin, so nothing ever runs through the words
-local function baseline(view: any, ctx: any, ratio: number, weight: number?): any
-	local track = make("Frame", {
-		Name = "Track",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, TRACK),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = view.root,
-	})
-	ctx.theme:paint(track, "BackgroundColor3", "lineStrong")
-	local fill = make("Frame", {
-		Name = "Fill",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(ratio, 0, 0, weight or BAR),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
-		Parent = view.root,
-	})
-	ctx.theme:paint(fill, "BackgroundColor3", "accent")
-	return fill
-end
-
-function builders.toggle(ctx: any, el: any): any
-	local master = el.spec.primary == true
-	local view: any = tileModule.new(ctx, el)
+-- a small light with a soft halo. the halo eases rather than popping, which is most of why a switch feels good here
+local function lamp(ctx: any, parent: any, view: any): (boolean, boolean?) -> ()
 	local theme = ctx.theme
-	if not master then
-		-- a switch is its fill: the same flood at every size, so on reads one way across the whole menu
-		reserveRight(view, addons(view, ctx, el, 0))
-		local function draw(instant: boolean)
-			local on = el.value == true
-			view:flood(on, instant)
-			view:ink(view.name, if el.disabled then "faint" elseif on then "onAccent" else "text", instant)
-			for _, chip in view.chips do
-				chip.setInk(on)
-				if chip.setMuted then
-					chip.setMuted(not on)
-				end
+	local glow = make("ImageLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, PAD + LED / 2, 0.5, 0),
+		Size = UDim2.fromOffset(GLOW, GLOW),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ImageTransparency = 1,
+		ZIndex = 2,
+		Parent = parent,
+	})
+	theme:paint(glow, "ImageColor3", "accent")
+	ctx.art(glow, "glow.png")
+	local dot = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, PAD + LED / 2, 0.5, 0),
+		Size = UDim2.fromOffset(LED, LED),
+		BackgroundTransparency = 0,
+		ZIndex = 3,
+		Parent = parent,
+	})
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
+	theme:paint(dot, "BackgroundColor3", "lineStrong")
+	local halo: any = nil
+	return function(on: boolean, instant: boolean?)
+		local target = if on then GLOW_REST else 1
+		if instant then
+			if halo then
+				halo:snap(target)
+			else
+				glow.ImageTransparency = target
 			end
+			theme:paint(dot, "BackgroundColor3", if on then "accent" else "lineStrong")
+			return
 		end
-		view.root.Activated:Connect(function()
-			if not el.disabled then
-				el:set(not el.value)
-			end
-		end)
-		view.refresh = function()
-			view:refreshName()
-			draw(false)
+		if halo == nil then
+			halo = view:own(motion.prop(glow, "ImageTransparency", GLOW_SPEED))
 		end
-		draw(true)
-		return view
+		halo:to(target)
+		ctx.tint(dot, "BackgroundColor3", if on then "accent" else "lineStrong")
 	end
-	if master then
-		theme:type(view.name, "display")
-		view.name.TextSize = if el.value == true then MASTER_NAME_ON else MASTER_NAME_OFF
-		view.name.TextWrapped = false
-		view._nameSize = view:own(motion.prop(view.name, "TextSize", MASTER_TYPE_SPEED))
-	end
+end
 
-	-- colour alone is not enough on a dim tile: off must read as off, not as unavailable or as a button
-	-- a key takes the line under the name; without one the tile is only as tall as the name needs
-	local keyed = false
-	for _, addon in el.addons or {} do
-		-- an unbound key only shows on hover, so it earns no line of its own
-		keyed = keyed or (addon.kind == "key" and not addon.spec.chipless and addon.value.key ~= "None")
+local function padToggle(ctx: any, el: any): any
+	local view: any = tileModule.new(ctx, el)
+	view.name.Position = UDim2.fromOffset(LED_ROOM, 0)
+	local function reserve(right: number)
+		view.name.Size = UDim2.new(1, -(LED_ROOM + PAD + right), 1, 0)
 	end
-	view.name.Position = UDim2.fromOffset(PAD, if keyed then POSTER_TOP else 0)
-	view.name.Size = UDim2.new(1, -(2 * PAD + PEEK_WIDTH), if keyed then 0 else 1, if keyed then POSTER_NAME else 0)
-	local peek: any = nil
-	local chevronDown: any = nil
-	local chevronUp: any = nil
-	local inner = 0
-	if master then
-		peek = make("TextButton", {
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.fromScale(1, 0),
-			Size = UDim2.new(0, PEEK_WIDTH, 1, 0),
-			ZIndex = 4,
-			Parent = view.root,
-		})
-		chevronDown = ctx.glyph.chevron(peek, "muted", "down")
-		chevronUp = ctx.glyph.chevron(peek, "muted", "up")
-		for _, chevron in { chevronDown, chevronUp } do
-			chevron.AnchorPoint = Vector2.new(0.5, 0.5)
-			chevron.Position = UDim2.fromScale(0.5, 0.5)
-		end
-		inner += PEEK_WIDTH
-		peek.Activated:Connect(function()
-			el.section:togglePeek()
-			view.refresh()
-		end)
-	end
-	addons(view, ctx, el, if keyed then 0 else PEEK_WIDTH, keyed)
-
+	view.onReserve = reserve
+	reserve(addons(view, ctx, el))
+	local light = lamp(ctx, view.root, view)
 	local function draw(instant: boolean)
 		local on = el.value == true
-		-- the flood and the display type belong to masters alone, or every lit child competes with what it hangs off and
-		-- the page has no focal point. a child says on with its mark and brighter ink
-		local flooded = master and on
-		if master then
-			view:flood(on, instant)
-			local size = if on then MASTER_NAME_ON else MASTER_NAME_OFF
-			if instant or not ctx.isShowing(el) then
-				view._nameSize:snap(size)
-			else
-				view._nameSize:to(size)
-			end
-		end
-		view:ink(view.name, if el.disabled then "faint" elseif flooded then "onAccent" else "text", instant)
+		light(on, instant)
+		view:ink(view.name, if el.disabled then "faint" elseif on then "text" else "muted", instant)
 		for _, chip in view.chips do
-			chip.setInk(flooded)
-		end
-		if peek then
-			-- on means the options are out anyway; the chevron is only for looking before enabling
-			local listed = el._shownOn and el._shownOn.sections[1] and el._shownOn.sections[1].flat
-			peek.Visible = el.section.hasOptions == true and not listed
-			for _, chevron in { chevronDown, chevronUp } do
-				for _, line in chevron:GetChildren() do
-					theme:paint(line, "BackgroundColor3", if flooded then "onAccent" else "muted")
-				end
+			if chip.setMuted then
+				chip.setMuted(not on)
 			end
-			chevronDown.Visible = not el.section.peeking
-			chevronUp.Visible = el.section.peeking == true
 		end
 	end
-
 	view.root.Activated:Connect(function()
 		if not el.disabled then
 			el:set(not el.value)
@@ -233,70 +301,159 @@ function builders.toggle(ctx: any, el: any): any
 	end)
 	view.refresh = function()
 		view:refreshName()
+		if listed(el) then
+			view.name.Text = shownLabel(el)
+		end
+		draw(false)
+	end
+	view.refresh()
+	draw(true)
+	return view
+end
+
+-- the strip's main switch, along its foot: the one place mint fills a surface
+local function masterSwitch(ctx: any, el: any): any
+	local view: any = tileModule.new(ctx, el)
+	view.name.TextSize = MASTER_TEXT
+	ctx.theme:type(view.name, "display")
+	local function reserve(right: number)
+		view.name.Size = UDim2.new(1, -(2 * PAD + right), 1, 0)
+	end
+	view.onReserve = reserve
+	reserve(addons(view, ctx, el))
+	view.refreshName = function(this: any)
+		this.name.Text = if el.value == true then "On" else "Off"
+	end
+	local function draw(instant: boolean)
+		local on = el.value == true
+		view:refreshName()
+		view:flood(on, instant)
+		view:ink(view.name, if el.disabled then "faint" elseif on then "onAccent" else "muted", instant)
+		for _, chip in view.chips do
+			chip.setInk(on)
+		end
+	end
+	view.root.Activated:Connect(function()
+		if not el.disabled then
+			el:set(not el.value)
+		end
+	end)
+	view.refresh = function()
 		draw(false)
 	end
 	draw(true)
 	return view
 end
 
-local function formatted(el: any, value: number): string
-	local spec = el.spec
-	if spec.format then
-		local ok, text = pcall(spec.format, el, value)
-		if ok and text ~= nil then
-			return tostring(text)
-		end
+function builders.toggle(ctx: any, el: any): any
+	if el.spec.primary and not listed(el) then
+		return masterSwitch(ctx, el)
 	end
-	return string.format("%." .. (spec.decimals or 0) .. "f", value) .. (spec.suffix or "")
+	return padToggle(ctx, el)
 end
 
--- the widest the readout gets, so the name's column is fixed and a value never pushes into it
-function kinds.readoutWidth(el: any): number
-	local spec = el.spec
-	local widest = 0
-	for _, value in { spec.min, spec.max, el.value } do
-		widest = math.max(widest, metrics.width("textMedium", formatted(el, value), READOUT))
-	end
-	return math.ceil(widest * 1.05) + 2
-end
-
+-- a vertical fader: value on top, cap on a ruled rail, name underneath. the cap rides the fill's top edge so one spring
+-- moves both
 function builders.slider(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el, { quiet = true })
+	local view: any = tileModule.new(ctx, el, { inert = true })
 	local theme = ctx.theme
 	local spec = el.spec
 	local root = view.root
+	root.Active = true
+	root.ClipsDescendants = false
 	local function ratio(): number
 		local span = spec.max - spec.min
-		return if span <= 0 then 0 else (el.value - spec.min) / span
+		return if span <= 0 then 0 else math.clamp((el.value - spec.min) / span, 0, 1)
 	end
 
-	local width = kinds.readoutWidth(el)
-	reserveRight(view, width + READOUT_GAP)
-	view.name.ZIndex = 4
 	local readout = make("TextLabel", {
 		Name = "Readout",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -PAD, 0, 0),
-		Size = UDim2.new(0, width, 1, 0),
+		Size = UDim2.new(1, 0, 0, READOUT_ROW),
 		TextSize = READOUT,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		ZIndex = 4,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		ZIndex = 3,
 		Parent = root,
 	})
-	theme:type(readout, "text", true)
+	theme:type(readout, "mono")
+	view.name.AnchorPoint = Vector2.new(0, 1)
+	view.name.Position = UDim2.fromScale(0, 1)
+	view.name.Size = UDim2.new(1, 0, 0, LABEL_ROW)
+	view.name.TextSize = CAPTION
+	view.name.TextXAlignment = Enum.TextXAlignment.Center
+	view.name.TextTruncate = Enum.TextTruncate.None
 
-	local fill = baseline(view, ctx, ratio(), SLIDER_BAR)
-	local head = make("Frame", {
-		Name = "Head",
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.fromScale(1, 1),
-		Size = UDim2.fromOffset(HEAD_WIDTH, HEAD_HEIGHT),
+	local top = READOUT_ROW + CAP_HALF
+	local bottom = LABEL_ROW + CAP_HALF
+	local rule = make("ImageLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, top),
+		Size = UDim2.new(0, TICK_WIDTH, 1, -(top + bottom)),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScaleType = Enum.ScaleType.Tile,
+		TileSize = UDim2.fromOffset(TICK_WIDTH, TICK_STEP),
+		ZIndex = 1,
+		Parent = root,
+	})
+	theme:paint(rule, "ImageColor3", "lineStrong")
+	ctx.art(rule, "ticks.png")
+	local rail = make("Frame", {
+		Name = "Rail",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, top),
+		Size = UDim2.new(0, RAIL, 1, -(top + bottom)),
+		BackgroundTransparency = 0,
+		ZIndex = 2,
+		Parent = root,
+	})
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = rail })
+	theme:paint(rail, "BackgroundColor3", "line")
+	local fill = make("Frame", {
+		Name = "Fill",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.fromScale(1, ratio()),
+		BackgroundTransparency = 0,
+		ZIndex = 2,
+		Parent = rail,
+	})
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = fill })
+	theme:paint(fill, "BackgroundColor3", "accent")
+	local cap = make("Frame", {
+		Name = "Cap",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(CAP_WIDTH, CAP_HEIGHT),
 		BackgroundTransparency = 0,
 		ZIndex = 3,
 		Parent = fill,
 	})
-	theme:paint(head, "BackgroundColor3", "text")
+	make("UICorner", { CornerRadius = UDim.new(0, 7), Parent = cap })
+	theme:paint(cap, "BackgroundColor3", "lineStrong")
+	make("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 150, 150)),
+		Parent = cap,
+	})
+	local mark = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -12, 0, 2),
+		BackgroundTransparency = 0,
+		ZIndex = 4,
+		Parent = cap,
+	})
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = mark })
+	theme:paint(mark, "BackgroundColor3", "text")
 	local fillSize: any = view:own(motion.prop(fill, "Size", FILL_SPEED))
+	local lit: any = view:own(motion.prop(fill, "BackgroundTransparency", FILL_SPEED))
+
+	view.onHover = function(_: any, on: boolean)
+		ctx.tint(cap, "BackgroundColor3", if on and not el.disabled then "muted" else "lineStrong")
+	end
+	root.MouseEnter:Connect(function()
+		ctx.hover:enter(view)
+	end)
 
 	local function typedEntry()
 		if el.disabled or view._typing then
@@ -305,11 +462,9 @@ function builders.slider(ctx: any, el: any): any
 		view._typing = true
 		readout.Visible = false
 		local box = make("TextBox", {
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -PAD, 0, 0),
-			Size = UDim2.new(0, math.max(width, 64), 1, 0),
+			Size = UDim2.new(1, 0, 0, READOUT_ROW),
 			TextSize = READOUT,
-			TextXAlignment = Enum.TextXAlignment.Right,
+			TextXAlignment = Enum.TextXAlignment.Center,
 			-- starts empty with the value behind it: select all does not take on a box focused this frame, and appending to the
 			-- old number clamped "5572" to the maximum
 			Text = "",
@@ -317,7 +472,7 @@ function builders.slider(ctx: any, el: any): any
 			ZIndex = 6,
 			Parent = root,
 		})
-		theme:type(box, "display")
+		theme:type(box, "mono")
 		theme:paint(box, "TextColor3", "accent")
 		theme:paint(box, "PlaceholderColor3", "faint")
 		box:CaptureFocus()
@@ -339,7 +494,7 @@ function builders.slider(ctx: any, el: any): any
 			return
 		end
 		local startValue = el.value
-		local rootWidth = math.max(root.AbsoluteSize.X, 1)
+		local travel = math.max(rail.AbsoluteSize.Y, 1)
 		local span = spec.max - spec.min
 		local dragging = false
 		-- a swipe handed back to the scroller ends here too, and must not read as a tap that opens the keyboard
@@ -347,14 +502,14 @@ function builders.slider(ctx: any, el: any): any
 		ctx.input:capture(function(at: Vector2)
 			local delta = at - from
 			if not dragging then
-				if math.abs(delta.X) < DRAG_START then
-					if touch and math.abs(delta.Y) > 8 then
+				if math.abs(delta.Y) < DRAG_START then
+					if touch and math.abs(delta.X) > 8 then
 						cancelled = true
 						ctx.input:release()
 					end
 					return
 				end
-				if touch and math.abs(delta.X) <= math.abs(delta.Y) then
+				if touch and math.abs(delta.Y) <= math.abs(delta.X) then
 					cancelled = true
 					ctx.input:release()
 					return
@@ -363,7 +518,7 @@ function builders.slider(ctx: any, el: any): any
 				fillSize.speed = FILL_DRAG_SPEED
 				ctx.setScrollLocked(true)
 			end
-			el:set(startValue + span * delta.X / rootWidth)
+			el:set(startValue - span * delta.Y / travel)
 		end, function(at: Vector2)
 			fillSize.speed = FILL_SPEED
 			ctx.setScrollLocked(false)
@@ -384,16 +539,33 @@ function builders.slider(ctx: any, el: any): any
 		end
 	end)
 
+	local master = ownerOf(el)
+	local function dim(): number
+		return if master and master.value ~= true then OFF_FILL else 0
+	end
 	local function paintText()
-		local ink = if el.disabled then "faint" else "text"
-		theme:paint(view.name, "TextColor3", ink)
-		theme:paint(readout, "TextColor3", ink)
+		theme:paint(view.name, "TextColor3", if el.disabled then "faint" else "muted")
+		theme:paint(readout, "TextColor3", if el.disabled then "faint" else "text")
 		readout.Text = formatted(el, el.value)
 	end
 	view.refresh = function()
 		view:refreshName()
+		if listed(el) then
+			view.name.Text = shownLabel(el)
+		end
 		paintText()
-		fillSize:to(UDim2.new(ratio(), 0, 0, SLIDER_BAR))
+		fillSize:to(UDim2.fromScale(1, ratio()))
+		lit:to(dim())
+	end
+	if master then
+		view:onCleanup(master:on(function()
+			lit:to(dim())
+		end))
+	end
+	lit:snap(dim())
+	view:refreshName()
+	if listed(el) then
+		view.name.Text = shownLabel(el)
 	end
 	paintText()
 	return view
@@ -428,95 +600,181 @@ local function pickText(el: any): (string, boolean)
 	return display(value), true
 end
 
-function builders.dropdown(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el, { quiet = true })
-	local theme = ctx.theme
-	local root = view.root
-	baseline(view, ctx, 0)
-	theme:paint(view.name, "TextColor3", "muted")
+local function caption(ctx: any, view: any, el: any)
+	view.name.Position = UDim2.new()
+	view.name.Size = UDim2.new(1, 0, 0, CAPTION_ROW - 2)
+	view.name.TextSize = CAPTION
+	ctx.theme:paint(view.name, "TextColor3", "muted")
+	if listed(el) then
+		view.name.Text = shownLabel(el)
+	end
+end
 
+local function well(ctx: any, parent: any, class: string): any
+	local box = make(class, {
+		Name = "Well",
+		Position = UDim2.fromOffset(0, CAPTION_ROW),
+		Size = UDim2.new(1, 0, 0, PAD_HEIGHT),
+		BackgroundTransparency = 0,
+		ZIndex = 2,
+		Parent = parent,
+	})
+	make("UICorner", { CornerRadius = UDim.new(0, RADIUS), Parent = box })
+	ctx.theme:paint(box, "BackgroundColor3", "raised")
+	return box
+end
+
+local function inlineOptions(ctx: any, el: any): any
+	local view: any = tileModule.new(ctx, el, { inert = true })
+	view.root.Active = true
+	caption(ctx, view, el)
+	local display = el.spec.display or tostring
+	local rows: { any } = {}
+	local builtFor = ""
+
+	local function build()
+		for _, row in rows do
+			row.button:Destroy()
+		end
+		table.clear(rows)
+		for index, option in el.spec.options do
+			local button = make("TextButton", {
+				Name = "Option",
+				Position = UDim2.fromOffset(0, CAPTION_ROW + (index - 1) * OPTION_STEP),
+				Size = UDim2.new(1, 0, 0, PAD_HEIGHT),
+				BackgroundTransparency = 0,
+				ZIndex = 2,
+				Parent = view.root,
+			})
+			make("UICorner", { CornerRadius = UDim.new(0, RADIUS), Parent = button })
+			ctx.theme:paint(button, "BackgroundColor3", "raised")
+			local label = make("TextLabel", {
+				Position = UDim2.fromOffset(LED_ROOM, 0),
+				Size = UDim2.new(1, -(LED_ROOM + PAD), 1, 0),
+				TextSize = NAME,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				Text = display(option),
+				ZIndex = 3,
+				Parent = button,
+			})
+			ctx.theme:type(label, "text", true)
+			local row = { button = button, label = label, option = option, light = lamp(ctx, button, view) }
+			button.Activated:Connect(function()
+				if not el.disabled then
+					el:set(option)
+				end
+			end)
+			button.MouseEnter:Connect(function()
+				ctx.tint(button, "BackgroundColor3", "lineStrong")
+			end)
+			button.MouseLeave:Connect(function()
+				ctx.tint(button, "BackgroundColor3", "raised")
+			end)
+			table.insert(rows, row)
+		end
+	end
+
+	local function draw(instant: boolean)
+		for _, row in rows do
+			local on = el.value == row.option
+			row.light(on, instant)
+			view:ink(row.label, if el.disabled then "faint" elseif on then "text" else "muted", instant)
+		end
+	end
+
+	view.refresh = function()
+		local key = table.concat(el.spec.options :: any, "\0")
+		if key ~= builtFor then
+			builtFor = key
+			build()
+			draw(true)
+			if el._relayout then
+				el._relayout()
+			end
+		else
+			draw(false)
+		end
+	end
+	builtFor = table.concat(el.spec.options :: any, "\0")
+	build()
+	draw(true)
+	return view
+end
+
+function builders.dropdown(ctx: any, el: any): any
+	if isInline(el) then
+		return inlineOptions(ctx, el)
+	end
+	local view: any = tileModule.new(ctx, el, { inert = true })
+	local theme = ctx.theme
+	view.root.Active = true
+	view.root.ClipsDescendants = false
+	caption(ctx, view, el)
+	local box = well(ctx, view.root, "TextButton")
 	local text = make("TextLabel", {
 		Name = "Value",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(PAD + CHEVRON), 0, 0),
-		TextSize = VALUE_SIZE,
+		Position = UDim2.fromOffset(PAD, 0),
+		Size = UDim2.new(1, -(2 * PAD + 18), 1, 0),
+		TextSize = NAME,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		TextXAlignment = Enum.TextXAlignment.Right,
 		ZIndex = 3,
-		Parent = root,
+		Parent = box,
 	})
 	theme:type(text, "text", true)
-	local chevron = ctx.glyph.chevron(root, "muted")
+	local chevron = ctx.glyph.chevron(box, "muted")
 	chevron.AnchorPoint = Vector2.new(1, 0.5)
 	chevron.Position = UDim2.new(1, -PAD, 0.5, 0)
 	chevron.ZIndex = 3
-
-	-- the name gets the room the value does not need; long values rarely meet long names
-	local function fit()
-		local width = root.AbsoluteSize.X / ctx.uiScale() - 2 * PAD - CHEVRON
-		if width <= 0 then
-			return
-		end
-		local valueWidth = metrics.width("textMedium", (pickText(el)), VALUE_SIZE) + READOUT_GAP
-		local nameWidth = math.max(width - valueWidth, width * 0.45)
-		view.name.Size = UDim2.new(0, nameWidth, 1, 0)
-		text.Size = UDim2.new(0, width - nameWidth, 1, 0)
-	end
-	root:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
-
-	root.Activated:Connect(function()
+	box.MouseEnter:Connect(function()
+		ctx.tint(box, "BackgroundColor3", "lineStrong")
+	end)
+	box.MouseLeave:Connect(function()
+		ctx.tint(box, "BackgroundColor3", "raised")
+	end)
+	box.Activated:Connect(function()
 		if not el.disabled then
-			droplist.open(ctx, el, root)
+			droplist.open(ctx, el, box)
 		end
 	end)
 	view.refresh = function()
-		view:refreshName()
 		local shown, picked = pickText(el)
 		text.Text = shown
 		theme:paint(text, "TextColor3", if el.disabled or not picked then "faint" else "text")
-		fit()
 	end
 	view.refresh()
-	task.defer(fit)
 	return view
 end
 
 function builders.input(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el, { quiet = true })
+	local view: any = tileModule.new(ctx, el, { inert = true })
 	local theme = ctx.theme
 	local spec = el.spec
-	view.name.Size = UDim2.new(0.35, -PAD, 1, 0)
-	theme:paint(view.name, "TextColor3", "muted")
+	view.root.Active = true
+	view.root.ClipsDescendants = false
+	caption(ctx, view, el)
+	local holder = well(ctx, view.root, "Frame")
+	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Thickness = 1, Parent = holder })
+	theme:paint(outline, "Color", "line")
 	local box = make("TextBox", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -PAD, 0.5, 0),
-		Size = UDim2.new(0.65, -PAD, 0, INPUT_HEIGHT),
-		TextSize = INPUT_TEXT,
+		Position = UDim2.fromOffset(PAD, 0),
+		Size = UDim2.new(1, -2 * PAD, 1, 0),
+		TextSize = NAME,
 		Text = el.value or "",
 		PlaceholderText = spec.placeholder or "",
 		ClipsDescendants = true,
 		TextEditable = not el.disabled,
 		ZIndex = 3,
-		Parent = view.root,
+		Parent = holder,
 	})
 	theme:type(box, "text", true)
 	theme:paint(box, "TextColor3", "text")
 	theme:paint(box, "PlaceholderColor3", "faint")
-	local rule = make("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, TRACK),
-		BackgroundTransparency = 0,
-		ZIndex = 4,
-		Parent = view.root,
-	})
-	theme:paint(rule, "BackgroundColor3", "lineStrong")
 
 	box.Focused:Connect(function()
-		theme:paint(rule, "BackgroundColor3", "accent")
+		ctx.tint(outline, "Color", "accent")
 	end)
 	box.FocusLost:Connect(function(enter: boolean)
-		theme:paint(rule, "BackgroundColor3", "lineStrong")
+		ctx.tint(outline, "Color", "line")
 		if not spec.finished then
 			return
 		end
@@ -535,13 +793,7 @@ function builders.input(ctx: any, el: any): any
 			view._applying = false
 		end
 	end)
-	view.root.Activated:Connect(function()
-		if not el.disabled then
-			box:CaptureFocus()
-		end
-	end)
 	view.refresh = function()
-		view:refreshName()
 		box.TextEditable = not el.disabled
 		if box.Text ~= (el.value or "") then
 			view._applying = true
@@ -552,23 +804,10 @@ function builders.input(ctx: any, el: any): any
 	return view
 end
 
--- no mark and bright ink: a tile with nothing to report is one that does something when pressed
+-- centred, with no light: a pad with nothing to report does something when pressed
 function builders.button(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el, { quiet = true })
-	-- on an inset frame: a stroke draws outside its parent and would overrun the grid by a pixel each side
-	local box = make("Frame", {
-		Name = "Outline",
-		Position = UDim2.fromOffset(1, 1),
-		Size = UDim2.new(1, -2, 1, -2),
-		ZIndex = 2,
-		Parent = view.root,
-	})
-	local outline = make("UIStroke", {
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Thickness = 1,
-		Parent = box,
-	})
-	ctx.theme:paint(outline, "Color", "lineStrong")
+	local view: any = tileModule.new(ctx, el)
+	view.name.TextXAlignment = Enum.TextXAlignment.Center
 	local armed: thread? = nil
 
 	local function draw()
@@ -616,25 +855,23 @@ function builders.button(ctx: any, el: any): any
 	return view
 end
 
--- no tile behind it: a tile means clickable, a figure is just printed on the page
 function builders.stat(ctx: any, el: any): any
 	local view: any = tileModule.new(ctx, el, { inert = true })
 	local theme = ctx.theme
-	view.name.Position = UDim2.fromOffset(PAD, 0)
-	view.name.Size = UDim2.new(0.5, -PAD, 1, 0)
-	view.name.TextWrapped = false
+	view.name.Position = UDim2.new()
+	view.name.Size = UDim2.fromScale(0.6, 1)
 	theme:paint(view.name, "TextColor3", "muted")
 	local value = make("TextLabel", {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -PAD, 0, 0),
-		Size = UDim2.new(0.5, -PAD, 1, 0),
-		TextSize = tileModule.NAME,
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.fromScale(0.4, 1),
+		TextSize = NAME,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 3,
 		Parent = view.root,
 	})
-	theme:type(value, "text", true)
+	theme:type(value, "mono")
 	theme:paint(value, "TextColor3", "text")
 	view.refresh = function()
 		view.name.Text = el.label
@@ -646,35 +883,37 @@ end
 
 function builders.label(ctx: any, el: any): any
 	local theme = ctx.theme
-	-- a line that carries a key or a color is a control, and gets a tile like one
+	-- a line that carries a key or a color is a control, and gets a pad like one
 	if el.addons then
-		local view: any = tileModule.new(ctx, el, { quiet = true })
-		baseline(view, ctx, 0)
+		local view: any = tileModule.new(ctx, el)
 		theme:paint(view.name, "TextColor3", "muted")
 		view.name.RichText = true
-		reserveRight(view, addons(view, ctx, el, 0))
+		local function reserve(right: number)
+			view.name.Size = UDim2.new(1, -(2 * PAD + right), 1, 0)
+		end
+		view.onReserve = reserve
+		reserve(addons(view, ctx, el))
 		view.refresh = function()
 			view.name.Text = el.label
 		end
 		return view
 	end
-	local view: any = tileModule.new(ctx, el, { height = 32, inert = true })
+	local view: any = tileModule.new(ctx, el, { inert = true })
 	local name = view.name
 	local wrap = el.spec.wrap == true
 	name.RichText = true
-	name.TextSize = TEXT_ROW
 	name.TextWrapped = wrap
 	theme:type(name, "text")
 	theme:paint(name, "TextColor3", "muted")
 	name.TextTruncate = if wrap then Enum.TextTruncate.None else Enum.TextTruncate.AtEnd
 	name.TextYAlignment = if wrap then Enum.TextYAlignment.Top else Enum.TextYAlignment.Center
 	name.LineHeight = if wrap then 1.15 else 1
-	name.Position = UDim2.fromOffset(0, if wrap then 6 else 0)
-	name.Size = if wrap then UDim2.new(1, 0, 1, -6) else UDim2.fromScale(1, 1)
+	name.Position = UDim2.new()
+	name.Size = UDim2.fromScale(1, 1)
 	name.Text = el.label
 	if wrap then
 		name:GetPropertyChangedSignal("TextBounds"):Connect(function()
-			local height = math.ceil(name.TextBounds.Y / ctx.uiScale()) + 12
+			local height = math.ceil(name.TextBounds.Y / ctx.uiScale()) + 6
 			if el._measured ~= height then
 				el._measured = height
 				if el._relayout then
@@ -690,12 +929,11 @@ function builders.label(ctx: any, el: any): any
 end
 
 function builders.divider(ctx: any, el: any): any
-	local view: any = tileModule.new(ctx, el, { height = 28, inert = true })
+	local view: any = tileModule.new(ctx, el, { inert = true })
 	local theme = ctx.theme
 	view.name.Position = UDim2.new()
 	view.name.Size = UDim2.fromScale(1, 1)
-	view.name.TextSize = TEXT_ROW
-	theme:type(view.name, "text", true)
+	view.name.TextSize = CAPTION
 	theme:paint(view.name, "TextColor3", "muted")
 	view.refresh = function()
 		view.name.Text = el.label
@@ -703,15 +941,15 @@ function builders.divider(ctx: any, el: any): any
 	return view
 end
 
--- a key or color with no host tile of its own: the name stays the control, the chip reports
-local function chipTile(ctx: any, el: any, chip: any, reserve: number, right: number): any
+-- a key or color with no host of its own: the name stays the control, the chip reports
+local function chipTile(ctx: any, el: any, chip: any, right: number): any
 	local view: any = tileModule.new(ctx, el)
 	ctx.theme:paint(view.name, "TextColor3", "muted")
 	chip.root.AnchorPoint = Vector2.new(1, 0.5)
 	chip.root.Position = UDim2.new(1, -right, 0.5, 0)
 	chip.root.ZIndex = 4
 	chip.root.Parent = view.root
-	reserveRight(view, reserve)
+	view.name.Size = UDim2.new(1, -(2 * PAD + chip.width), 1, 0)
 	table.insert(view.chips, chip)
 	view:onCleanup(chip.destroy)
 	view.refresh = function()
@@ -723,14 +961,14 @@ end
 
 function builders.key(ctx: any, el: any): any
 	local chip = keychip.build(ctx, el)
-	local view = chipTile(ctx, el, chip, 96, PAD)
+	local view = chipTile(ctx, el, chip, PAD - 4)
 	view.root.Activated:Connect(chip.start)
 	return view
 end
 
 function builders.color(ctx: any, el: any): any
 	local chip = colorpicker.swatch(ctx, el)
-	local view = chipTile(ctx, el, chip, colorpicker.DOT_SPACE, PAD - 8)
+	local view = chipTile(ctx, el, chip, PAD - 8)
 	view.root.Activated:Connect(chip.open)
 	return view
 end
@@ -739,18 +977,7 @@ function kinds.build(ctx: any, el: any): any
 	local builder = builders[el.kind]
 	assert(builder, "sottUI: no view for " .. tostring(el.kind))
 	local view = builder(ctx, el)
-	local shownOn = el._shownOn
-	local flat = shownOn and shownOn.sections[1] and shownOn.sections[1].flat
-	local owner = el.section and (el.section._root or el.section)
-	local master = owner and owner.masterElement
-	if flat and master and master ~= el then
-		local refreshName = view.refreshName
-		view.refreshName = function(this: any)
-			refreshName(this)
-			this.name.Text = master.label .. " " .. el.label
-		end
-		view:refreshName()
-	end
+	view.form = kinds.form(el)
 	el._view = view
 	return view
 end

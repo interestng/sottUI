@@ -62,10 +62,18 @@ function notify.new(ctx: any, layer: any): any
 			Parent = layer,
 		})
 		theme:paint(frame, "BackgroundColor3", "surface")
+		make("UICorner", { CornerRadius = UDim.new(0, 12), Parent = frame })
 		local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 		theme:paint(outline, "Color", "lineStrong")
-		local edge =
-			make("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundTransparency = 0, ZIndex = 81, Parent = frame })
+		local edge = make("Frame", {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 5, 0.5, 0),
+			Size = UDim2.new(0, 3, 1, -24),
+			BackgroundTransparency = 0,
+			ZIndex = 81,
+			Parent = frame,
+		})
+		make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = edge })
 		theme:paint(edge, "BackgroundColor3", "accent")
 		local y = 10
 		if options.title and options.title ~= "" then

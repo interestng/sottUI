@@ -7,9 +7,9 @@ local metrics = require("../core/metrics")
 
 local keychip = {}
 
-local HEIGHT = 30
+local HEIGHT = 24
 local HIT_MARGIN = 8
-local TEXT_SIZE = 16
+local TEXT_SIZE = 12
 local LISTENING = "Press a key"
 
 local function display(el: any): string
@@ -31,7 +31,7 @@ function keychip.build(ctx: any, el: any): any
 	local theme = ctx.theme
 	local root = make("TextButton", {
 		Name = "Key",
-		Size = UDim2.fromOffset(52, 54),
+		Size = UDim2.fromOffset(52, 38),
 		BackgroundTransparency = 1,
 	})
 	local face = make("Frame", {
@@ -41,6 +41,7 @@ function keychip.build(ctx: any, el: any): any
 		ZIndex = 4,
 		Parent = root,
 	})
+	make("UICorner", { CornerRadius = UDim.new(0, 6), Parent = face })
 	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = face })
 	local text = make("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
@@ -49,15 +50,15 @@ function keychip.build(ctx: any, el: any): any
 		ZIndex = 5,
 		Parent = face,
 	})
-	theme:type(text, "text", true)
+	theme:type(text, "mono")
 
 	local chip: any = { root = root, width = 52 }
 	local listening = false
 	local inverted = false
 
 	local function fit(shown: string)
-		local width = math.ceil(metrics.width("textMedium", shown, TEXT_SIZE)) + 16 + HIT_MARGIN
-		root.Size = UDim2.fromOffset(math.max(width, 44), 54)
+		local width = math.ceil(metrics.width("mono", shown, TEXT_SIZE)) + 16 + HIT_MARGIN
+		root.Size = UDim2.fromOffset(math.max(width, 44), 38)
 		chip.width = root.Size.X.Offset
 		if chip.onFit then
 			chip.onFit()

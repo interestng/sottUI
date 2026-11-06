@@ -22,16 +22,16 @@ export type Tokens = {
 	danger: Color3,
 }
 
-export type Family = "text" | "display"
+export type Family = "text" | "display" | "mono"
 
 export type Theme = {
 	tokens: Tokens,
-	fonts: { text: any, display: any },
+	fonts: { text: any, display: any, mono: any },
 	changed: signal.Signal,
 	paint: (self: Theme, instance: any, property: string, token: string) -> (),
 	type: (self: Theme, instance: any, family: Family, medium: boolean?) -> (),
 	apply: (self: Theme, partial: { [string]: Color3 }) -> (),
-	setFonts: (self: Theme, text: string?, display: string?) -> (),
+	setFonts: (self: Theme, text: string?, display: string?, mono: string?) -> (),
 	face: (self: Theme, family: Family, medium: boolean?) -> any,
 	forget: (self: Theme, instance: any) -> (),
 }
@@ -44,25 +44,26 @@ local function rgb(hex: number): Color3
 	)
 end
 
--- sottoro's brand palette (site/src/styles/globals.css): forest ground and bark, mint that only ever means "on"
+-- near black with sottoro's mint and ink (site/src/styles/globals.css); mint only ever means "on"
 local DEFAULT: Tokens = {
-	base = rgb(0x07100D),
-	surface = rgb(0x141C18),
-	raised = rgb(0x1E2B25),
-	line = rgb(0x1A2D27),
-	lineStrong = rgb(0x2F4A40),
+	base = rgb(0x050706),
+	surface = rgb(0x0C0F0D),
+	raised = rgb(0x151A17),
+	line = rgb(0x191F1C),
+	lineStrong = rgb(0x2A342F),
 	text = rgb(0xEBE8DA),
-	muted = rgb(0xB4C2B8),
-	faint = rgb(0x5F756B),
+	muted = rgb(0x97A39C),
+	faint = rgb(0x56615B),
 	accent = rgb(0x7EE0C4),
 	accentHover = rgb(0x9BEBD4),
-	accentDim = rgb(0x1F4A3E),
-	onAccent = rgb(0x0B1A13),
+	accentDim = rgb(0x16362D),
+	onAccent = rgb(0x06231B),
 	danger = rgb(0xE5604D),
 }
 
 local FALLBACK_TEXT = "rbxasset://fonts/families/BuilderSans.json"
-local FALLBACK_DISPLAY = "rbxasset://fonts/families/RobotoCondensed.json"
+local FALLBACK_DISPLAY = "rbxasset://fonts/families/BuilderSans.json"
+local FALLBACK_MONO = "rbxasset://fonts/families/RobotoMono.json"
 
 local Theme = {}
 Theme.__index = Theme
@@ -78,7 +79,7 @@ function theme.new(overrides: { [string]: Color3 }?): Theme
 	end
 	local self = {
 		tokens = tokens,
-		fonts = { text = FALLBACK_TEXT, display = FALLBACK_DISPLAY },
+		fonts = { text = FALLBACK_TEXT, display = FALLBACK_DISPLAY, mono = FALLBACK_MONO },
 		changed = signal.new(),
 		-- strong keys: a weak key can drop while the instance lives on once its Lua wrapper is collected, and the hairline
 		-- would miss every later theme change. dead instances are swept when the table has grown
@@ -122,7 +123,10 @@ end
 
 function Theme.face(self: any, family: Family, medium: boolean?): any
 	if family == "display" then
-		return Font.new(self.fonts.display, Enum.FontWeight.ExtraBold)
+		return Font.new(self.fonts.display, Enum.FontWeight.SemiBold)
+	end
+	if family == "mono" then
+		return Font.new(self.fonts.mono, Enum.FontWeight.Medium)
 	end
 	return Font.new(self.fonts.text, if medium then Enum.FontWeight.Medium else Enum.FontWeight.Regular)
 end
@@ -151,7 +155,8 @@ function Theme.apply(self: any, partial: { [string]: Color3 })
 	self.changed:fire()
 end
 
-function Theme.setFonts(self: any, text: string?, display: string?)
+function Theme.setFonts(self: any, text: string?, display: string?, mono: string?)
+	self.fonts.mono = mono or self.fonts.mono
 	self.fonts.text = text or self.fonts.text
 	self.fonts.display = display or self.fonts.display
 	for instance, spec in self._types do

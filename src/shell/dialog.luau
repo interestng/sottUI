@@ -44,6 +44,7 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 		Parent = layer,
 	})
 	theme:paint(panel, "BackgroundColor3", "base")
+	make("UICorner", { CornerRadius = UDim.new(0, 14), Parent = panel })
 	-- the layer is unscaled, but everything inside measures itself through the window's scale
 	make("UIScale", { Scale = ctx.uiScale(), Parent = panel })
 	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = panel })
@@ -114,7 +115,11 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 		if el:shown() then
 			local view = kinds.build(ctx, el)
 			local height = TILE
-			if el.kind == "divider" then
+			if el.kind == "slider" then
+				height = 170
+			elseif el.kind == "dropdown" or el.kind == "input" then
+				height = kinds.measure(el).height
+			elseif el.kind == "divider" then
 				height = 28
 			elseif el.kind == "label" then
 				-- no page to correct it later, so wrapped text is measured here; a clipped explanation is no explanation
@@ -134,17 +139,18 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	local footerY = y + bodyHeight + 12
 	local done = make("TextButton", {
 		Position = UDim2.fromOffset(20, footerY),
-		Size = UDim2.new(1, -40, 0, 54),
+		Size = UDim2.new(1, -40, 0, 44),
 		BackgroundTransparency = 0,
-		TextSize = 28,
+		TextSize = 15,
 		Text = options.done or "Done",
 		ZIndex = 52,
 		Parent = panel,
 	})
+	make("UICorner", { CornerRadius = UDim.new(0, 10), Parent = done })
 	theme:type(done, "display")
 	theme:paint(done, "BackgroundColor3", "text")
 	theme:paint(done, "TextColor3", "base")
-	local total = footerY + 54 + 20
+	local total = footerY + 44 + 20
 	local shutter: any = motion.prop(panel, "Size", SHUTTER_SPEED)
 	shutter:to(UDim2.fromOffset(width, total))
 

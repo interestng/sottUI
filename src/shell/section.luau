@@ -32,8 +32,7 @@ function Section.toggle(self: any, id: string, spec: Spec): any
 	return el
 end
 
--- the section's own big word: it stands where the title would and is what turns the section on. everything added after
--- it folds away while it is off, unless the user peeks. a page of masters is a few words, not a wall of settings
+-- the section's own switch: its label titles the strip and the switch sits along the strip's foot
 function Section.master(self: any, id: string, spec: Spec): any
 	spec.primary = true
 	local el = self:toggle(id, spec)
@@ -42,23 +41,7 @@ function Section.master(self: any, id: string, spec: Spec): any
 	el:on(function()
 		page:_invalidate()
 	end)
-	local parent = self._guard
-	self._guard = function(): boolean
-		if parent and not parent() then
-			return false
-		end
-		return self.peeking == true
-	end
 	return el
-end
-
-function Section.togglePeek(self: any)
-	local opening = not self.peeking
-	for _, other in self._page.sections do
-		other.peeking = false
-	end
-	self.peeking = opening
-	self._page:_invalidate()
 end
 
 function Section.slider(self: any, id: string, spec: Spec): any

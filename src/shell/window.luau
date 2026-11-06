@@ -1,6 +1,7 @@
 --!strict
--- no window: a strip over the game that never moves, what is running hanging off its end, and a sheet that rises from it
--- only while you ask for one. the keyboard stays with the game until you click into search
+-- a rounded box you can drag: pages along the top, each one a desk of channel strips. the window is as wide as its page
+-- needs, up to the screen, and opens like a lid from under its top bar. a light on a page's name says something there is
+-- running. the keyboard stays with the game until you click into search
 
 local dialogModule = require("./dialog")
 local env = require("../core/env")
@@ -26,31 +27,31 @@ local window = {}
 
 local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
+local ART = { "glow.png", "shadow.png", "ticks.png" }
 
-local WIDTH = 520
-local DOCK = 64
-local AVATAR = 64
--- clears the standard hotbar (measured live: its top is 65 above the screen edge); anything else, the strip can be dragged
-local BOTTOM = 76
-local WORD = 18
-local WORD_GAP = 26
-local CHIP = 17
-local CHIP_PAD = 16
-local CHIP_GAP = 1
-local MORE_ROOM = 64
-local SEARCH = 124
-local SEARCH_HEIGHT = 40
-local CLOSE = 44
-local RULE_HEIGHT = 28
-local EDGE = 12
-local MAX_PANEL = 600
-local MAX_SHEET = 760
-local PANEL_SPEED = 38
-local OPEN_SPEED = 28
-local MARKER_SPEED = 30
-local DOCK_SPEED = 30
-local MARKER = 4
-local MAX_CHIPS = 6
+local HEIGHT = 420
+local TOP = 48
+local RADIUS = 14
+local MAX_WIDTH = 1120
+local EDGE = 16
+local SHADOW = 32
+local SHADOW_REST = 0.35
+local TAB_TEXT = 14
+local TAB_PAD = 14
+local TAB_LED = 7
+local TAB_LED_ROOM = 15
+local MARK_TEXT = 14
+local MARK_PAD = 18
+local SEARCH = 168
+local SEARCH_HEIGHT = 30
+local CLOSE = 30
+local RIGHT_PAD = 9
+local TOP_GAP = 18
+local MARKER = 2
+local SIZE_SPEED = 22
+local OPEN_SPEED = 20
+local MARKER_SPEED = 26
+local LAMP_SPEED = 20
 local MAX_RESULTS = 24
 local NAME_LENGTH = 12
 
@@ -77,7 +78,7 @@ local function decode(text: string): any
 end
 
 function Window._registerElement(self: any, el: any, page: any, public: boolean)
-	if page == self._resultsPage or page == self._onPage then
+	if page == self._resultsPage then
 		return
 	end
 	el._pageName = page.name
@@ -91,108 +92,39 @@ function Window._registerElement(self: any, el: any, page: any, public: boolean)
 	if el.kind ~= "divider" and el.kind ~= "label" and el.kind ~= "stat" then
 		table.insert(self.ordered, el)
 	end
-	if el.kind == "toggle" then
+	if el.kind == "toggle" and el.spec.primary then
 		el:on(function()
-			if self._showing == self._onPage and self.isOpen then
-				self:_fillOn()
-			end
-			if el.spec.primary then
-				self:_drawChips()
-				if self._showing == self._resultsPage then
-					self._resultsPage:_invalidate()
-				end
-			end
+			self:_drawLamps()
 		end)
-		if el.spec.primary then
-			el._onLabel = function()
-				self:_drawChips()
-			end
-			if el.value == true then
-				self:_drawChips()
-			end
-		end
+		self:_drawLamps()
 	end
 end
 
--- what is running lives on the dock itself: readable with every sheet closed, and one click turns it off
-function Window._drawChips(self: any)
-	if self._chipsQueued or self.destroyed then
+-- a page's light is on while any feature on it runs
+function Window._drawLamps(self: any)
+	if self._lampsQueued or self.destroyed then
 		return
 	end
-	self._chipsQueued = true
+	self._lampsQueued = true
 	task.defer(function()
-		self._chipsQueued = false
+		self._lampsQueued = false
 		if self.destroyed then
 			return
 		end
 		local running = {}
 		for _, el in self.ordered do
-			if el.kind == "toggle" and el.spec.primary and el.value == true and not el.disabled and el:shown() then
-				table.insert(running, el)
+			if el.kind == "toggle" and el.spec.primary and el.value == true and not el.disabled then
+				running[el._page] = true
 			end
 		end
-		for _, chip in self._chips do
-			chip:Destroy()
-		end
-		table.clear(self._chips)
-		local theme = self.ctx.theme
-		local chipWidth = 0
-		local function widthOf(text: string): number
-			return math.ceil(metrics.width("textMedium", text, CHIP)) + 2 * CHIP_PAD
-		end
-		local function add(text: string, order: number, tip: string, onPress: () -> ())
-			local width = widthOf(text)
-			local chip = make("TextButton", {
-				Name = "Chip",
-				Size = UDim2.new(0, width, 1, 0),
-				BackgroundTransparency = 0,
-				TextSize = CHIP,
-				Text = text,
-				LayoutOrder = order,
-				ZIndex = 3,
-				Parent = self._chipRow,
-			})
-			chipWidth += width + CHIP_GAP
-			theme:type(chip, "text", true)
-			-- status at rest, a mint block only under the pointer: the blocks must not outshout the page you are on
-			theme:paint(chip, "BackgroundColor3", "surface")
-			theme:paint(chip, "TextColor3", "accent")
-			chip.MouseEnter:Connect(function()
-				self.ctx.tint(chip, "BackgroundColor3", "accent")
-				self.ctx.tint(chip, "TextColor3", "onAccent")
-				-- deferred: leaving a panel row clears the tip in the same step this asks for one
-				task.defer(function()
-					self.ctx.tooltip:schedule(chip, tip)
-				end)
-			end)
-			chip.MouseLeave:Connect(function()
-				self.ctx.tint(chip, "BackgroundColor3", "surface")
-				self.ctx.tint(chip, "TextColor3", "accent")
-				self.ctx.tooltip:hide()
-			end)
-			chip.Activated:Connect(onPress)
-			table.insert(self._chips, chip)
-		end
-		-- what fits beside the strip; the rest collapses into a count that opens the full list
-		local scale = self._scale.Scale
-		local center = self:_dockPoint()
-		local right = center + (self._dockWidth or 0) * scale / 2
-		local room = (self._gui.AbsoluteSize.X - right) / scale - CHIP_GAP - EDGE
-		for index, el in running do
-			local rest = #running - index
-			local needed = widthOf(el.label) + (if rest > 0 then MORE_ROOM else 0)
-			if index > MAX_CHIPS or chipWidth + needed > room then
-				add("+" .. (rest + 1), 100 + index, "Show everything running", function()
-					self:_fillOn()
-					self:_show(self._onPage)
-				end)
-				break
+		for page, tab in self._tabs do
+			local on = running[page] == true
+			if tab.on ~= on then
+				tab.on = on
+				tab.glow:to(if on then 0.3 else 1)
+				self.ctx.tint(tab.dot, "BackgroundColor3", if on then "accent" else "lineStrong")
 			end
-			add(el.label, 100 + index, "Turn off " .. el.label, function()
-				el:set(false)
-			end)
 		end
-		self._chipRow.Size = UDim2.new(0, chipWidth, 1, 0)
 	end)
 end
 
@@ -200,78 +132,56 @@ function Window._setPerson(self: any, options: any)
 	self._person = options
 end
 
--- the sheet is as long as what is in it: one result, one line
+function Window.minContentWidth(self: any): number
+	return self._minWidth or 0
+end
+
+function Window._screenWidth(self: any): number
+	return self._gui.AbsoluteSize.X / self._scale.Scale - 2 * EDGE
+end
+
+-- as wide as the page wants within what the screen has; the left edge stays put so the page names never move
 function Window._contentChanged(self: any, content: number, live: boolean?)
 	if self._showing == nil then
 		return
 	end
-	local scale = self._scale.Scale
-	local available = self._sheetRoom / scale - EDGE
-	local height = math.min(content, MAX_PANEL, available)
-	if content > height then
-		height = self._showing:fitHeight(height)
-	end
-	local size = UDim2.new(0, self._sheetWidth, 0, height)
-	if live or self._sheetRise then
-		self._panelSize:to(size)
+	local limit = math.min(MAX_WIDTH, self:_screenWidth())
+	local width = math.clamp(content, math.min(self._minWidth or 0, limit), limit)
+	self._width = width
+	self:_keepOnScreen(true)
+	local size = UDim2.fromOffset(width, if self.isOpen then HEIGHT else 0)
+	if live or self._rising or self._size:moving() then
+		self._size:to(size)
 	else
-		self._panelSize:snap(size)
+		self._size:snap(size)
 	end
 end
 
--- every sheet rises from the strip's left edge, one shape with it: a position that followed the word moved the targets
--- under the pointer on each switch
-function Window._placeSheet(self: any)
+function Window._clamped(self: any, at: Vector2): Vector2
 	local scale = self._scale.Scale
-	local center, bottom = self:_dockPoint()
-	local x = center - (self._dockWidth or 0) * scale / 2
-	local top = bottom - DOCK * scale
-	local height = self._gui.AbsoluteSize.Y
-	local above = top >= height / 2
-	self._sheetAbove = above
-	self._sheetRoom = if above then top else height - bottom
-	self._panel.AnchorPoint = Vector2.new(0, if above then 1 else 0)
-	self._panel.Position = UDim2.fromOffset(math.floor(x), math.floor(if above then top else bottom))
+	local screen = self._gui.AbsoluteSize
+	local width, height = (self._width or 0) * scale, HEIGHT * scale
+	return Vector2.new(
+		math.clamp(at.X, EDGE, math.max(screen.X - width - EDGE, EDGE)),
+		math.clamp(at.Y, EDGE, math.max(screen.Y - height - EDGE, EDGE))
+	)
 end
 
--- the strip's bottom centre, in the gui's own pixels
-function Window._dockPoint(self: any): (number, number)
-	local at = self._dockAt
-	if at then
-		return at.X, at.Y
-	end
-	local size = self._gui.AbsoluteSize
-	return size.X / 2, size.Y - BOTTOM
-end
-
-function Window._home(self: any): UDim2
-	local at = self._dockAt
-	return if at then UDim2.fromOffset(at.X, at.Y) else UDim2.new(0.5, 0, 1, -BOTTOM)
-end
-
-function Window._away(self: any): UDim2
-	-- past the edge by a margin, or the spring's slow tail leaves a sliver hanging there
-	-- dragged up high, it leaves by the near edge instead of sliding across the screen
-	local at = self._dockAt
-	if at and at.Y < self._gui.AbsoluteSize.Y / 2 then
-		return UDim2.fromOffset(at.X, -EDGE)
-	end
-	return self:_home() + UDim2.fromOffset(0, DOCK * self._scale.Scale + BOTTOM + EDGE)
-end
-
--- a saved or dragged spot stays reachable when the screen changes
-function Window._clampDock(self: any)
-	local at = self._dockAt
+-- a wider page or a smaller screen slides the window just far enough to keep it all in view
+function Window._keepOnScreen(self: any, animate: boolean)
+	local at = self._at
 	if at == nil then
 		return
 	end
-	local scale = self._scale.Scale
-	local size = self._gui.AbsoluteSize
-	local half = (self._dockWidth or 0) * scale / 2
-	self._dockAt = Vector2.new(
-		math.clamp(at.X, math.min(half + EDGE, size.X / 2), math.max(size.X - half - EDGE, size.X / 2)),
-		math.clamp(at.Y, DOCK * scale + EDGE, math.max(size.Y - EDGE, DOCK * scale + EDGE))
-	)
+	local kept = self:_clamped(at)
+	if kept ~= at then
+		self._at = kept
+		if animate then
+			self._position:to(UDim2.fromOffset(kept.X, kept.Y))
+		else
+			self._position:snap(UDim2.fromOffset(kept.X, kept.Y))
+		end
+	end
 end
 
 function Window._show(self: any, page: any, instant: boolean?)
@@ -285,112 +195,104 @@ function Window._show(self: any, page: any, instant: boolean?)
 	if previous then
 		previous:setActive(false)
 	end
-	-- a word pressed mid close replaces the spring's done, so the page on its way out has to be let go here
-	local leaving = self._leaving
-	if leaving and leaving ~= page then
-		leaving:setActive(false)
-	end
-	self._leaving = nil
 	self._showing = page
-	self:_placeSheet()
-	self._sheetRise = not instant
-	page:setActive(true)
-	self._sheetRise = false
+	if page ~= self._resultsPage then
+		self._lastPage = page
+	end
+	self._rising = not instant
+	page:setActive(true, instant)
+	self._rising = false
 	page:adopt()
 	self:_syncMarker(instant)
 	self:_saveState()
 end
 
-function Window._hideSheet(self: any)
-	local previous = self._showing
-	if previous == nil then
-		return
-	end
-	self.ctx.hover.clear()
-	self.ctx.popover:close()
-	self.keys:cancel()
-	self._showing = nil
-	self._leaving = previous
-	self._panelSize:to(UDim2.new(0, self._sheetWidth, 0, 0), function()
-		if self._leaving == previous then
-			self._leaving = nil
-			previous:setActive(false)
-		end
-	end)
-	self:_syncMarker()
-end
-
 function Window._syncMarker(self: any, instant: boolean?)
 	local tint = self.ctx.tint
 	local active = nil
-	for page, item in self._words do
+	for page, tab in self._tabs do
 		local on = self._showing == page
-		if item:IsA("TextButton") and item.Text ~= "" then
-			tint(item, "TextColor3", if on then "text" else "muted")
-		end
+		tint(tab.button, "TextColor3", if on then "text" else "muted")
 		if on then
-			active = item
+			active = tab.button
 		end
 	end
-	if active == nil or active == self._homeAvatar then
+	if active == nil then
 		self._markerSize:to(UDim2.fromOffset(0, MARKER))
 		return
 	end
-	self.ctx.theme:paint(self._marker, "BackgroundColor3", if active == self._homeAvatar then "onAccent" else "accent")
 	local scale = self._scale.Scale
-	local x = (active.AbsolutePosition.X - self._dock.AbsolutePosition.X) / scale
-	-- the marker sits on the edge the sheet comes out of
-	local position = UDim2.fromOffset(x, if self._sheetAbove == false then DOCK - MARKER else 0)
-	local size = UDim2.fromOffset(active.AbsoluteSize.X / scale, MARKER)
+	local x = (active.AbsolutePosition.X - self._top.AbsolutePosition.X) / scale
+	local position = UDim2.new(0, x + TAB_PAD, 1, -MARKER)
+	local size = UDim2.fromOffset(active.AbsoluteSize.X / scale - 2 * TAB_PAD, MARKER)
 	if instant or self._markerSize.target == nil or self._markerSize.target.X.Offset == 0 then
 		self._markerAt:snap(position)
-	else
-		self._markerAt:to(position)
-	end
-	if instant then
 		self._markerSize:snap(size)
 	else
+		self._markerAt:to(position)
 		self._markerSize:to(size)
 	end
 end
 
-local function bindWord(self: any, page: any, item: any)
-	self._words[page] = item
-	item.Activated:Connect(function()
-		if self._box.Text ~= "" then
-			self._box.Text = ""
-		end
-		if self._showing == page then
-			self:_hideSheet()
-		else
-			self:_show(page)
-		end
-	end)
-end
-
-local function addWord(self: any, page: any, name: string, order: number)
-	local theme = self.ctx.theme
-	local width = math.ceil(metrics.width("textMedium", name, WORD)) + 2
-	local item = make("TextButton", {
+local function addTab(self: any, page: any, name: string, order: number)
+	local ctx = self.ctx
+	local theme = ctx.theme
+	local width = math.ceil(metrics.width("textMedium", name, TAB_TEXT)) + 2 * TAB_PAD + TAB_LED_ROOM
+	local button = make("TextButton", {
 		Name = name,
 		Size = UDim2.new(0, width, 1, 0),
-		TextSize = WORD,
+		TextSize = TAB_TEXT,
 		Text = name,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = order,
 		ZIndex = 3,
 		Parent = self._row,
 	})
-	theme:type(item, "text", true)
-	theme:paint(item, "TextColor3", "muted")
-	bindWord(self, page, item)
-	item.MouseEnter:Connect(function()
+	make("UIPadding", { PaddingLeft = UDim.new(0, TAB_PAD + TAB_LED_ROOM), Parent = button })
+	theme:type(button, "text", true)
+	theme:paint(button, "TextColor3", "muted")
+	local halo = make("ImageLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, -TAB_LED_ROOM + TAB_LED / 2, 0.5, 0),
+		Size = UDim2.fromOffset(24, 24),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ImageTransparency = 1,
+		ZIndex = 2,
+		Parent = button,
+	})
+	theme:paint(halo, "ImageColor3", "accent")
+	ctx.art(halo, "glow.png")
+	local dot = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, -TAB_LED_ROOM + TAB_LED / 2, 0.5, 0),
+		Size = UDim2.fromOffset(TAB_LED, TAB_LED),
+		BackgroundTransparency = 0,
+		ZIndex = 3,
+		Parent = button,
+	})
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
+	theme:paint(dot, "BackgroundColor3", "lineStrong")
+	self._tabs[page] = {
+		button = button,
+		dot = dot,
+		glow = self._maid:add(motion.prop(halo, "ImageTransparency", LAMP_SPEED)),
+		on = false,
+	}
+	button.Activated:Connect(function()
+		if self._box.Text ~= "" then
+			self._box.Text = ""
+		end
+		self:_show(page)
+	end)
+	button.MouseEnter:Connect(function()
 		if self._showing ~= page then
-			self.ctx.tint(item, "TextColor3", "text")
+			ctx.tint(button, "TextColor3", "text")
 		end
 	end)
-	item.MouseLeave:Connect(function()
+	button.MouseLeave:Connect(function()
 		if self._showing ~= page then
-			self.ctx.tint(item, "TextColor3", "muted")
+			ctx.tint(button, "TextColor3", "muted")
 		end
 	end)
 end
@@ -398,40 +300,39 @@ end
 function Window.page(self: any, name: string): any
 	local built = pageModule.new(self, name)
 	table.insert(self.pages, built)
-	-- your face is the way home: one less word on a strip that stays over the game
-	if name == "Home" and self._homeAvatar then
-		bindWord(self, built, self._homeAvatar)
-	else
-		addWord(self, built, name, 2 + #self.pages)
+	addTab(self, built, name, 2 + #self.pages)
+	built:mount(self._body)
+	self:_drawLamps()
+	-- nothing on show yet: the saved page if it is this one, else the first, once the host has added them all
+	if not self._firstQueued then
+		self._firstQueued = true
+		task.defer(function()
+			if self.destroyed or self._showing then
+				return
+			end
+			local chosen = self.pages[1]
+			for _, each in self.pages do
+				if each.name == self._savedPage then
+					chosen = each
+				end
+			end
+			if chosen then
+				self:_show(chosen, true)
+			end
+		end)
 	end
-	built:mount(self._panel)
 	return built
-end
-
--- what is on across every page: the answer to the question you opened the menu to ask
-function Window._fillOn(self: any)
-	-- features first: a passive option being on says nothing, so they only show when no feature is running
-	local list, options = {}, {}
-	for _, el in self.ordered do
-		if el.kind == "toggle" and el.value == true then
-			table.insert(if el.spec.primary then list else options, el)
-		end
-	end
-	if #list == 0 then
-		list = options
-	end
-	self._onPage:showList(list, if #list == 0 then "Nothing is on" else nil)
 end
 
 function Window._query(self: any, text: string)
 	if text == "" then
 		if self._showing == self._resultsPage then
-			self:_hideSheet()
+			self:_show(self._lastPage or self.pages[1])
 		end
 		self._resultsPage:showList({})
 		return
 	end
-	-- something a script hid stays hidden; things folded under a master still come up, that is what search is for
+	-- something a script hid stays hidden
 	local listed = {}
 	for _, el in self.ordered do
 		if el.visible ~= false then
@@ -483,21 +384,28 @@ function Window.setOpen(self: any, open: boolean)
 	if not open and self._dialogClose then
 		self._dialogClose()
 	end
+	local width = self._width or self._minWidth or 0
 	if open then
 		self._root.Visible = true
 		self._modal.Visible = true
 		self:_guardCursor(true)
-		self._at:to(self:_home())
-		self:_drawChips()
-		-- no focus and no sheet on open: the keyboard stays with the game until you ask for the menu's
+		if self._at == nil then
+			local scale = self._scale.Scale
+			local screen = self._gui.AbsoluteSize
+			self._at = Vector2.new((screen.X - width * scale) / 2, (screen.Y - HEIGHT * scale) / 2)
+		end
+		self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
+		self._size:to(UDim2.fromOffset(width, HEIGHT))
+		self._shadowFade:to(SHADOW_REST)
+		-- no focus on open: the keyboard stays with the game until you ask for the menu's
 	else
 		self._modal.Visible = false
 		self:_guardCursor(false)
 		self._box:ReleaseFocus()
 		-- a query left behind would show in the box with no results under it on the next open
 		self._box.Text = ""
-		self:_hideSheet()
-		self._at:to(self:_away(), function()
+		self._shadowFade:to(1)
+		self._size:to(UDim2.fromOffset(width, 0), function()
 			if not self.isOpen then
 				self._root.Visible = false
 			end
@@ -547,11 +455,8 @@ function Window.setTheme(self: any, partial: { [string]: Color3 })
 end
 
 function Window.setScale(self: any, scale: number)
-	local value = math.clamp(scale, 0.7, 1.5)
-	self._scale.Scale = value
-	self._panelScale.Scale = value
-	self:_placeSheet()
-	self:_drawChips()
+	self._scale.Scale = math.clamp(scale, 0.7, 1.5)
+	self:_keepOnScreen(false)
 	self:_saveState()
 end
 
@@ -568,10 +473,11 @@ function Window._saveState(self: any)
 	task.delay(0.5, function()
 		self._stateQueued = false
 		if not self.destroyed then
-			local at = self._dockAt
+			local at = self._at
+			local page = self._lastPage
 			store.write(
 				self._stateFile,
-				encode({ scale = self._scale.Scale, dockX = at and at.X, dockY = at and at.Y })
+				encode({ scale = self._scale.Scale, boxX = at and at.X, boxY = at and at.Y, page = page and page.name })
 			)
 		end
 	end)
@@ -632,7 +538,6 @@ function Window.destroy(self: any)
 	for _, item in self.pages do
 		item:destroy()
 	end
-	self._onPage:destroy()
 	self._resultsPage:destroy()
 	self.ctx.input:destroy()
 	self._maid:clean()
@@ -667,7 +572,7 @@ function window.new(options: { [string]: any }): any
 	maid:add(gui)
 
 	local files = env.files()
-	local folder = options.folder or "sottui_board"
+	local folder = options.folder or "sottui_console"
 	local stateFile = options.stateFile or (folder .. "/window.json")
 	local saved: any = nil
 	if files then
@@ -679,7 +584,6 @@ function window.new(options: { [string]: any }): any
 		saved = {}
 	end
 
-	-- the whole screen so the dock and sheet can be placed against its edges; it takes no input itself
 	local root = make("Frame", {
 		Name = "Root",
 		Size = UDim2.fromScale(1, 1),
@@ -696,143 +600,151 @@ function window.new(options: { [string]: any }): any
 		Parent = root,
 	})
 
-	-- strip and running chips travel as one; the chips hang off its right end so nothing on the strip ever moves
 	local assembly = make("Frame", {
 		Name = "Assembly",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, DOCK),
-		Size = UDim2.fromOffset(400, DOCK),
+		Size = UDim2.fromOffset(0, 0),
 		ZIndex = 3,
 		Parent = root,
 	})
 	local scale = make("UIScale", { Scale = startScale, Parent = assembly })
-	local dock = make("Frame", {
-		Name = "Dock",
+	local shadow = make("ImageLabel", {
+		Name = "Shadow",
+		Position = UDim2.fromOffset(-SHADOW, -SHADOW),
+		Size = UDim2.new(1, 2 * SHADOW, 1, 2 * SHADOW),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ImageColor3 = Color3.new(0, 0, 0),
+		ImageTransparency = 1,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(48, 48, 80, 80),
+		ZIndex = 1,
+		Parent = assembly,
+	})
+	-- shuts by its height, so the panel clips what is inside; the panel's own size stays fixed underneath and nothing reflows
+	local box = make("Frame", {
+		Name = "Box",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 0,
 		ClipsDescendants = true,
 		Active = true,
-		ZIndex = 3,
+		ZIndex = 2,
 		Parent = assembly,
 	})
-	theme:paint(dock, "BackgroundColor3", "surface")
+	make("UICorner", { CornerRadius = UDim.new(0, RADIUS), Parent = box })
+	theme:paint(box, "BackgroundColor3", "base")
+	local edge = make("UIStroke", {
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Thickness = 1,
+		Parent = box,
+	})
+	theme:paint(edge, "Color", "line")
+
+	-- no fill of its own: a square bar would poke through the box's rounded corners
+	local top = make("Frame", {
+		Name = "Top",
+		Size = UDim2.new(1, 0, 0, TOP),
+		Active = true,
+		ZIndex = 3,
+		Parent = box,
+	})
+	local topRule = make("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 1),
+		BackgroundTransparency = 0,
+		ZIndex = 3,
+		Parent = top,
+	})
+	theme:paint(topRule, "BackgroundColor3", "line")
 	local row = make("Frame", {
 		Name = "Row",
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 3,
-		Parent = dock,
+		Parent = top,
 	})
 	local rowLayout = make("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, WORD_GAP),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = row,
 	})
-
-	local avatar = make("TextButton", {
-		Name = "Avatar",
-		Size = UDim2.fromOffset(AVATAR, AVATAR),
-		BackgroundTransparency = 0,
-		ClipsDescendants = true,
-		Text = "",
+	local title = options.mark or "sottoro"
+	local markWidth = math.ceil(metrics.width("mono", title, MARK_TEXT)) + 2 * MARK_PAD - 8
+	local mark = make("TextLabel", {
+		Name = "Mark",
+		Size = UDim2.new(0, markWidth, 1, 0),
+		TextSize = MARK_TEXT,
+		Text = title,
 		LayoutOrder = 1,
 		ZIndex = 3,
 		Parent = row,
 	})
-	theme:paint(avatar, "BackgroundColor3", "accent")
-	local localPlayer = env.service("Players").LocalPlayer
-	if localPlayer then
-		make("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Image = string.format("rbxthumb://type=AvatarBust&id=%d&w=150&h=150", localPlayer.UserId),
-			ZIndex = 3,
-			Parent = avatar,
-		})
-	end
+	make("UIPadding", { PaddingLeft = UDim.new(0, MARK_PAD), Parent = mark })
+	theme:type(mark, "mono")
+	theme:paint(mark, "TextColor3", "accent")
 
-	local chipRow = make("Frame", {
-		Name = "Running",
-		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.new(0, 0, 1, 0),
-		BackgroundTransparency = 0,
+	local right = make("Frame", {
+		Name = "Right",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -RIGHT_PAD, 0, 0),
+		Size = UDim2.new(0, SEARCH + CLOSE + 6, 1, 0),
 		ZIndex = 3,
-		Parent = assembly,
+		Parent = top,
 	})
-	theme:paint(chipRow, "BackgroundColor3", "lineStrong")
-	-- the hairline before the first chip is the row showing through, so no world shows between strip and chips
-	make("UIPadding", { PaddingLeft = UDim.new(0, CHIP_GAP), Parent = chipRow })
-	make("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, CHIP_GAP),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = chipRow,
-	})
-
-	local function tintFocus(target: any, token: string)
-		theme:paint(target, "BackgroundColor3", token)
-	end
-	local box = make("TextBox", {
-		Name = "Search",
+	local field = make("Frame", {
+		Name = "Field",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
 		Size = UDim2.fromOffset(SEARCH, SEARCH_HEIGHT),
 		BackgroundTransparency = 0,
-		TextSize = WORD,
+		ZIndex = 3,
+		Parent = right,
+	})
+	make("UICorner", { CornerRadius = UDim.new(0, 8), Parent = field })
+	theme:paint(field, "BackgroundColor3", "raised")
+	local fieldEdge = make("UIStroke", {
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Thickness = 1,
+		Transparency = 1,
+		Parent = field,
+	})
+	theme:paint(fieldEdge, "Color", "accent")
+	local boxInput = make("TextBox", {
+		Name = "Search",
+		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -24, 1, 0),
+		TextSize = 14,
 		Text = "",
 		PlaceholderText = "Search",
 		ClearTextOnFocus = false,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		LayoutOrder = 300,
-		ZIndex = 3,
-		Parent = row,
-	})
-	make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8), Parent = box })
-	-- only a well while it has the keyboard, which is the one time that matters
-	theme:paint(box, "BackgroundColor3", "surface")
-	box.Focused:Connect(function()
-		tintFocus(box, "base")
-	end)
-	box.FocusLost:Connect(function()
-		tintFocus(box, "surface")
-	end)
-	theme:type(box, "text")
-	theme:paint(box, "TextColor3", "text")
-	-- search is a place to type, not one more page: set apart by the same hairline as close
-	local searchRule = make("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, -12, 0.5, 0),
-		Size = UDim2.fromOffset(1, 28),
-		BackgroundTransparency = 0,
+		ClipsDescendants = true,
 		ZIndex = 4,
-		Parent = box,
+		Parent = field,
 	})
-	theme:paint(searchRule, "BackgroundColor3", "lineStrong")
-	theme:paint(box, "PlaceholderColor3", "muted")
+	theme:type(boxInput, "text")
+	theme:paint(boxInput, "TextColor3", "text")
+	theme:paint(boxInput, "PlaceholderColor3", "muted")
 
 	local marker = make("Frame", {
 		Name = "Marker",
 		Size = UDim2.fromOffset(0, MARKER),
 		BackgroundTransparency = 0,
 		ZIndex = 4,
-		Parent = dock,
+		Parent = top,
 	})
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = marker })
 	theme:paint(marker, "BackgroundColor3", "accent")
 
-	local panel = make("Frame", {
-		Name = "Sheet",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, -(BOTTOM + DOCK)),
-		Size = UDim2.new(0, WIDTH, 0, 0),
-		BackgroundTransparency = 0,
+	local body = make("Frame", {
+		Name = "Body",
+		Position = UDim2.fromOffset(0, TOP),
+		-- fixed height: the lid clips this rather than squeezing it
+		Size = UDim2.new(1, 0, 0, HEIGHT - TOP),
 		ClipsDescendants = true,
-		Active = true,
 		ZIndex = 2,
-		Parent = root,
+		Parent = box,
 	})
-	theme:paint(panel, "BackgroundColor3", "surface")
-	local panelScale = make("UIScale", { Scale = startScale, Parent = panel })
+
 	local self: any = setmetatable({
 		ctx = nil,
 		pages = {},
@@ -840,7 +752,6 @@ function window.new(options: { [string]: any }): any
 		ordered = {},
 		isOpen = false,
 		destroyed = false,
-		width = WIDTH,
 		visibilityChanged = signal.new(),
 		_maid = maid,
 		_gui = gui,
@@ -848,21 +759,14 @@ function window.new(options: { [string]: any }): any
 		_layer = layer,
 		_modal = modal,
 		_scale = scale,
-		_panelScale = panelScale,
-		_box = box,
-		_panel = panel,
-		_dock = dock,
+		_box = boxInput,
+		_body = body,
+		_top = top,
 		_row = row,
 		_marker = marker,
-		_chipRow = chipRow,
-		_homeAvatar = avatar,
-		_chips = {},
-		_sheetRoom = 600,
-		_sheetWidth = WIDTH,
-		_dockAt = if tonumber(saved.dockX) and tonumber(saved.dockY)
-			then Vector2.new(saved.dockX, saved.dockY)
-			else nil,
-		_words = {},
+		_tabs = {},
+		_at = if tonumber(saved.boxX) and tonumber(saved.boxY) then Vector2.new(saved.boxX, saved.boxY) else nil,
+		_savedPage = saved.page,
 		_subtitleText = options.subtitle,
 		_files = files,
 		_stateFile = stateFile,
@@ -873,6 +777,9 @@ function window.new(options: { [string]: any }): any
 		registry.current = self
 	end
 
+	-- art comes down with the fonts; anything asking before then is painted the moment it lands
+	local art: { ready: { [string]: string }, waiting: { [string]: { any } } } = { ready = {}, waiting = {} }
+
 	local ctx: any = {
 		theme = theme,
 		input = router,
@@ -880,6 +787,15 @@ function window.new(options: { [string]: any }): any
 		assets = {},
 		glyph = glyphModule.new(theme),
 		tint = tintModule.new(theme),
+		art = function(instance: any, file: string)
+			local ready = art.ready[file]
+			if ready then
+				instance.Image = ready
+				return
+			end
+			art.waiting[file] = art.waiting[file] or {}
+			table.insert(art.waiting[file], instance)
+		end,
 		uiScale = function(): number
 			return scale.Scale
 		end,
@@ -908,6 +824,7 @@ function window.new(options: { [string]: any }): any
 		end,
 	}
 	self.ctx = ctx
+	ctx.art(shadow, "shadow.png")
 	local floating = overlay.popover(ctx, layer)
 	ctx.popover = floating
 	ctx.tooltip = overlay.tooltip(ctx, layer)
@@ -921,116 +838,102 @@ function window.new(options: { [string]: any }): any
 	end)
 	ctx.keys = self.keys
 
-	self._at = maid:add(motion.prop(assembly, "Position", OPEN_SPEED))
-	self._at:snap(self:_away())
-	self._panelSize = maid:add(motion.prop(panel, "Size", PANEL_SPEED))
+	self._position = maid:add(motion.prop(assembly, "Position", OPEN_SPEED))
+	self._size = maid:add(motion.prop(assembly, "Size", SIZE_SPEED))
+	self._shadowFade = maid:add(motion.prop(shadow, "ImageTransparency", OPEN_SPEED))
 	self._markerAt = maid:add(motion.prop(marker, "Position", MARKER_SPEED))
 	self._markerSize = maid:add(motion.prop(marker, "Size", MARKER_SPEED))
-	local dockSize = maid:add(motion.prop(assembly, "Size", DOCK_SPEED))
 
-	self._onPage = pageModule.new(self, "On")
 	self._resultsPage = pageModule.new(self, "Results")
-	self._onPage:mount(panel)
-	self._resultsPage:mount(panel)
+	self._resultsPage:mount(body)
 
 	local close = make("TextButton", {
 		Name = "Close",
-		Size = UDim2.new(0, CLOSE, 1, 0),
-		LayoutOrder = 400,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromScale(1, 0.5),
+		Size = UDim2.fromOffset(CLOSE, CLOSE),
+		BackgroundTransparency = 1,
 		ZIndex = 4,
-		Parent = row,
+		Parent = right,
 	})
+	make("UICorner", { CornerRadius = UDim.new(0, 8), Parent = close })
+	theme:paint(close, "BackgroundColor3", "raised")
 	local crossIcon = ctx.glyph.cross(close, "muted")
 	crossIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-	crossIcon.Position = UDim2.new(0.5, 4, 0.5, 0)
-	crossIcon.ZIndex = 4
-	-- set apart from search, or it reads as clearing the field rather than closing the menu
-	local rule = make("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.fromScale(0, 0.5),
-		Size = UDim2.fromOffset(1, RULE_HEIGHT),
-		BackgroundTransparency = 0,
-		ZIndex = 4,
-		Parent = close,
-	})
-	theme:paint(rule, "BackgroundColor3", "lineStrong")
-	avatar.MouseEnter:Connect(function()
-		ctx.tint(avatar, "BackgroundColor3", "accentHover")
+	crossIcon.Position = UDim2.fromScale(0.5, 0.5)
+	crossIcon.ZIndex = 5
+	local closeFade = maid:add(motion.prop(close, "BackgroundTransparency", MARKER_SPEED))
+	close.MouseEnter:Connect(function()
+		closeFade:to(0)
+		ctx.tooltip:schedule(close, "Close menu")
 	end)
-	avatar.MouseLeave:Connect(function()
-		ctx.tint(avatar, "BackgroundColor3", "accent")
+	close.MouseLeave:Connect(function()
+		closeFade:to(1)
+		ctx.tooltip:hide()
+	end)
+	close.Activated:Connect(function()
+		self:setOpen(false)
 	end)
 
-	dock.InputBegan:Connect(function(event: any)
+	local focusFade = maid:add(motion.prop(fieldEdge, "Transparency", MARKER_SPEED))
+	boxInput.Focused:Connect(function()
+		focusFade:to(0.2)
+	end)
+	boxInput.FocusLost:Connect(function()
+		focusFade:to(1)
+	end)
+	boxInput:GetPropertyChangedSignal("Text"):Connect(function()
+		self:_query(boxInput.Text)
+	end)
+
+	-- the bar's empty space drags the window
+	top.InputBegan:Connect(function(event: any)
 		local kind = event.UserInputType
 		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
 			return
 		end
 		local from = if kind == Enum.UserInputType.Touch then router:at(event) else router:pointer()
-		local originX, originY = self:_dockPoint()
+		local origin = self._at
+		if origin == nil then
+			return
+		end
 		router:capture(function(at: Vector2)
-			local delta = at - from
-			self._dockAt = Vector2.new(originX + delta.X, originY + delta.Y)
-			self:_clampDock()
-			self._at:snap(self:_home())
-			self:_placeSheet()
-			local page = self._showing
-			if page then
-				page:_invalidate()
-			end
+			self._at = self:_clamped(origin + (at - from))
+			self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
 		end, function()
-			self:_drawChips()
-			self:_syncMarker(true)
 			self:_saveState()
 		end, if kind == Enum.UserInputType.Touch then event else nil)
 	end)
-	close.Activated:Connect(function()
-		self:setOpen(false)
-	end)
-	close.MouseEnter:Connect(function()
-		ctx.tooltip:schedule(close, "Close menu")
-	end)
-	close.MouseLeave:Connect(function()
-		ctx.tooltip:hide()
-	end)
 
-	box:GetPropertyChangedSignal("Text"):Connect(function()
-		self:_query(box.Text)
-	end)
-
-	-- the strip is exactly as wide as its words, a fact that only changes while pages are being added
-	local function fitDock()
-		local width = math.ceil(rowLayout.AbsoluteContentSize.X / scale.Scale)
-		self._dockWidth = width
-		dockSize:snap(UDim2.fromOffset(width, DOCK))
-		self:_clampDock()
-		if self.isOpen then
-			self._at:snap(self:_home())
-		else
-			self._at:snap(self:_away())
+	-- the bar's contents are the narrowest a page may make the window
+	local function fitBar()
+		local needed = math.ceil(rowLayout.AbsoluteContentSize.X / scale.Scale)
+			+ TOP_GAP
+			+ SEARCH
+			+ CLOSE
+			+ 6
+			+ RIGHT_PAD
+		if needed == self._minWidth then
+			return
 		end
-		self:_placeSheet()
-		self:_drawChips()
+		self._minWidth = needed
+		local page = self._showing
+		if page then
+			page:_invalidate()
+		end
 		task.defer(function()
 			if not self.destroyed then
-				-- exactly the strip's width, so strip and sheet read as one block
-				self._sheetWidth = math.clamp(self._dockWidth, WIDTH, MAX_SHEET)
-				self._panelSize:snap(UDim2.new(0, self._sheetWidth, 0, panel.Size.Y.Offset))
 				self:_syncMarker(true)
 			end
 		end)
 	end
-	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitDock)
-	task.defer(fitDock)
+	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitBar)
+	task.defer(fitBar)
 	maid:add(gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		self:_clampDock()
-		if self.isOpen then
-			self._at:snap(self:_home())
-		end
-		self:_placeSheet()
-		self:_drawChips()
+		self:_keepOnScreen(false)
 		local page = self._showing
 		if page then
+			page._quiet = true
 			page:_invalidate()
 		end
 	end))
@@ -1068,8 +971,8 @@ function window.new(options: { [string]: any }): any
 			self._dialogClose()
 			return
 		end
-		if name == "Escape" and box.Text ~= "" then
-			box.Text = ""
+		if name == "Escape" and boxInput.Text ~= "" then
+			boxInput.Text = ""
 			return
 		end
 		if processed or router:typing() then
@@ -1077,19 +980,20 @@ function window.new(options: { [string]: any }): any
 		end
 		if self.isOpen and name == "K" then
 			if uis:IsKeyDown(Enum.KeyCode.LeftControl) or uis:IsKeyDown(Enum.KeyCode.RightControl) then
-				box:CaptureFocus()
+				boxInput:CaptureFocus()
 			end
 		end
 	end)
 
 	maid:add(theme.changed:connect(function()
 		local all = table.clone(self.pages)
-		table.insert(all, self._onPage)
 		table.insert(all, self._resultsPage)
 		for _, page in all do
 			for _, view in page._views do
 				pcall(function()
-					view:retint()
+					if view.retint then
+						view:retint()
+					end
 					view.refresh()
 				end)
 			end
@@ -1132,8 +1036,25 @@ function window.new(options: { [string]: any }): any
 			-- by tag: a new release may change a file under the same name, and a cached copy would otherwise win forever
 			local fontFolder = folder .. "/fonts-" .. tag
 			local loaded = fonts.load(fontFolder, base, encode)
-			if not self.destroyed and (loaded.text or loaded.display) then
-				theme:setFonts(loaded.text, loaded.display)
+			if self.destroyed then
+				return
+			end
+			if loaded.text or loaded.display or loaded.mono then
+				theme:setFonts(loaded.text, loaded.display, loaded.mono)
+			end
+			for _, file in ART do
+				local asset = fonts.image(fontFolder, base, file)
+				if self.destroyed then
+					return
+				end
+				if asset then
+					art.ready[file] = asset
+					local waiting: { any } = art.waiting[file] or {}
+					for _, instance in waiting do
+						instance.Image = asset
+					end
+				end
+				art.waiting[file] = nil
 			end
 		end))
 	end
