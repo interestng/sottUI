@@ -1560,13 +1560,13 @@ _pageName=''end,_invalidate=function()end},'')at.menuKey=az:key('__menu',{label=
 'Menu',default=K.key or'RightShift',mode='Toggle',saved=false,onPress=function()
 at:toggle()end})local aA=b.service('RunService')i.setAttach(function(aB)return
 aA.PreRender:Connect(aB)end)at:_clamp()if K.fonts~=false and S then M:add(task.
-defer(function()local aB=K.fontTag or s local aC=c.load(T..'/fonts',string.
+defer(function()local aB=K.fontTag or s local aC=c.load(T..'/fonts-'..aB,string.
 format(t,aB),encode)if not at.destroyed and(aC.text or aC.display)then N:
 setFonts(aC.text,aC.display)end end))end if K.autoShow~=false then task.defer(
 function()at:setOpen(true)end)end return at end function r.setVersion(ab)s=ab
 end return r end function a.C()local aa=a.cache.C if not aa then aa={c=
 __modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.C()local ae='0.1.4'local function registry()local af=
+)local ac=a.e()local ad=a.C()local ae='0.1.5'local function registry()local af=
 aa.global('getgenv')local ag=if type(af)=='function'then af()else _G local ah=ag
 .__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end return ah
 end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.window(ag)
