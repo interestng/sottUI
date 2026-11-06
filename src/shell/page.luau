@@ -389,6 +389,8 @@ function Page._materialize(self: any, force: boolean?)
 					self._headers[item.section] = header
 				end
 			elseif self._views[item.el] == nil then
+				-- a search may have claimed it last, and the row is built differently on a flat list
+				item.el._shownOn = self
 				local ok, view = xpcall(kinds.build, debug.traceback, self.window.ctx, item.el)
 				if ok then
 					view.root.Position = UDim2.fromOffset(0, y)
@@ -659,6 +661,10 @@ function Page.adopt(self: any)
 	for el, view in self._views do
 		el._view = view
 		el._shownOn = self
+		-- flipped while another page's view owned it
+		if view.refresh then
+			view.refresh()
+		end
 	end
 end
 
