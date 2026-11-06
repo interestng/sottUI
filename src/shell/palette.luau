@@ -104,10 +104,7 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 				end
 			end
 		else
-			results = search.rank(text, elements(), function(el: any): string
-				local section = el.section and el.section.title or ""
-				return el.label .. " " .. (el._pageName or "") .. " " .. section .. " " .. (el.tip or "")
-			end, MAX_ROWS)
+			results = search.settings(text, elements(), MAX_ROWS)
 		end
 		selected = 1
 		draw()

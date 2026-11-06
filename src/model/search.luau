@@ -39,6 +39,45 @@ function search.score(query: string, text: string): number?
 	return score
 end
 
+-- a setting's name may match loosely; its page, section and tooltip only literally. a long tooltip contains most short
+-- queries as a scattered subsequence, which floods results with things that have nothing to do with what was typed
+function search.setting(query: string, el: any): number?
+	local named = search.score(query, el.label)
+	if named then
+		return named + 100
+	end
+	local needle = string.lower(query)
+	local section = el.section and el.section.title or ""
+	local context = string.lower((el._pageName or "") .. " " .. section .. " " .. (el.tip or ""))
+	return if string.find(context, needle, 1, true) then 1 else nil
+end
+
+function search.settings(query: string, items: { any }, limit: number): { any }
+	local hits = {}
+	for _, item in items do
+		local score = search.setting(query, item)
+		if score then
+			table.insert(hits, { item = item, score = score })
+		end
+	end
+	table.sort(hits, function(a, b)
+		return a.score > b.score
+	end)
+	-- a key or colour draws inside its host's row, so a hit on one is a hit on that row: listing it again gave "Walk speed" twice
+	local out, seen = {}, {}
+	for _, hit in hits do
+		local row = hit.item.host or hit.item
+		if not seen[row] then
+			seen[row] = true
+			table.insert(out, row)
+			if #out == limit then
+				break
+			end
+		end
+	end
+	return out
+end
+
 export type Hit<T> = { item: T, score: number }
 
 function search.rank<T>(query: string, items: { T }, text: (T) -> string, limit: number): { T }

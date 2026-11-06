@@ -27,10 +27,10 @@ local VERSION = "main"
 local FONT_BASE = "https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/"
 
 local DIM = 0.3
-local BACKDROP = 1180
 local SHADE_SPEED = 18
 local NAV_SIZE = 22
 local NAV_GAP = 28
+local CONTROLS_BOTTOM = 48
 local MARGIN = 48
 local AVATAR = 76
 local SPIN_PAGE = 5
@@ -441,9 +441,7 @@ function window.new(options: { [string]: any }): any
 	})
 	-- deepest behind the words and feathered at the sides: the column stays legible over a bright sky, the world still shows
 	local backdrop = make("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.new(0, BACKDROP, 1, 0),
+		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 0,
 		Parent = root,
 	})
@@ -451,8 +449,15 @@ function window.new(options: { [string]: any }): any
 	make("UIGradient", {
 		Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(0.22, 0.12),
-			NumberSequenceKeypoint.new(0.78, 0.12),
+			NumberSequenceKeypoint.new(0.1, 0.94),
+			NumberSequenceKeypoint.new(0.2, 0.74),
+			NumberSequenceKeypoint.new(0.3, 0.42),
+			NumberSequenceKeypoint.new(0.4, 0.18),
+			NumberSequenceKeypoint.new(0.5, 0.12),
+			NumberSequenceKeypoint.new(0.6, 0.18),
+			NumberSequenceKeypoint.new(0.7, 0.42),
+			NumberSequenceKeypoint.new(0.8, 0.74),
+			NumberSequenceKeypoint.new(0.9, 0.94),
 			NumberSequenceKeypoint.new(1, 1),
 		}),
 		Parent = backdrop,
@@ -641,8 +646,8 @@ function window.new(options: { [string]: any }): any
 	end)
 
 	local close = make("TextButton", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -MARGIN + 8, 0, 58),
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -MARGIN + 8, 1, -CONTROLS_BOTTOM),
 		Size = UDim2.fromOffset(34, 34),
 		ZIndex = 5,
 		Parent = root,
@@ -655,9 +660,9 @@ function window.new(options: { [string]: any }): any
 		self:setOpen(false)
 	end)
 	local find = make("TextButton", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(MARGIN + 34), 0, 60),
-		Size = UDim2.fromOffset(70, NAV_SIZE + 10),
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -(MARGIN + 34), 1, -CONTROLS_BOTTOM),
+		Size = UDim2.fromOffset(70, 34),
 		TextSize = 18,
 		Text = "Search",
 		TextXAlignment = Enum.TextXAlignment.Right,
