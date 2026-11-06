@@ -16,7 +16,7 @@ local WASH_SPEED = 30
 local PRESS_SPEED = 40
 local PRESS_RELEASE_DAMPING = 0.62
 local FLOOD_SPEED = 20
-local INK_SPEED = 22
+local INK_SPEED = 36
 local PRESS_SCALE = 0.965
 -- past the far corner from any start point, and a critically damped spring spends its last stretch creeping, so the
 -- overshoot also sets how quickly the wave clears the tile

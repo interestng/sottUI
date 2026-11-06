@@ -540,7 +540,7 @@ destroy=function()if q then i.keys:cancel()end l:Destroy()end return p end
 return d end function a.k()local b=a.cache.k if not b then b={c=__modImpl()}a.
 cache.k=b end return b.c end end do local function __modImpl()local b=a.f()local
 c=a.b()local d={}d.PAD=14 d.HEIGHT=54 d.NAME=17 local e=30 local f=40 local g=
-0.62 local h=20 local i=22 local j=0.965 local k=2.6 local l=0.45 local m={}m.
+0.62 local h=20 local i=36 local j=0.965 local k=2.6 local l=0.45 local m={}m.
 __index=m function m.own(n,o)table.insert(n._cleanups,function()o:destroy()end)
 return o end function m.onCleanup(n,o)table.insert(n._cleanups,o)end local 
 function baseColor(n)local o=n.ctx.theme.tokens local p=n._face if n._lit then
