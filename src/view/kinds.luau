@@ -160,7 +160,7 @@ function builders.toggle(ctx: any, el: any): any
 		state.Text = if on then "on" else "off"
 		view:ink(
 			state,
-			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "faint",
+			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "muted",
 			instant
 		)
 		for _, chip in view.chips do
@@ -531,10 +531,6 @@ end
 function builders.button(ctx: any, el: any): any
 	local view: any = newRow(ctx, el)
 	local armed: thread? = nil
-	local mark = ctx.glyph.chevron(view.root, "faint", "right")
-	mark.AnchorPoint = Vector2.new(1, 0.5)
-	mark.Position = UDim2.new(1, -PAD, 0.5, 0)
-	mark.ZIndex = 3
 
 	local function draw()
 		view:refreshName()

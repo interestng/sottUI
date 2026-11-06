@@ -43,6 +43,8 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 		Parent = layer,
 	})
 	theme:paint(panel, "BackgroundColor3", "base")
+	-- the layer is unscaled, but everything inside measures itself through the window's scale
+	make("UIScale", { Scale = ctx.uiScale(), Parent = panel })
 	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = panel })
 	theme:paint(outline, "Color", "line")
 
