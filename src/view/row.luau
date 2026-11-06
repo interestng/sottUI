@@ -95,11 +95,14 @@ function Row.lit(self: any, on: boolean, instant: boolean?)
 		self._bar = bar
 		self._barSize = self:own(motion.prop(bar, "Size", BAR_SPEED))
 	end
-	local width = if on then BAR_WIDTH else 0
+	-- a master's stretch of rail widens into the whole row: the one loud moment in an otherwise quiet column
+	local target = if on and self.el.spec.primary
+		then UDim2.fromScale(1, 1)
+		else UDim2.new(0, if on then BAR_WIDTH else 0, 1, 0)
 	if instant or not self.ctx.isShowing(self.el) then
-		self._barSize:snap(UDim2.new(0, width, 1, 0))
+		self._barSize:snap(target)
 	else
-		self._barSize:to(UDim2.new(0, width, 1, 0))
+		self._barSize:to(target)
 	end
 end
 

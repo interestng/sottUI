@@ -151,9 +151,21 @@ function builders.toggle(ctx: any, el: any): any
 	local function draw(instant: boolean)
 		local on = el.value == true
 		view:lit(on, instant)
-		view:ink(view.name, if el.disabled then "faint" elseif on then "text" else "muted", instant)
+		local flooded = master and on
+		view:ink(
+			view.name,
+			if el.disabled then "faint" elseif flooded then "onAccent" elseif on then "text" else "muted",
+			instant
+		)
 		state.Text = if on then "on" else "off"
-		view:ink(state, if el.disabled then "line" elseif on then "accent" else "faint", instant)
+		view:ink(
+			state,
+			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "faint",
+			instant
+		)
+		for _, chip in view.chips do
+			chip.setInk(flooded)
+		end
 		if peek then
 			peek.Visible = not on and el.section.hasOptions == true
 			chevronDown.Visible = not el.section.peeking
