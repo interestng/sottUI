@@ -1566,7 +1566,7 @@ setFonts(aC.text,aC.display)end end))end if K.autoShow~=false then task.defer(
 function()at:setOpen(true)end)end return at end function r.setVersion(ab)s=ab
 end return r end function a.C()local aa=a.cache.C if not aa then aa={c=
 __modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.C()local ae='0.1.3'local function registry()local af=
+)local ac=a.e()local ad=a.C()local ae='0.1.4'local function registry()local af=
 aa.global('getgenv')local ag=if type(af)=='function'then af()else _G local ah=ag
 .__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end return ah
 end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.window(ag)
