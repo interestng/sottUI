@@ -32,7 +32,8 @@ local LIVE_SPEED = 18
 local ENTER_SPEED = 22
 local ENTER_FROM = 12
 local THUMB = 3
-local THUMB_INSET = 4
+local THUMB_INSET = 3
+local THUMB_SIDE = 16
 
 local Page = {}
 Page.__index = Page
@@ -140,7 +141,7 @@ local function buildHero(self: any): any
 	theme:paint(glow, "ImageColor3", "accent")
 	ctx.art(glow, "glow.png")
 	if options.userId then
-		make("ImageLabel", {
+		local bust = make("ImageLabel", {
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 0, 16),
 			Size = UDim2.fromOffset(232, 232),
@@ -148,6 +149,16 @@ local function buildHero(self: any): any
 			BorderSizePixel = 0,
 			Image = string.format("rbxthumb://type=AvatarBust&id=%d&w=420&h=420", options.userId),
 			Parent = root,
+		})
+		-- a bust is cut flat at the chest; let it sink into the dark instead
+		make("UIGradient", {
+			Rotation = 90,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.72, 0),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Parent = bust,
 		})
 	end
 	local name = make("TextLabel", {
@@ -312,6 +323,21 @@ local function planStrip(section: any, available: number): any
 	end
 	local top = STRIP_PAD + (if titled then HEADER + HEADER_GAP else 0)
 	local bottom = available - STRIP_PAD - (if master then SWITCH + SWITCH_GAP else 0)
+
+	-- switches together and picks after them; a section mixing in text keeps the order it was written in
+	local plainControls = true
+	for _, item in flow do
+		local kind = item.el.kind
+		plainControls = plainControls and kind ~= "label" and kind ~= "divider" and kind ~= "stat"
+	end
+	if plainControls then
+		local sorted, rest = {}, {}
+		for _, item in flow do
+			table.insert(if item.el.kind == "toggle" then sorted else rest, item)
+		end
+		table.move(rest, 1, #rest, #sorted + 1, sorted)
+		flow = sorted
+	end
 
 	-- down a column until it runs out of room, then the next; a free width line takes its column's
 	local columns: { any } = {}
@@ -651,11 +677,12 @@ function Page._refreshThumb(self: any)
 	end
 	-- always there on a desk that scrolls: it is the only sign there are more strips off to the right
 	thumb.Visible = true
-	local width = math.max(viewport * viewport / content, 48)
-	local travel = viewport - width
+	local track = viewport - 2 * THUMB_SIDE
+	local width = math.max(track * viewport / content, 48)
+	local travel = track - width
 	local at = self.frame.CanvasPosition.X / scale / math.max(content - viewport, 1)
 	thumb.Size = UDim2.fromOffset(width, THUMB)
-	thumb.Position = UDim2.new(0, at * travel, 1, -THUMB_INSET)
+	thumb.Position = UDim2.new(0, THUMB_SIDE + at * travel, 1, -(THUMB + THUMB_INSET))
 end
 
 function Page.scrollTo(self: any, x: number, instant: boolean?)

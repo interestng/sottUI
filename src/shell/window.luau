@@ -148,6 +148,14 @@ function Window._contentChanged(self: any, content: number, live: boolean?)
 	local limit = math.min(MAX_WIDTH, self:_screenWidth())
 	local width = math.clamp(content, math.min(self._minWidth or 0, limit), limit)
 	self._width = width
+	-- no saved spot: centred on the first page's real width, which is not known when the window first opens
+	if self._autoCentre then
+		self._autoCentre = false
+		local screen = self._gui.AbsoluteSize
+		local scale = self._scale.Scale
+		self._at = Vector2.new((screen.X - width * scale) / 2, (screen.Y - HEIGHT * scale) / 2)
+		self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
+	end
 	self:_keepOnScreen(true)
 	local size = UDim2.fromOffset(width, if self.isOpen then HEIGHT else 0)
 	if live or self._rising or self._size:moving() then
@@ -766,6 +774,7 @@ function window.new(options: { [string]: any }): any
 		_marker = marker,
 		_tabs = {},
 		_at = if tonumber(saved.boxX) and tonumber(saved.boxY) then Vector2.new(saved.boxX, saved.boxY) else nil,
+		_autoCentre = not (tonumber(saved.boxX) and tonumber(saved.boxY)),
 		_savedPage = saved.page,
 		_subtitleText = options.subtitle,
 		_files = files,
@@ -897,6 +906,7 @@ function window.new(options: { [string]: any }): any
 		if origin == nil then
 			return
 		end
+		self._autoCentre = false
 		router:capture(function(at: Vector2)
 			self._at = self:_clamped(origin + (at - from))
 			self._position:snap(UDim2.fromOffset(self._at.X, self._at.Y))
