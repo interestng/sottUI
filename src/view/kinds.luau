@@ -13,19 +13,19 @@ local tileModule = require("./tile")
 local kinds = {}
 
 local PAD = tileModule.PAD
-local NAME = tileModule.NAME
+local READOUT = 22
 local MASTER_NAME = 42
 local FILL_SPEED = 42
 local FILL_DRAG_SPEED = 90
 local DRAG_START = 3
 local READOUT_GAP = 12
-local VALUE_SIZE = 19
+local VALUE_SIZE = 17
 local CHEVRON = 22
-local MARK = 11
+local MARK = 12
 local MASTER_MARK = 16
 local TRACK = 2
 local INPUT_HEIGHT = 34
-local INPUT_TEXT = 18
+local INPUT_TEXT = 17
 local STAT_VALUE = 34
 local STAT_CAPTION = 16
 local TEXT_ROW = 16
@@ -33,57 +33,38 @@ local PEEK_WIDTH = 64
 
 local builders: { [string]: (ctx: any, el: any) -> any } = {}
 
--- colours are flush strips on the tile's edge, keys are chips left of whatever else is there. returns the room taken
+-- colour dots then key chips, right to left from inner. returns the room taken
 local function addons(view: any, ctx: any, el: any, inner: number): number
-	local strip = 0
 	local used = inner
+	local function place(addon: any, chip: any)
+		chip.root.AnchorPoint = Vector2.new(1, 0.5)
+		chip.root.Position = UDim2.new(1, -(PAD + used), 0.5, 0)
+		chip.root.ZIndex = 4
+		chip.root.Parent = view.root
+		used += chip.width
+		addon._view = chip
+		table.insert(view.chips, chip)
+		view:onCleanup(function()
+			addon._view = nil
+			chip.destroy()
+		end)
+	end
 	for _, addon in el.addons or {} do
 		if addon.kind == "color" and not addon.spec.chipless then
-			local chip = colorpicker.swatch(ctx, addon)
-			chip.root.AnchorPoint = Vector2.new(1, 0.5)
-			chip.root.Position = UDim2.new(1, -strip, 0.5, 0)
-			chip.root.ZIndex = 4
-			chip.root.Parent = view.root
-			strip += chip.width
-			addon._view = chip
-			table.insert(view.chips, chip)
-			view:onCleanup(function()
-				addon._view = nil
-				chip.destroy()
-			end)
+			place(addon, colorpicker.swatch(ctx, addon))
 		end
 	end
 	for _, addon in el.addons or {} do
 		if addon.kind == "key" and not addon.spec.chipless then
-			local chip = keychip.build(ctx, addon)
-			chip.root.AnchorPoint = Vector2.new(1, 0.5)
-			chip.root.Position = UDim2.new(1, -(PAD + strip + used), 0.5, 0)
-			chip.root.ZIndex = 4
-			chip.root.Parent = view.root
-			used += chip.width + 6
-			addon._view = chip
-			table.insert(view.chips, chip)
-			view:onCleanup(function()
-				addon._view = nil
-				chip.destroy()
-			end)
+			place(addon, keychip.build(ctx, addon))
+			used += 6
 		end
 	end
-	return strip + used
+	return used
 end
 
 local function reserveRight(view: any, width: number)
 	view.name.Size = UDim2.new(1, -(2 * PAD + width), 1, 0)
-end
-
-local function stripsWidth(el: any): number
-	local width = 0
-	for _, addon in el.addons or {} do
-		if addon.kind == "color" and not addon.spec.chipless then
-			width += colorpicker.STRIP_WIDTH
-		end
-	end
-	return width
 end
 
 function builders.toggle(ctx: any, el: any): any
@@ -92,6 +73,7 @@ function builders.toggle(ctx: any, el: any): any
 	local master = el.spec.primary == true
 	local markSize = if master then MASTER_MARK else MARK
 	if master then
+		theme:type(view.name, "display")
 		view.name.TextSize = MASTER_NAME
 		view.name.TextWrapped = false
 	end
@@ -99,7 +81,7 @@ function builders.toggle(ctx: any, el: any): any
 	-- colour alone is not enough on a dim tile: off must read as off, not as unavailable or as a button
 	local mark = make("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -(PAD + stripsWidth(el)), 0.5, 0),
+		Position = UDim2.new(1, -PAD, 0.5, 0),
 		Size = UDim2.fromOffset(markSize, markSize),
 		ZIndex = 3,
 		Parent = view.root,
@@ -137,13 +119,26 @@ function builders.toggle(ctx: any, el: any): any
 
 	local function draw(instant: boolean)
 		local on = el.value == true
-		view:flood(on, instant)
-		view:ink(view.name, if el.disabled then "faint" elseif on then "onAccent" else "muted", instant)
+		-- the flood and the display type belong to masters alone, or every lit child competes with what it hangs off and
+		-- the page has no focal point. a child says on with its mark and brighter ink
+		local flooded = master and on
+		if master then
+			view:flood(on, instant)
+		end
+		view:ink(
+			view.name,
+			if el.disabled then "faint" elseif flooded then "onAccent" elseif on then "text" else "muted",
+			instant
+		)
 		mark.BackgroundTransparency = if on then 0 else 1
-		theme:paint(mark, "BackgroundColor3", "onAccent")
-		theme:paint(outline, "Color", if on then "onAccent" elseif el.disabled then "line" else "lineStrong")
+		theme:paint(mark, "BackgroundColor3", if flooded then "onAccent" else "accent")
+		theme:paint(
+			outline,
+			"Color",
+			if flooded then "onAccent" elseif on then "accent" elseif el.disabled then "line" else "lineStrong"
+		)
 		for _, chip in view.chips do
-			chip.setInk(on)
+			chip.setInk(flooded)
 		end
 		if peek then
 			-- on means the options are out anyway; the chevron is only for looking before enabling
@@ -182,7 +177,7 @@ function kinds.readoutWidth(el: any): number
 	local spec = el.spec
 	local widest = 0
 	for _, value in { spec.min, spec.max, el.value } do
-		widest = math.max(widest, metrics.width("display", formatted(el, value), NAME))
+		widest = math.max(widest, metrics.width("display", formatted(el, value), READOUT))
 	end
 	return math.ceil(widest * 1.05) + 2
 end
@@ -205,7 +200,7 @@ function builders.slider(ctx: any, el: any): any
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -PAD, 0, 0),
 		Size = UDim2.new(0, width, 1, 0),
-		TextSize = NAME,
+		TextSize = READOUT,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		ZIndex = 4,
 		Parent = root,
@@ -253,17 +248,19 @@ function builders.slider(ctx: any, el: any): any
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, -PAD, 0, 0),
 			Size = UDim2.new(0, math.max(width, 64), 1, 0),
-			TextSize = NAME,
+			TextSize = READOUT,
 			TextXAlignment = Enum.TextXAlignment.Right,
-			Text = tostring(el.value),
+			-- starts empty with the value behind it: select all does not take on a box focused this frame, and appending to the
+			-- old number clamped "5572" to the maximum
+			Text = "",
+			PlaceholderText = tostring(el.value),
 			ZIndex = 6,
 			Parent = root,
 		})
 		theme:type(box, "display")
 		theme:paint(box, "TextColor3", "accent")
+		theme:paint(box, "PlaceholderColor3", "faint")
 		box:CaptureFocus()
-		box.SelectionStart = 1
-		box.CursorPosition = #box.Text + 1
 		box.FocusLost:Connect(function()
 			local number = tonumber(box.Text)
 			view._typing = false
@@ -512,7 +509,7 @@ function builders.button(ctx: any, el: any): any
 
 	local function draw()
 		view:refreshName()
-		view:ink(view.name, if el.disabled then "faint" else "text")
+		view:ink(view.name, if el.disabled then "faint" elseif el.spec.danger then "danger" else "text")
 	end
 	view.refresh = draw
 	draw()
@@ -542,7 +539,7 @@ function builders.button(ctx: any, el: any): any
 		view:ink(view.name, "onAccent")
 		task.delay(0.28, function()
 			if view.root.Parent then
-				view:ink(view.name, "text")
+				draw()
 			end
 		end)
 		el:fire()
@@ -667,7 +664,7 @@ end
 
 function builders.color(ctx: any, el: any): any
 	local chip = colorpicker.swatch(ctx, el)
-	local view = chipTile(ctx, el, chip, colorpicker.STRIP_WIDTH, 0)
+	local view = chipTile(ctx, el, chip, colorpicker.DOT_SPACE, PAD - 8)
 	view.root.Activated:Connect(chip.open)
 	return view
 end

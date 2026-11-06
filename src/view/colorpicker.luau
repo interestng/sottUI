@@ -223,27 +223,28 @@ local function open(ctx: any, el: any, anchor: any)
 	end)
 end
 
--- a flush strip down the tile's edge: a square on a toggle reads as an unticked checkbox. the button is wider than what it
--- draws, ten pixels is not something to aim at
-colorpicker.STRIP_WIDTH = 16
+-- a round dot, the one round thing in the design: a square would read as another state mark, and a tile edge bar as a
+-- glitch. the button is wider than what it draws, twelve pixels is not something to aim at
+colorpicker.DOT_SPACE = 28
 
-local STRIP_DRAWN = 10
+local DOT = 12
 
 function colorpicker.swatch(ctx: any, el: any): any
 	local root = make("TextButton", {
 		Name = "Swatch",
-		Size = UDim2.new(0, colorpicker.STRIP_WIDTH, 1, 0),
+		Size = UDim2.new(0, colorpicker.DOT_SPACE, 1, 0),
 		ZIndex = 4,
 	})
 	local band = make("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.new(0, STRIP_DRAWN, 1, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(DOT, DOT),
 		BackgroundTransparency = 0,
 		ZIndex = 4,
 		Parent = root,
 	})
-	local chip: any = { root = root, width = colorpicker.STRIP_WIDTH }
+	make("UICorner", { CornerRadius = UDim.new(1, 0), Parent = band })
+	local chip: any = { root = root, width = colorpicker.DOT_SPACE }
 	chip.refresh = function()
 		band.BackgroundColor3 = el.value.color
 		band.BackgroundTransparency = el.value.alpha * 0.8

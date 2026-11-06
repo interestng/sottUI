@@ -6,7 +6,17 @@ local signal = require("../core/signal")
 
 local element = {}
 
-export type Kind = "toggle" | "slider" | "dropdown" | "input" | "key" | "color" | "button" | "label" | "divider" | "stat"
+export type Kind =
+	"toggle"
+	| "slider"
+	| "dropdown"
+	| "input"
+	| "key"
+	| "color"
+	| "button"
+	| "label"
+	| "divider"
+	| "stat"
 
 export type Element = {
 	kind: Kind,
@@ -23,7 +33,7 @@ export type Element = {
 	spec: { [string]: any },
 	addons: { Element }?,
 	host: Element?,
-	guard: ((() -> boolean))?,
+	guard: (() -> boolean)?,
 	section: any,
 	_view: any,
 	_relayout: (() -> ())?,

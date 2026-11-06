@@ -25,16 +25,16 @@ export type Router = {
 local Router = {}
 Router.__index = Router
 
+-- everything is in AbsolutePosition's space, which even with IgnoreGuiInset excludes the topbar (verified live: an
+-- instance at offset 208 reports 150 with a 58 inset). GetMouseLocation includes it, InputObject.Position does not
 function Router.pointer(self: any): Vector2
-	return self._uis:GetMouseLocation()
+	local inset = self._guiService:GetGuiInset()
+	return self._uis:GetMouseLocation() - inset
 end
 
--- event.Position excludes the topbar inset while GetMouseLocation includes it; the ScreenGui ignores the inset, so
--- every coordinate in this library is measured the GetMouseLocation way
-function Router.at(self: any, event: any): Vector2
+function Router.at(_: any, event: any): Vector2
 	local position = event.Position
-	local inset = self._guiService:GetGuiInset()
-	return Vector2.new(position.X + inset.X, position.Y + inset.Y)
+	return Vector2.new(position.X, position.Y)
 end
 
 -- finger is the touch that started it: a thumb resting on the joystick must not move or end a slider drag

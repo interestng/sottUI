@@ -64,7 +64,8 @@ function notify.new(ctx: any, layer: any): any
 		theme:paint(frame, "BackgroundColor3", "surface")
 		local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 		theme:paint(outline, "Color", "lineStrong")
-		local edge = make("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundTransparency = 0, ZIndex = 81, Parent = frame })
+		local edge =
+			make("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundTransparency = 0, ZIndex = 81, Parent = frame })
 		theme:paint(edge, "BackgroundColor3", "accent")
 		local y = 10
 		if options.title and options.title ~= "" then
@@ -119,6 +120,8 @@ function notify.new(ctx: any, layer: any): any
 				end
 			end)
 		end
+		-- arrives along its own row: starting elsewhere would swoop diagonally
+		item.pos:snap(UDim2.fromOffset(viewport.X + 8, viewport.Y - EDGE - item.height))
 		table.insert(stack, item)
 		frame.Activated:Connect(function()
 			dismiss(item)

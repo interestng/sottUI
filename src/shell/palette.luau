@@ -13,6 +13,7 @@ local ITEM = 46
 local INPUT = 68
 local MAX_ROWS = 7
 local SPEED = 34
+local CLOSE_SPEED = 48
 
 local function describe(el: any): string
 	local where = el._pageName or ""
@@ -43,7 +44,8 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 		end
 		open = false
 		scrim:Destroy()
-		local dying, dyingSpring = panel, sizeSpring
+		local dying, dyingSpring: any = panel, sizeSpring
+		dyingSpring.speed = CLOSE_SPEED
 		dyingSpring:to(UDim2.fromOffset(WIDTH, 0), function()
 			dyingSpring:destroy()
 			dying:Destroy()

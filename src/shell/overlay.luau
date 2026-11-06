@@ -9,6 +9,7 @@ local motion = require("../core/motion")
 local overlay = {}
 
 local SHUTTER = 34
+local SHUTTER_CLOSE = 48
 local TIP_DELAY = 0.55
 local TIP_WIDTH = 340
 local TIP_SPEED = 40
@@ -27,6 +28,7 @@ function overlay.popover(ctx: any, layer: any): any
 		current = nil
 		live.catcher:Destroy()
 		live.open = false
+		live.size.speed = SHUTTER_CLOSE
 		live.size:to(UDim2.fromOffset(live.width, 0), function()
 			live.size:destroy()
 			live.frame:Destroy()
@@ -39,10 +41,13 @@ function overlay.popover(ctx: any, layer: any): any
 	function api.open(_: any, anchor: any, width: number, height: number, build: (content: any, handle: any) -> ())
 		close()
 		local viewport = layer.AbsoluteSize
-		local anchorPos, anchorSize = anchor.AbsolutePosition, anchor.AbsoluteSize
+		-- a Position in the layer differs from AbsolutePosition by the layer's own origin, which is the topbar inset
+		local anchorPos, anchorSize = anchor.AbsolutePosition - layer.AbsolutePosition, anchor.AbsoluteSize
 		width = math.min(width, viewport.X - 2 * MARGIN)
 		height = math.min(height, viewport.Y - 2 * MARGIN)
-		local x = math.clamp(anchorPos.X, MARGIN, viewport.X - width - MARGIN)
+		-- a popover wider than what opened it hangs from that thing's right edge, back toward the window
+		local left = if width > anchorSize.X then anchorPos.X + anchorSize.X - width else anchorPos.X
+		local x = math.clamp(left, MARGIN, viewport.X - width - MARGIN)
 		local below = anchorPos.Y + anchorSize.Y + 2
 		local flip = below + height + MARGIN > viewport.Y and anchorPos.Y - height - 2 > MARGIN
 		local y = if flip then anchorPos.Y - height - 2 else math.min(below, viewport.Y - height - MARGIN)
@@ -178,10 +183,11 @@ function overlay.tooltip(ctx: any, layer: any): any
 			end
 			local viewport = layer.AbsoluteSize
 			local size = frame.AbsoluteSize
-			local x = math.clamp(anchor.AbsolutePosition.X, MARGIN, viewport.X - size.X - MARGIN)
-			local below = anchor.AbsolutePosition.Y + anchor.AbsoluteSize.Y + 3
+			local at = anchor.AbsolutePosition - layer.AbsolutePosition
+			local x = math.clamp(at.X, MARGIN, viewport.X - size.X - MARGIN)
+			local below = at.Y + anchor.AbsoluteSize.Y + 3
 			local above = below + size.Y + MARGIN > viewport.Y
-			local y = if above then anchor.AbsolutePosition.Y - size.Y - 3 else below
+			local y = if above then at.Y - size.Y - 3 else below
 			place:snap(UDim2.fromOffset(x, y + (if above then 8 else -8)))
 			place:to(UDim2.fromOffset(x, y))
 		end)

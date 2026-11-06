@@ -9,14 +9,14 @@ local motion = require("../core/motion")
 local tile = {}
 
 tile.PAD = 14
-tile.HEIGHT = 60
-tile.NAME = 22
+tile.HEIGHT = 54
+tile.NAME = 17
 
 local WASH_SPEED = 30
 local PRESS_SPEED = 40
 local PRESS_RELEASE_DAMPING = 0.62
 local FLOOD_SPEED = 20
-local INK_SPEED = 34
+local INK_SPEED = 22
 local PRESS_SCALE = 0.965
 -- past the far corner from any start point, and a critically damped spring spends its last stretch creeping, so the
 -- overshoot also sets how quickly the wave clears the tile
@@ -37,8 +37,6 @@ export type Ctx = {
 	setScrollLocked: (locked: boolean) -> (),
 	isShowing: (el: any) -> boolean,
 }
-
-
 
 export type Tile = {
 	root: any,
@@ -167,9 +165,14 @@ function Tile.flood(self: any, on: boolean, instant: boolean?)
 	if on then
 		self._floodSpring:snap(UDim2.fromOffset(0, 0))
 		self._floodSpring:to(UDim2.fromOffset(full, full), function()
+			-- lands on the circle's own colour and eases to hover from there, or a pointer on the tile shows a one frame step
 			self._lit = true
+			local hover = self._hover
+			self._hover = false
 			snapBase(self)
+			self._hover = hover
 			circle.Visible = false
+			washTo(self)
 		end)
 	else
 		self._lit = false
@@ -252,12 +255,11 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, face: string?, 
 		-- two lines at one size: a shrunken label among full ones reads as a mistake
 		TextWrapped = true,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		LineHeight = 0.95,
 		Text = el.label,
 		ZIndex = 3,
 		Parent = root,
 	})
-	ctx.theme:type(name, "display")
+	ctx.theme:type(name, "text", true)
 
 	local self: any = setmetatable({
 		root = root,

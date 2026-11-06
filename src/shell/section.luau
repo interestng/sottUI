@@ -105,7 +105,14 @@ function Section.key(self: any, id: string, spec: Spec): any
 end
 
 function Section.color(self: any, id: string, spec: Spec): any
-	local el = add(self, "color", id, spec.label or id, spec, { color = spec.default or Color3.new(1, 1, 1), alpha = spec.alphaValue or 0 })
+	local el = add(
+		self,
+		"color",
+		id,
+		spec.label or id,
+		spec,
+		{ color = spec.default or Color3.new(1, 1, 1), alpha = spec.alphaValue or 0 }
+	)
 	if spec.onChanged then
 		el:on(spec.onChanged)
 	end
@@ -147,6 +154,14 @@ function Section.addKey(self: any, host: any, id: string, spec: Spec): any
 	el.section = self
 	local keyed: any = el
 	keyed.toggled = spec.toggled == true
+	-- a key on a toggle flips that toggle unless the host says otherwise; the flip goes through the model like a click
+	if host.kind == "toggle" and spec.onPress == nil then
+		keyed.toggled = host.value
+		spec.onPress = function()
+			host:set(not host.value)
+			keyed.toggled = host.value
+		end
+	end
 	self._page:_register(el, true)
 	self._page.window.keys:register(el)
 	host:attach(el)

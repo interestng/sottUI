@@ -18,7 +18,7 @@ local GAP = 3
 local SIDE = 20
 local TOP = 14
 local BOTTOM = 28
-local HEADER = 44
+local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
 local PRIMARY_HEIGHT = 84
@@ -56,10 +56,10 @@ local function needs(el: any): number
 	end
 	for _, addon in el.addons or {} do
 		if not addon.spec.chipless then
-			right += if addon.kind == "key" then 58 else 14
+			right += if addon.kind == "key" then 58 else 28
 		end
 	end
-	return metrics.width("display", el.label, tileModule.NAME) * 1.05 + 2 * tileModule.PAD + right
+	return metrics.width("textMedium", el.label, tileModule.NAME) * 1.05 + 2 * tileModule.PAD + right
 end
 
 local function spanOf(el: any): number?
@@ -74,7 +74,8 @@ Page.__index = Page
 
 local function textHeight(el: any, width: number): number
 	if el.kind == "divider" then
-		return 28
+		-- a bare divider is only air in a sheet that has no rules
+		return if el.label == "" then 8 else 28
 	end
 	if not el.spec.wrap then
 		return 32
@@ -108,7 +109,9 @@ function Page._invalidate(self: any)
 	task.defer(function()
 		self._dirty = false
 		if not self.destroyed then
-			self:layout()
+			-- a resize reflows instantly; only a change the user made should move things
+			self:layout(not self._quiet)
+			self._quiet = false
 		end
 	end)
 end
@@ -255,7 +258,7 @@ local function buildHeader(self: any, section: any): any
 	else
 		local title = make("TextLabel", {
 			Size = UDim2.new(1, 0, 1, -6),
-			TextSize = 28,
+			TextSize = 26,
 			Text = section.title,
 			Parent = holder,
 		})
@@ -265,11 +268,13 @@ local function buildHeader(self: any, section: any): any
 	return holder
 end
 
-function Page.layout(self: any)
+function Page.layout(self: any, live: boolean?)
 	local frame = self.frame
 	if frame == nil then
 		return
 	end
+	-- the first layout builds the page, nothing has anywhere to animate from
+	self._live = live == true and self._settled == true and self.active
 	local scale = self.window.ctx.uiScale()
 	local width = frame.AbsoluteSize.X / scale
 	if width < 1 then
@@ -361,6 +366,26 @@ function Page.layout(self: any)
 	self:_applyPlacements()
 	self:_materialize(true)
 	self:_refreshThumb()
+	self._live = false
+	self._settled = self._settled or self.active
+end
+
+-- options open and close by their height, in step with the tiles below sliding: the page unfolds rather than swapping
+-- one arrangement for another
+local function growTo(view: any, width: number, height: number, done: (() -> ())?)
+	if view._grow == nil then
+		view._grow = view:own(motion.prop(view.root, "Size", SLIDE_SPEED))
+	end
+	view._grow:to(UDim2.fromOffset(width, height), done)
+end
+
+local function setSize(view: any, width: number, height: number)
+	local size = UDim2.fromOffset(width, height)
+	if view._grow then
+		view._grow:snap(size)
+	else
+		view.root.Size = size
+	end
 end
 
 function Page._applyPlacements(self: any)
@@ -393,8 +418,16 @@ function Page._applyPlacements(self: any)
 		end
 	end
 	for key, view in self._views do
-		if not placed[key] then
-			view.root.Visible = false
+		if not placed[key] and view.root.Visible and not view._folding then
+			if self._live then
+				view._folding = true
+				growTo(view, view.root.Size.X.Offset, 0, function()
+					view._folding = false
+					view.root.Visible = false
+				end)
+			else
+				view.root.Visible = false
+			end
 		end
 	end
 end
@@ -402,11 +435,22 @@ end
 function Page._place(self: any, view: any, item: any)
 	local root = view.root
 	local target = UDim2.fromOffset(item.x, item.y)
-	local slide = root.Visible and root.Position ~= target and self.active
+	local live = self._live
+	local revealing = live and not root.Visible
+	local refolding = view._folding == true
+	view._folding = false
 	root.Visible = true
-	root.Size = UDim2.fromOffset(item.width, item.height)
-	if slide then
-		-- tiles below a revealed dependency slide rather than jump, which is how the eye tracks what appeared
+
+	if revealing then
+		setSize(view, item.width, 0)
+		growTo(view, item.width, item.height)
+	elseif refolding then
+		growTo(view, item.width, item.height)
+	else
+		setSize(view, item.width, item.height)
+	end
+
+	if live and not revealing and root.Position ~= target then
 		if view._slide == nil then
 			view._slide = view:own(motion.prop(root, "Position", SLIDE_SPEED))
 		end
@@ -453,9 +497,12 @@ function Page._materialize(self: any, force: boolean?)
 				local ok, view = xpcall(kinds.build, debug.traceback, self.window.ctx, item.el)
 				if ok then
 					view.root.Position = UDim2.fromOffset(item.x, y)
-					view.root.Size = UDim2.fromOffset(item.width, item.height)
+					view.root.Size = UDim2.fromOffset(item.width, if self._live then 0 else item.height)
 					view.root.Parent = self.canvas
 					self._views[item.el] = view
+					if self._live then
+						growTo(view, item.width, item.height)
+					end
 				else
 					warn("sottUI: tile " .. tostring(item.el.id) .. " failed: " .. tostring(view))
 				end
@@ -561,6 +608,7 @@ function Page.mount(self: any, host: any)
 		local width = frame.AbsoluteSize.X
 		if width ~= lastWidth then
 			lastWidth = width
+			self._quiet = true
 			self:_invalidate()
 		else
 			self:_materialize(true)

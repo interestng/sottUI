@@ -1,10 +1,11 @@
 --!strict
--- Obsidian's shape over sottUI, so a host built on Library:CreateWindow, Toggles/Options and SaveManager runs unchanged.
--- it lives in this repo and not the host because it is pulled with the library: the host's own bundle stays small.
--- every behavior here is copied from obs-fork v1.0.2 where callers depend on it, including the odd ones (a toggle's
--- SetValue fires even when nothing changed, a slider's does not), and the config files stay byte compatible
+-- Obsidian's shape over sottUI, so a host written against Library:CreateWindow and Toggles/Options runs unchanged. it is
+-- here and not in the host so the host's own bundle stays small. behavior follows obs-fork v1.0.2 where callers depend
+-- on it, including the odd parts: a toggle's SetValue fires when nothing changed, a slider's does not
 
 local env = require("../core/env")
+local saveManager = require("./savemanager")
+local themeManager = require("./thememanager")
 
 local obsidian = {}
 
@@ -20,10 +21,6 @@ local function protect(fn: any, ...: any)
 	if not ok then
 		warnf("callback failed: " .. tostring(err))
 	end
-end
-
-local function isEmpty(text: any): boolean
-	return type(text) ~= "string" or string.gsub(text, "%s", "") == ""
 end
 
 local Base = {}
@@ -378,16 +375,22 @@ function Box.AddDropdown(self: any, idx: string, info: any): any
 			proxy:SetValues(playerList(info.ExcludeLocalPlayer == true))
 		end
 		table.insert(self._lib._connections, players.PlayerAdded:Connect(refresh))
-		table.insert(self._lib._connections, players.PlayerRemoving:Connect(function()
-			task.defer(refresh)
-		end))
+		table.insert(
+			self._lib._connections,
+			players.PlayerRemoving:Connect(function()
+				task.defer(refresh)
+			end)
+		)
 	end
 	return register(self._lib, "Options", idx, proxy)
 end
 
 function Box.AddButton(self: any, info: any, func: any): any
 	local options: any = if type(info) == "table" then info else { Text = info, Func = func }
-	local el = self._section:button(options.Text or "", tips(options, { confirm = options.DoubleClick == true }))
+	local el = self._section:button(
+		options.Text or "",
+		tips(options, { confirm = options.DoubleClick == true, danger = options.Risky == true })
+	)
 	local proxy = setmetatable(common(self._lib, "Button", el, options), Button) :: any
 	proxy.Func = options.Func
 	el:on(function()
@@ -484,7 +487,7 @@ local function attachColor(lib: any, owner: any, idx: string, info: any): any
 end
 
 local function keyArgument(name: string): any
-	local mouse = ({ MB1 = "MouseButton1", MB2 = "MouseButton2", MB3 = "MouseButton3" }) [name]
+	local mouse = ({ MB1 = "MouseButton1", MB2 = "MouseButton2", MB3 = "MouseButton3" })[name]
 	if mouse then
 		return (Enum.UserInputType :: any)[mouse]
 	end
@@ -655,508 +658,6 @@ function Window.OpenDialog(self: any, options: any, build: (box: any) -> ()): bo
 	end)
 end
 
-local function newSaveManager(lib: any): any
-	local save: any = {
-		Folder = "ObsidianLibSettings",
-		SubFolder = "",
-		Ignore = {},
-		AutoloadConfig = nil,
-		Library = lib,
-	}
-
-	local function http(): any
-		return env.service("HttpService")
-	end
-
-	local function settings(): string
-		local path = save.Folder .. "/settings"
-		if save.SubFolder ~= "" then
-			path ..= "/" .. save.SubFolder
-		end
-		return path
-	end
-
-	local function globalFn(name: string): any
-		return env.global(name)
-	end
-
-	local function configPath(name: string): string
-		return settings() .. "/" .. name .. ".json"
-	end
-
-	local function ensure()
-		local store = env.files()
-		if store then
-			store.folder(settings())
-			store.folder(save.Folder .. "/themes")
-		end
-	end
-
-	local function configExists(name: string): boolean
-		local store = env.files()
-		return store ~= nil and store.exists(configPath(name))
-	end
-
-	function save.SetLibrary(_: any) end
-
-	function save.SetFolder(_: any, folder: string)
-		save.Folder = folder
-		ensure()
-	end
-
-	function save.SetSubFolder(_: any, sub: string)
-		save.SubFolder = sub
-		ensure()
-	end
-
-	function save.SetIgnoreIndexes(_: any, list: { string })
-		for _, index in list do
-			save.Ignore[index] = true
-		end
-	end
-
-	function save.IgnoreThemeSettings(_: any)
-		save:SetIgnoreIndexes({ "ThemeManager_Preset", "ThemeManager_Scale", "ThemeManager_Motion" })
-	end
-
-	function save.RefreshConfigList(_: any): { string }
-		local listfiles = globalFn("listfiles")
-		if type(listfiles) ~= "function" then
-			return {}
-		end
-		ensure()
-		local ok, found = pcall(listfiles, settings())
-		if not ok or type(found) ~= "table" then
-			return {}
-		end
-		local names = {}
-		for _, path in found do
-			local clean = string.gsub(path, "\\", "/")
-			local name = string.match(clean, "([^/]+)%.[^/.]+$")
-			if name and name ~= "autoload" then
-				table.insert(names, name)
-			end
-		end
-		table.sort(names)
-		return names
-	end
-
-	local saver: { [string]: (proxy: any) -> any } = {
-		Toggle = function(proxy)
-			return { value = proxy.Value }
-		end,
-		Slider = function(proxy)
-			return { value = tostring(proxy.Value) }
-		end,
-		Dropdown = function(proxy)
-			local value = proxy.Value
-			if typeof(value) == "Instance" then
-				value = value.Name
-			end
-			return { value = value, multi = proxy.Multi }
-		end,
-		ColorPicker = function(proxy)
-			return { value = proxy.Value:ToHex(), transparency = proxy.Transparency }
-		end,
-		KeyPicker = function(proxy)
-			return { mode = proxy.Mode, key = proxy.Value, modifiers = proxy.Modifiers, toggled = proxy.Toggled }
-		end,
-		Input = function(proxy)
-			return { text = proxy.Value }
-		end,
-	}
-
-	local loader: { [string]: (proxy: any, data: any) -> () } = {
-		Toggle = function(proxy, data)
-			if proxy.Value == data.value then
-				proxy:RunChanged()
-			else
-				proxy:SetValue(data.value)
-			end
-		end,
-		Slider = function(proxy, data)
-			if proxy.Value == data.value then
-				proxy:RunChanged()
-			else
-				proxy:SetValue(data.value)
-			end
-		end,
-		Dropdown = function(proxy, data)
-			if proxy.Value == data.value then
-				proxy:RunChanged()
-			else
-				proxy:SetValue(data.value)
-			end
-		end,
-		ColorPicker = function(proxy, data)
-			proxy:SetValueRGB(Color3.fromHex(data.value), data.transparency)
-		end,
-		KeyPicker = function(proxy, data)
-			proxy:SetValue({ data.key, data.mode, data.modifiers })
-			if data.mode == "Toggle" and data.toggled ~= nil then
-				proxy.Toggled = data.toggled
-				proxy._el.toggled = data.toggled
-				proxy:Update()
-			end
-		end,
-		Input = function(proxy, data)
-			if type(data.text) ~= "string" then
-				return
-			end
-			if proxy.Value == data.text then
-				proxy:RunChanged()
-			else
-				proxy:SetValue(data.text)
-			end
-		end,
-	}
-
-	function save.SaveJSON(_: any, name: string?): (string, boolean, string?)
-		local objects = {}
-		local function collect(shelf: { [string]: any })
-			for index, proxy in shelf do
-				local parse = saver[proxy.Type]
-				if parse and not save.Ignore[index] then
-					local data = parse(proxy)
-					data.type = proxy.Type
-					data.idx = index
-					table.insert(objects, data)
-				end
-			end
-		end
-		collect(lib.Toggles)
-		collect(lib.Options)
-		local ok, encoded = pcall(function()
-			return http():JSONEncode({ timestamp = os.date("%d.%m.%Y %H:%M:%S"), name = name or "", objects = objects })
-		end)
-		if not ok then
-			return "", false, "Failed to encode data"
-		end
-		return encoded, true
-	end
-
-	function save.Save(_: any, name: string): (boolean, string?)
-		if isEmpty(name) or string.lower(name) == "autoload" then
-			return false, "Invalid config name provided"
-		end
-		ensure()
-		local encoded, ok, err = save:SaveJSON(name)
-		if not ok then
-			return false, err
-		end
-		local store = env.files()
-		if store == nil or not store.write(configPath(name), encoded) then
-			return false, "Failed to write config file"
-		end
-		return true
-	end
-
-	function save.LoadJSON(_: any, content: string): (boolean, string?)
-		if isEmpty(content) then
-			return false, "No JSON provided"
-		end
-		local ok, decoded = pcall(function()
-			return http():JSONDecode(content)
-		end)
-		if not ok or type(decoded) ~= "table" or type(decoded.objects) ~= "table" then
-			return false, "Failed to decode config data"
-		end
-		for _, data in decoded.objects do
-			local load = loader[data.type]
-			if load and not save.Ignore[data.idx] then
-				-- one thread each: a yielding callback must not hold up every setting after it
-				task.defer(function()
-					local proxy = lib.Toggles[data.idx] or lib.Options[data.idx]
-					if proxy and proxy.Type == data.type then
-						local done, err: any = pcall(load, proxy, data)
-						if not done then
-							warnf("config value " .. tostring(data.idx) .. " failed: " .. tostring(err))
-						end
-					end
-				end)
-			end
-		end
-		return true
-	end
-
-	function save.Load(_: any, name: string): (boolean, string?)
-		if isEmpty(name) then
-			return false, "No config is selected"
-		end
-		local store = env.files()
-		local content = store and store.read(configPath(name))
-		if content == nil then
-			return false, "Config file does not exist"
-		end
-		return save:LoadJSON(content)
-	end
-
-	function save.Delete(_: any, name: string): (boolean, string?)
-		if isEmpty(name) then
-			return false, "No config is selected"
-		end
-		if not configExists(name) then
-			return false, "Config file does not exist"
-		end
-		local delfile = globalFn("delfile")
-		local ok, err = pcall(delfile, configPath(name))
-		if not ok then
-			return false, "Failed to delete config file: " .. tostring(err)
-		end
-		if name == save.AutoloadConfig then
-			save:DeleteAutoLoadConfig()
-		end
-		return true
-	end
-
-	local function autoloadPath(): string
-		return settings() .. "/autoload.txt"
-	end
-
-	function save.GetAutoloadConfig(_: any): (string, boolean, string?)
-		ensure()
-		local store = env.files()
-		local name = store and store.read(autoloadPath())
-		if name == nil then
-			return "none", false, "Autoload config is not set"
-		end
-		if not configExists(name) then
-			return "none", false, "Config file not found"
-		end
-		save.AutoloadConfig = name
-		return name, true
-	end
-
-	function save.SaveAutoloadConfig(_: any, name: string): (boolean, string?)
-		if isEmpty(name) then
-			return false, "No config is selected"
-		end
-		if not configExists(name) then
-			return false, "Config does not exist"
-		end
-		local store = env.files()
-		if store == nil or not store.write(autoloadPath(), name) then
-			return false, "Failed to write the autoload file"
-		end
-		save.AutoloadConfig = name
-		return true
-	end
-
-	function save.DeleteAutoLoadConfig(_: any): (boolean, string?)
-		local store = env.files()
-		if store == nil or not store.exists(autoloadPath()) then
-			return false, "Autoload config is not set"
-		end
-		local delfile = globalFn("delfile")
-		local ok, err = pcall(delfile, autoloadPath())
-		if not ok then
-			return false, tostring(err)
-		end
-		save.AutoloadConfig = nil
-		return true
-	end
-
-	function save.LoadAutoloadConfig(_: any)
-		local name, ok, err = save:GetAutoloadConfig()
-		if not ok or err then
-			if err ~= "Autoload config is not set" then
-				lib:Notify(string.format("Failed to load autoload config: %s", tostring(err)))
-			end
-			return
-		end
-		local loaded, problem = save:Load(name)
-		if not loaded then
-			lib:Notify(string.format("Failed to load autoload config: %s", tostring(problem)))
-			return
-		end
-		lib:Notify(string.format("Loaded config %q", name))
-	end
-
-	function save.BuildConfigSection(_: any, tab: any)
-		local box = tab:AddGroupbox({ Name = "Configs" })
-		local nameInput: any = box:AddInput("SaveManager_ConfigName", { Text = "Name", Placeholder = "New config" })
-		local list: any = box:AddDropdown("SaveManager_ConfigList", {
-			Text = "Saved",
-			Values = save:RefreshConfigList(),
-			AllowNull = true,
-			FormatDisplayValue = function(value: any): string
-				return if value == save.AutoloadConfig then value .. " (autoload)" else tostring(value)
-			end,
-		})
-		save.Ignore["SaveManager_ConfigName"] = true
-		save.Ignore["SaveManager_ConfigList"] = true
-
-		local function refresh()
-			list:SetValues(save:RefreshConfigList())
-		end
-		local function selected(): string?
-			local value = list.Value
-			if isEmpty(value) then
-				lib:Notify("Pick a config first")
-				return nil
-			end
-			return value
-		end
-		local function report(ok: boolean, err: string?, success: string)
-			lib:Notify(if ok then success else tostring(err))
-		end
-
-		box:AddButton("Create", function()
-			local name = nameInput.Value
-			if isEmpty(name) then
-				lib:Notify("Give the config a name first")
-				return
-			end
-			local ok, err = save:Save(name)
-			report(ok, err, string.format("Created %q", name))
-			refresh()
-		end)
-		box:AddButton({
-			Text = "Load",
-			Func = function()
-				local name = selected()
-				if name then
-					local ok, err = save:Load(name)
-					report(ok, err, string.format("Loaded %q", name))
-				end
-			end,
-		})
-		box:AddButton({
-			Text = "Overwrite",
-			DoubleClick = true,
-			Func = function()
-				local name = selected()
-				if name then
-					local ok, err = save:Save(name)
-					report(ok, err, string.format("Saved over %q", name))
-				end
-			end,
-		})
-		box:AddButton({
-			Text = "Delete",
-			DoubleClick = true,
-			Func = function()
-				local name = selected()
-				if name then
-					local ok, err = save:Delete(name)
-					report(ok, err, string.format("Deleted %q", name))
-					list:SetValue(nil)
-					refresh()
-				end
-			end,
-		})
-		box:AddButton({
-			Text = "Load at start",
-			Func = function()
-				local name = selected()
-				if name then
-					local ok, err = save:SaveAutoloadConfig(name)
-					report(ok, err, string.format("%q loads at start", name))
-					refresh()
-				end
-			end,
-		})
-		box:AddButton({
-			Text = "Load nothing at start",
-			Func = function()
-				local ok, err = save:DeleteAutoLoadConfig()
-				report(ok, err, "No config loads at start")
-				refresh()
-			end,
-		})
-		box:AddButton("Refresh list", refresh)
-		return box
-	end
-
-	return save
-end
-
-local function derive(accent: Color3): { [string]: Color3 }
-	local h, s, v = accent:ToHSV()
-	return {
-		accent = accent,
-		accentHover = Color3.fromHSV(h, s * 0.8, math.min(v * 1.08, 1)),
-		accentDim = Color3.fromHSV(h, math.min(s * 1.2, 1), 0.2),
-	}
-end
-
--- every preset keeps the forest ground; a preset is a different signal color, not a different product
-local PRESETS: { [string]: Color3 } = {
-	Mint = Color3.fromHex("7EE0C4"),
-	Moss = Color3.fromHex("C5ECAE"),
-	Lichen = Color3.fromHex("E9DEAA"),
-	Ember = Color3.fromHex("F0A35A"),
-	Sky = Color3.fromHex("7AB8E0"),
-	Bone = Color3.fromHex("EBE8DA"),
-}
-local PRESET_ORDER = { "Mint", "Moss", "Lichen", "Ember", "Sky", "Bone" }
-
-local function newThemeManager(lib: any): any
-	local manager: any = { Folder = "ObsidianLibSettings" }
-
-	local function defaultPath(): string
-		return manager.Folder .. "/themes/default.txt"
-	end
-
-	function manager.SetLibrary(_: any) end
-
-	function manager.SetFolder(_: any, folder: string)
-		manager.Folder = folder
-		local store = env.files()
-		if store then
-			store.folder(folder .. "/themes")
-		end
-	end
-
-	function manager.SaveDefault(_: any, name: string)
-		local store = env.files()
-		if store then
-			store.write(defaultPath(), name)
-		end
-	end
-
-	function manager.ApplyTheme(_: any, name: string)
-		local accent = PRESETS[name]
-		if accent then
-			lib.window:setTheme(derive(accent))
-			lib.Scheme.AccentColor = accent
-		end
-	end
-
-	function manager.ApplyToTab(_: any, tab: any)
-		local box = tab:AddGroupbox({ Name = "Look" })
-		local store = env.files()
-		local saved = store and store.read(defaultPath())
-		local initial = if saved and PRESETS[saved] then saved else "Mint"
-		box:AddDropdown("ThemeManager_Preset", {
-			Text = "Color",
-			Values = PRESET_ORDER,
-			Default = initial,
-			Callback = function(value: string?)
-				if value then
-					manager:ApplyTheme(value)
-					manager:SaveDefault(value)
-				end
-			end,
-		})
-		box:AddSlider("ThemeManager_Scale", {
-			Text = "Size",
-			Min = 70,
-			Max = 150,
-			Default = math.round(lib.window._scale.Scale * 100),
-			Suffix = "%",
-			Rounding = 0,
-			Callback = function(value: number)
-				lib.window:setScale(value / 100)
-			end,
-		})
-		manager:ApplyTheme(initial)
-		return box
-	end
-
-	return manager
-end
-
 function obsidian.new(sottui: any): { Library: any, SaveManager: any, ThemeManager: any }
 	local rulesDirty = false
 	local Library: any = setmetatable({
@@ -1271,8 +772,8 @@ function obsidian.new(sottui: any): { Library: any, SaveManager: any, ThemeManag
 
 	return {
 		Library = Library,
-		SaveManager = newSaveManager(Library),
-		ThemeManager = newThemeManager(Library),
+		SaveManager = saveManager.new(Library),
+		ThemeManager = themeManager.new(Library),
 	}
 end
 

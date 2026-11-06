@@ -26,7 +26,10 @@ server:button("Rejoin", function() end)
 server:button("Copy join link", function() end)
 
 local farm = main:section("Auto farm")
-local enabled = farm:master("farm.enabled", { label = "Auto farm", default = true, tip = "Runs the dungeon loop until you turn it off" })
+local enabled = farm:master(
+	"farm.enabled",
+	{ label = "Auto farm", default = true, tip = "Runs the dungeon loop until you turn it off" }
+)
 farm:addKey(enabled, "farm.key", { default = "F" })
 local stay = farm:toggle("farm.stay", { label = "Stay at cast range", default = true })
 farm:toggle("farm.dodge", { label = "Dodge telegraphed hits", default = true })
@@ -37,7 +40,10 @@ farm:dropdown("farm.dungeon", {
 	options = { "Desert Temple", "Winter Outpost", "Pirate Cove", "Gilded Skies", "Northern Lands" },
 	default = "Gilded Skies",
 })
-farm:dropdown("farm.difficulty", { label = "Difficulty", options = { "Normal", "Hard", "Insane", "Nightmare" }, default = "Insane" })
+farm:dropdown(
+	"farm.difficulty",
+	{ label = "Difficulty", options = { "Normal", "Hard", "Insane", "Nightmare" }, default = "Insane" }
+)
 farm:slider("farm.range", { label = "Cast range", min = 10, max = 60, default = 42, suffix = " st" })
 farm:slider("farm.heal", { label = "Heal below", min = 0, max = 100, default = 55, suffix = "%" })
 local stayOn = farm:when(function()
@@ -55,7 +61,10 @@ bring:slider("bring.distance", { label = "Hold at", min = 2, max = 20, default =
 
 local loot = main:section("Loot")
 loot:toggle("loot.collect", { label = "Collect chests", default = true })
-loot:toggle("loot.sell", { label = "Sell commons after each run", tip = "Long names fall to two lines at a smaller size" })
+loot:toggle(
+	"loot.sell",
+	{ label = "Sell commons after each run", tip = "Long names fall to two lines at a smaller size" }
+)
 loot:toggle("loot.long", { label = "Give up on the pick after a while and farm with what you have" })
 local rarities = {}
 for i = 1, 40 do
@@ -63,7 +72,10 @@ for i = 1, 40 do
 end
 loot:dropdown("loot.keep", { label = "Always keep", options = rarities, multi = true, default = { "Item tier 3" } })
 loot:input("loot.webhook", { label = "Webhook", placeholder = "Discord url", finished = true })
-loot:label("Last boss down in 2 minutes 14 seconds. The next dungeon starts by itself when the party is ready.", { wrap = true })
+loot:label(
+	"Last boss down in 2 minutes 14 seconds. The next dungeon starts by itself when the party is ready.",
+	{ wrap = true }
+)
 loot:button("Leave dungeon", { confirm = true, tip = "Teleports back to the lobby" })
 
 local movement = player:section("Movement")
