@@ -351,7 +351,8 @@ function Page.layout(self: any, live: boolean?)
 					y += height + GAP + AFTER_MASTER
 					previousMaster = true
 				else
-					local span = math.min(if narrow then base * 2 else base, GRID)
+					-- narrow is two columns: anything a third wide or less takes half, the rest a full row
+					local span = if narrow then (if base <= GRID / 3 then GRID / 2 else GRID) else base
 					-- a long name takes more columns instead of wrapping or shrinking beside its neighbours
 					while span < GRID and needs(el) > span * column + (span - 1) * GAP do
 						span += if narrow then GRID - span else 4

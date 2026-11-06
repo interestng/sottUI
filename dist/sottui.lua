@@ -1184,13 +1184,13 @@ ab)if W==nil then flush()if ab.kind=='divider'and ab.label==''and T then
 continue end local X=textHeight(ab,K)table.insert(O,{el=ab,x=m,y=N,width=K,
 height=X})N+=X+l elseif ab.spec.primary then flush()local X=if ab.value==true
 then v else u table.insert(O,{el=ab,x=m,y=N,width=K,height=X})N+=X+k+x T=true
-else local X=math.min(if L then W*2 else W,i)while X<i and needs(ab)>X*M+(X-1)*k
-do X+=if L then i-X else 4 end if V+X>i then flush()end T=false table.insert(U,{
-el=ab,span=X,height=if ab.kind=='stat'then y else g.HEIGHT})V+=X end end flush()
-local aa=R.masterElement~=nil and#S==1 if aa then N+=w-x else N+=s end P=aa end
-end local aa=F.sections[1]and F.sections[1].flat local ab=N-s+(if aa then p else
-o)H.CanvasSize=UDim2.fromOffset(0,ab)F._contentHeight=ab F.window:
-_contentChanged(ab,G)F._placements=O F:_applyPlacements()F:_materialize(true)F:
+else local X=if L then(if W<=i/3 then i/2 else i)else W while X<i and needs(ab)>
+X*M+(X-1)*k do X+=if L then i-X else 4 end if V+X>i then flush()end T=false
+table.insert(U,{el=ab,span=X,height=if ab.kind=='stat'then y else g.HEIGHT})V+=X
+end end flush()local aa=R.masterElement~=nil and#S==1 if aa then N+=w-x else N+=
+s end P=aa end end local aa=F.sections[1]and F.sections[1].flat local ab=N-s+(if
+aa then p else o)H.CanvasSize=UDim2.fromOffset(0,ab)F._contentHeight=ab F.window
+:_contentChanged(ab,G)F._placements=O F:_applyPlacements()F:_materialize(true)F:
 _refreshThumb()F._live=false F._settled=F._settled or F.active end local 
 function growTo(aa,ab,F,G)if aa._grow==nil then aa._grow=aa:own(e.prop(aa.root,
 'Size',C))end aa._grow:to(UDim2.fromOffset(ab,F),G)end local function setSize(aa
@@ -1565,7 +1565,7 @@ destroyed and(aM.text or aM.display)then af:setFonts(aM.text,aM.display)end end)
 autoShow~=false then task.defer(function()aA:setOpen(true)end)end return aA end
 function s.setVersion(ac)t=ac end return s end function a.C()local aa=a.cache.C
 if not aa then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local
-aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.3.0-dock'local 
+aa=a.a()local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.3.1-dock'local 
 function registry()local af=aa.global('getgenv')local ag=if type(af)=='function'
 then af()else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}
 ag.__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion(
