@@ -1177,57 +1177,57 @@ local aa=Y.height W=math.max(W,aa)table.insert(N,{el=Y.el,x=V,y=M,width=_,height
 then flush()if V.kind=='divider'and V.label==''and S then continue end local X=
 textHeight(V,J)table.insert(N,{el=V,x=m,y=M,width=J,height=X})M+=X+l elseif V.
 spec.primary then flush()local X=if V.value==true then u else t table.insert(N,{
-el=V,x=m,y=M,width=J,height=X})M+=X+k+w S=true else local X=math.min(if K then W
-*2 else W,i)while X<i and needs(V)>X*L+(X-1)*k do X+=if K then i-X else 4 end if
-U+X>i then flush()end S=false table.insert(T,{el=V,span=X,height=if V.kind==
-'stat'then x else g.HEIGHT})U+=X end end flush()local aa=Q.masterElement~=nil
-and#R==1 if aa then M+=v-w else M+=r end O=aa end end local aa=M-r+o G.
-CanvasSize=UDim2.fromOffset(0,aa)E._contentHeight=aa E._placements=N E:
-_applyPlacements()E:_materialize(true)E:_refreshThumb()E._live=false E._settled=
-E._settled or E.active end local function growTo(aa,E,F,G)if aa._grow==nil then
-aa._grow=aa:own(e.prop(aa.root,'Size',B))end aa._grow:to(UDim2.fromOffset(E,F),G
-)end local function setSize(aa,E,F)local G=UDim2.fromOffset(E,F)if aa._grow then
-aa._grow:snap(G)else aa.root.Size=G end end function D._applyPlacements(aa)local
-E={}for F,G in aa._placements do if G.hero then if aa._heroView then aa.
-_heroView.root.Position=UDim2.fromOffset(G.x,G.y)aa._heroView.root.Size=UDim2.
-fromOffset(G.width,G.height)end elseif G.section then E[G.section]=true local H=
-aa._headers[G.section]if H then H.Visible=true H.Position=UDim2.fromOffset(G.x,G
-.y)H.Size=UDim2.fromOffset(G.width,G.height)end else E[G.el]=true local H=aa.
-_views[G.el]if H then aa:_place(H,G)end end end for F,G in aa._headers do if not
-E[F]then G.Visible=false end end for F,G in aa._views do if not E[F]and G.root.
-Visible and not G._folding then if aa._live then G._folding=true growTo(G,G.root
-.Size.X.Offset,0,function()G._folding=false G.root.Visible=false end)else G.root
-.Visible=false end end end end function D._place(aa,E,F)local G=E.root local H=
-UDim2.fromOffset(F.x,F.y)local I=aa._live local J=I and not G.Visible local K=E.
-_folding==true E._folding=false G.Visible=true if J then setSize(E,F.width,0)
-growTo(E,F.width,F.height)elseif K then growTo(E,F.width,F.height)elseif I and E
-._grow==nil and G.Size.Y.Offset~=F.height then growTo(E,F.width,F.height)elseif
-I and E._grow and E._grow.target.Y.Offset~=F.height then growTo(E,F.width,F.
-height)else setSize(E,F.width,F.height)end if I and not J and G.Position~=H then
-if E._slide==nil then E._slide=E:own(e.prop(G,'Position',B))end E._slide:to(H)
-elseif E._slide then E._slide:snap(H)else G.Position=H end end function D.
-_materialize(aa,E)local F=aa.frame local G=aa._placements if F==nil or G==nil or
-not aa.active then return end local H=aa.window.ctx.uiScale()local I=F.
-CanvasPosition.Y/H if not E and aa._lastSync and math.abs(I-aa._lastSync)<y/3
-then return end aa._lastSync=I local J,K=I-y,I+F.AbsoluteSize.Y/H+y for L,M in G
-do local N=M.y if N+M.height>=J and N<=K then if M.hero then if aa._heroView==
-nil then local O=buildHero(aa)O.root.Position=UDim2.fromOffset(M.x,N)O.root.Size
-=UDim2.fromOffset(M.width,M.height)aa._heroView=O end elseif M.section then if
-aa._headers[M.section]==nil then local O=buildHeader(aa,M.section)O.Position=
-UDim2.fromOffset(M.x,N)O.Size=UDim2.fromOffset(M.width,M.height)aa._headers[M.
-section]=O end elseif aa._views[M.el]==nil then local O,P=xpcall(b.build,debug.
-traceback,aa.window.ctx,M.el)if O then P.root.Position=UDim2.fromOffset(M.x,N)P.
-root.Size=UDim2.fromOffset(M.width,if aa._live then 0 else M.height)P.root.
-Parent=aa.canvas aa._views[M.el]=P if aa._live then growTo(P,M.width,M.height)
-end else warn('sottUI: tile '..tostring(M.el.id)..' failed: '..tostring(P))end
-end end end end function D._refreshThumb(aa)local E=aa.thumb if E==nil then
-return end local F=aa.window.ctx.uiScale()local G=aa.frame.AbsoluteSize.Y/F
-local H=aa._contentHeight or 0 if H<=G+1 or not aa.active then E.Visible=false
-return end E.Visible=true local I=math.max(G*G/H,40)local J=G-I-p local K=aa.
-frame.CanvasPosition.Y/F/math.max(H-G,1)E.Size=UDim2.new(0,3,0,I)E.Position=
-UDim2.new(1,-6,0,K*J)end function D.scrollTo(aa,E,F)local G=aa.frame if G==nil
-then return end local H=aa.window.ctx.uiScale()local I=math.max((aa.
-_contentHeight or 0)-G.AbsoluteSize.Y/H,0)local J=math.clamp(E,0,I)aa.
+el=V,x=m,y=M,width=J,height=X})M+=X+k+w S=true else local X=if K then(if W<=i/3
+then i/2 else i)else W while X<i and needs(V)>X*L+(X-1)*k do X+=if K then i-X
+else 4 end if U+X>i then flush()end S=false table.insert(T,{el=V,span=X,height=
+if V.kind=='stat'then x else g.HEIGHT})U+=X end end flush()local aa=Q.
+masterElement~=nil and#R==1 if aa then M+=v-w else M+=r end O=aa end end local
+aa=M-r+o G.CanvasSize=UDim2.fromOffset(0,aa)E._contentHeight=aa E._placements=N
+E:_applyPlacements()E:_materialize(true)E:_refreshThumb()E._live=false E.
+_settled=E._settled or E.active end local function growTo(aa,E,F,G)if aa._grow==
+nil then aa._grow=aa:own(e.prop(aa.root,'Size',B))end aa._grow:to(UDim2.
+fromOffset(E,F),G)end local function setSize(aa,E,F)local G=UDim2.fromOffset(E,F
+)if aa._grow then aa._grow:snap(G)else aa.root.Size=G end end function D.
+_applyPlacements(aa)local E={}for F,G in aa._placements do if G.hero then if aa.
+_heroView then aa._heroView.root.Position=UDim2.fromOffset(G.x,G.y)aa._heroView.
+root.Size=UDim2.fromOffset(G.width,G.height)end elseif G.section then E[G.
+section]=true local H=aa._headers[G.section]if H then H.Visible=true H.Position=
+UDim2.fromOffset(G.x,G.y)H.Size=UDim2.fromOffset(G.width,G.height)end else E[G.
+el]=true local H=aa._views[G.el]if H then aa:_place(H,G)end end end for F,G in
+aa._headers do if not E[F]then G.Visible=false end end for F,G in aa._views do
+if not E[F]and G.root.Visible and not G._folding then if aa._live then G.
+_folding=true growTo(G,G.root.Size.X.Offset,0,function()G._folding=false G.root.
+Visible=false end)else G.root.Visible=false end end end end function D._place(aa
+,E,F)local G=E.root local H=UDim2.fromOffset(F.x,F.y)local I=aa._live local J=I
+and not G.Visible local K=E._folding==true E._folding=false G.Visible=true if J
+then setSize(E,F.width,0)growTo(E,F.width,F.height)elseif K then growTo(E,F.
+width,F.height)elseif I and E._grow==nil and G.Size.Y.Offset~=F.height then
+growTo(E,F.width,F.height)elseif I and E._grow and E._grow.target.Y.Offset~=F.
+height then growTo(E,F.width,F.height)else setSize(E,F.width,F.height)end if I
+and not J and G.Position~=H then if E._slide==nil then E._slide=E:own(e.prop(G,
+'Position',B))end E._slide:to(H)elseif E._slide then E._slide:snap(H)else G.
+Position=H end end function D._materialize(aa,E)local F=aa.frame local G=aa.
+_placements if F==nil or G==nil or not aa.active then return end local H=aa.
+window.ctx.uiScale()local I=F.CanvasPosition.Y/H if not E and aa._lastSync and
+math.abs(I-aa._lastSync)<y/3 then return end aa._lastSync=I local J,K=I-y,I+F.
+AbsoluteSize.Y/H+y for L,M in G do local N=M.y if N+M.height>=J and N<=K then if
+M.hero then if aa._heroView==nil then local O=buildHero(aa)O.root.Position=UDim2
+.fromOffset(M.x,N)O.root.Size=UDim2.fromOffset(M.width,M.height)aa._heroView=O
+end elseif M.section then if aa._headers[M.section]==nil then local O=
+buildHeader(aa,M.section)O.Position=UDim2.fromOffset(M.x,N)O.Size=UDim2.
+fromOffset(M.width,M.height)aa._headers[M.section]=O end elseif aa._views[M.el]
+==nil then local O,P=xpcall(b.build,debug.traceback,aa.window.ctx,M.el)if O then
+P.root.Position=UDim2.fromOffset(M.x,N)P.root.Size=UDim2.fromOffset(M.width,if
+aa._live then 0 else M.height)P.root.Parent=aa.canvas aa._views[M.el]=P if aa.
+_live then growTo(P,M.width,M.height)end else warn('sottUI: tile '..tostring(M.
+el.id)..' failed: '..tostring(P))end end end end end function D._refreshThumb(aa
+)local E=aa.thumb if E==nil then return end local F=aa.window.ctx.uiScale()local
+G=aa.frame.AbsoluteSize.Y/F local H=aa._contentHeight or 0 if H<=G+1 or not aa.
+active then E.Visible=false return end E.Visible=true local I=math.max(G*G/H,40)
+local J=G-I-p local K=aa.frame.CanvasPosition.Y/F/math.max(H-G,1)E.Size=UDim2.
+new(0,3,0,I)E.Position=UDim2.new(1,-6,0,K*J)end function D.scrollTo(aa,E,F)local
+G=aa.frame if G==nil then return end local H=aa.window.ctx.uiScale()local I=math
+.max((aa._contentHeight or 0)-G.AbsoluteSize.Y/H,0)local J=math.clamp(E,0,I)aa.
 _scrollTarget=J if F then aa._scroll:snap(J)else aa._scroll:to(J)end end
 function D.wheel(aa,E)if aa.frame==nil or aa.frame.ScrollingEnabled then return
 end local F=aa._scrollTarget or aa.frame.CanvasPosition.Y/aa.window.ctx.uiScale(
@@ -1585,7 +1585,7 @@ display)then Q:setFonts(aG.text,aG.display)end end))end if T then ax._opener=o(U
 function()ax:setOpen(true)end)end return ax end function s.setVersion(ab)t=ab
 end return s end function a.D()local aa=a.cache.D if not aa then aa={c=
 __modImpl()}a.cache.D=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.D()local ae='0.1.10'local function registry()local af=
+)local ac=a.e()local ad=a.D()local ae='0.1.11'local function registry()local af=
 aa.global('getgenv')local ag=if type(af)=='function'then af()else _G local ah=ag
 .__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end return ah
 end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.window(ag)
