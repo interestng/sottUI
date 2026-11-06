@@ -81,7 +81,8 @@ end
 local function segmentsFit(el: any, width: number): boolean
 	local spec = el.spec
 	local count = #spec.options
-	if spec.multi or el.value == nil or count < 2 or count > MAX_SEGMENTS then
+	-- a pick that can be cleared has no way to say so here
+	if spec.multi or spec.allowNull or el.value == nil or count < 2 or count > MAX_SEGMENTS then
 		return false
 	end
 	local display = spec.display or tostring
@@ -97,7 +98,14 @@ function kinds.form(el: any): any
 	if el.kind ~= "dropdown" then
 		return nil
 	end
-	return segmentsFit(el, el._rowWidth or 0)
+	if not segmentsFit(el, el._rowWidth or 0) then
+		return false
+	end
+	local names = {}
+	for _, option in el.spec.options do
+		table.insert(names, tostring(option))
+	end
+	return table.concat(names, "\0")
 end
 
 -- a row's height at a given width. the width is kept for the builder, which runs later
@@ -513,15 +521,23 @@ local function pickText(el: any): (string, boolean)
 	return display(value), true
 end
 
--- two or three picks side by side, with one mint thumb that slides to the chosen one
+local function refreshCaption(view: any, el: any)
+	view:refreshName()
+	if listed(el) then
+		view.name.Text = shownLabel(el)
+	end
+end
+
+-- two or three picks side by side, with one thumb that slides to the chosen one
 local function segments(ctx: any, el: any): any
 	local view: any = tileModule.new(ctx, el, { inert = true })
 	local theme = ctx.theme
 	view.root.Active = true
+	view.root.MouseEnter:Connect(function()
+		ctx.hover:enter(view)
+	end)
 	theme:paint(view.name, "TextColor3", "muted")
-	if listed(el) then
-		view.name.Text = shownLabel(el)
-	end
+	refreshCaption(view, el)
 	local display = el.spec.display or tostring
 	local total = 0
 	local spots: { any } = {}
@@ -586,6 +602,7 @@ local function segments(ctx: any, el: any): any
 		end
 	end
 	view.refresh = function()
+		refreshCaption(view, el)
 		draw(false)
 	end
 	draw(true)
@@ -627,6 +644,7 @@ function builders.dropdown(ctx: any, el: any): any
 		end
 	end)
 	view.refresh = function()
+		refreshCaption(view, el)
 		local shown, picked = pickText(el)
 		text.Text = shown
 		theme:paint(text, "TextColor3", if el.disabled or not picked then "faint" else "text")
@@ -640,6 +658,9 @@ function builders.input(ctx: any, el: any): any
 	local theme = ctx.theme
 	local spec = el.spec
 	view.root.Active = true
+	view.root.MouseEnter:Connect(function()
+		ctx.hover:enter(view)
+	end)
 	view.name.Size = UDim2.new(0.38, -PAD, 1, 0)
 	theme:paint(view.name, "TextColor3", "muted")
 	local holder = make("Frame", {
@@ -698,6 +719,7 @@ function builders.input(ctx: any, el: any): any
 		end
 	end)
 	view.refresh = function()
+		refreshCaption(view, el)
 		box.TextEditable = not el.disabled
 		if box.Text ~= (el.value or "") then
 			view._applying = true

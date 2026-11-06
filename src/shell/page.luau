@@ -317,19 +317,21 @@ function Page.layout(self: any, live: boolean?)
 	local heights = table.create(count, top)
 
 	for _, section in self.sections do
-		local master = if section.flat then nil else section.masterElement
+		local owner = if section.flat then nil else section.masterElement
+		local master = if owner and owner:shown() then owner else nil
 		local titled = master ~= nil or (section.title ~= nil and section.title ~= "") or section.tabNames ~= nil
 		local rowWidth = cardWidth - 2 * CARD_PAD
 		local rows: { any } = {}
 		local body = 0
 		for _, el in section.rows do
-			if el ~= master and (section.flat or el:shown()) then
+			if el ~= owner and (section.flat or el:shown()) then
 				local height = kinds.measure(el, rowWidth)
 				table.insert(rows, { el = el, height = height })
 				body += height + ROW_GAP
 			end
 		end
-		if #rows == 0 and not titled then
+		-- a title over nothing is just a gap; tabs stay so a tab with nothing to show can be left again
+		if #rows == 0 and master == nil and section.tabNames == nil then
 			continue
 		end
 		local column = 1
@@ -380,6 +382,7 @@ function Page.layout(self: any, live: boolean?)
 	local limit = math.max(contentHeight - frame.AbsoluteSize.Y / scale, 0)
 	if self._scrollTarget and self._scrollTarget > limit then
 		self._scrollTarget = limit
+		self._scroll:snap(limit)
 	end
 	self._placements = placements
 	self:_applyPlacements()

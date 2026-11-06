@@ -127,10 +127,6 @@ function Window._drawLamps(self: any)
 	end)
 end
 
-function Window._setPerson(self: any, options: any)
-	self._person = options
-end
-
 -- the box's size on this screen, shrunk only if the screen is smaller; the body keeps its height so the lid clips it
 function Window._fit(self: any)
 	local scale = self._scale.Scale
@@ -444,11 +440,12 @@ function Window.setScale(self: any, scale: number)
 	self._scale.Scale = math.clamp(scale, 0.7, 1.5)
 	self:_fit()
 	self:_keepOnScreen(false)
+	-- CanvasPosition is in scaled pixels, so the same spot is a different number now
+	local page = self._showing
+	if page then
+		page:scrollTo(page._scrollTarget or 0, true)
+	end
 	self:_saveState()
-end
-
-function Window.setSubtitle(self: any, text: string)
-	self._subtitleText = text
 end
 
 function Window._saveState(self: any)
@@ -655,7 +652,7 @@ function window.new(options: { [string]: any }): any
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = row,
 	})
-	local title = options.mark or "sottoro"
+	local title = options.title or "sottoro"
 	local markWidth = math.ceil(metrics.width("display", title, MARK_TEXT)) + 2 * MARK_PAD - 8
 	local mark = make("TextLabel", {
 		Name = "Mark",
@@ -750,11 +747,9 @@ function window.new(options: { [string]: any }): any
 		_body = body,
 		_top = top,
 		_row = row,
-		_marker = marker,
 		_tabs = {},
 		_at = if tonumber(saved.boxX) and tonumber(saved.boxY) then Vector2.new(saved.boxX, saved.boxY) else nil,
 		_savedPage = saved.page,
-		_subtitleText = options.subtitle,
 		_files = files,
 		_stateFile = stateFile,
 		_dialogIds = 0,
@@ -771,7 +766,6 @@ function window.new(options: { [string]: any }): any
 		theme = theme,
 		input = router,
 		touch = touch,
-		assets = {},
 		glyph = glyphModule.new(theme),
 		tint = tintModule.new(theme),
 		art = function(instance: any, file: string)
@@ -788,10 +782,6 @@ function window.new(options: { [string]: any }): any
 		end,
 		popoverTop = function(): number
 			return 8
-		end,
-		dialogAt = function(width: number): UDim2
-			local viewport = layer.AbsoluteSize
-			return UDim2.fromOffset(math.floor((viewport.X - width * scale.Scale) / 2), math.floor(viewport.Y * 0.2))
 		end,
 		isShowing = function(el: any): boolean
 			if not self.isOpen then
@@ -910,7 +900,7 @@ function window.new(options: { [string]: any }): any
 		ctx.hover:verify(at)
 	end)
 	router.wheel:connect(function(delta: number)
-		if not self.isOpen or ctx.popover:isOpen() then
+		if not self.isOpen or ctx.popover:isOpen() or self._dialogClose then
 			return
 		end
 		local page = self._showing

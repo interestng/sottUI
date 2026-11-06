@@ -109,14 +109,20 @@ function Slider.SetMax(self: any, max: number)
 	self.Max = max
 	self._el.spec.max = max
 	self._el:set(self._el.value)
-	self._el:setLabel(self.Text)
+	local view = self._el._view
+	if view then
+		view.refresh()
+	end
 end
 
 function Slider.SetMin(self: any, min: number)
 	self.Min = min
 	self._el.spec.min = min
 	self._el:set(self._el.value)
-	self._el:setLabel(self.Text)
+	local view = self._el._view
+	if view then
+		view.refresh()
+	end
 end
 
 function Input.SetValue(self: any, value: any)

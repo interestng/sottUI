@@ -8,13 +8,13 @@ local search = require("../model/search")
 
 local droplist = {}
 
-local ITEM = 38
+local ITEM = 34
 local MAX_VISIBLE = 8
 local SEARCH_AT = 9
-local SEARCH_HEIGHT = 46
-local CLEAR_HEIGHT = 38
-local MIN_WIDTH = 260
-local TEXT_SIZE = 17
+local SEARCH_HEIGHT = 40
+local CLEAR_HEIGHT = 34
+local MIN_WIDTH = 220
+local TEXT_SIZE = 14
 
 local function isPicked(el: any, option: any): boolean
 	if el.spec.multi then

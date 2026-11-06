@@ -141,7 +141,7 @@ local function open(ctx: any, el: any, anchor: any)
 		local entry = make("TextBox", {
 			Position = UDim2.fromOffset(PAD + 54, y),
 			Size = UDim2.new(1, -(2 * PAD + 54), 0, 28),
-			TextSize = 18,
+			TextSize = 14,
 			Parent = content,
 		})
 		theme:type(entry, "text", true)

@@ -237,6 +237,7 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 				-- touch has no hover, so holding is how a tooltip is reached
 				longPress = task.delay(LONG_PRESS, function()
 					longPress = nil
+					self._tipShown = true
 					local tip = if el.disabled and el.disabledTip then el.disabledTip else el.tip
 					if tip and tip ~= "" then
 						ctx.tooltip:showAt(root, tip)
@@ -252,6 +253,10 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, inert: boolean?
 			if longPress then
 				task.cancel(longPress)
 				longPress = nil
+			end
+			if self._tipShown then
+				self._tipShown = false
+				ctx.tooltip:hide()
 			end
 		end)
 		self:onCleanup(function()

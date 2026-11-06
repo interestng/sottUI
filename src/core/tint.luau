@@ -11,6 +11,13 @@ local DEFAULT_SPEED = 26
 function tint.new(theme: any): (instance: any, property: string, token: string, speed: number?) -> ()
 	local springs: { [any]: { [string]: any } } = {}
 	return function(instance: any, property: string, token: string, speed: number?)
+		-- a later theme change repaints from this registry, so it has to know the token this eased to
+		local paints = theme._paints[instance]
+		if paints == nil then
+			paints = {}
+			theme._paints[instance] = paints
+		end
+		paints[property] = token
 		local list = springs[instance]
 		if list == nil then
 			list = {}

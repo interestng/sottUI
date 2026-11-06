@@ -16,10 +16,6 @@ local function add(self: any, kind: element.Kind, id: string?, label: string, sp
 	el.guard = self._guard
 	self._page:_register(el, id ~= nil)
 	table.insert(self.rows, el)
-	local owner = self._root or self
-	if owner.masterElement then
-		owner.hasOptions = true
-	end
 	self._page:_invalidate()
 	return el
 end

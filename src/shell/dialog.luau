@@ -22,7 +22,7 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	local layer = self._layer
 	local width = options.width or 460
 	local maxBody = options.maxHeight or 340
-	local TILE = 60
+	local TILE = 38
 
 	local scrim = make("TextButton", {
 		Size = UDim2.fromScale(1, 1),
@@ -53,7 +53,7 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	local title = make("TextLabel", {
 		Position = UDim2.fromOffset(20, 16),
 		Size = UDim2.new(1, -40, 0, 40),
-		TextSize = 36,
+		TextSize = 20,
 		Text = options.title or "",
 		ZIndex = 52,
 		Parent = panel,

@@ -6,7 +6,7 @@ local motion = require("./core/motion")
 local obsidian = require("./compat/obsidian")
 local windowModule = require("./shell/window")
 
-local VERSION = "0.6.2-sections"
+local VERSION = "0.6.3-sections"
 
 -- on the global table because each run of the script is a fresh chunk: a second run must find the first run's window
 local function registry(): { current: any }

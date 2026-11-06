@@ -308,9 +308,6 @@ function Element.setLabel(self: any, text: string)
 			relayout()
 		end
 	end
-	if self._onLabel then
-		self._onLabel()
-	end
 	redraw(self)
 end
 
@@ -338,6 +335,10 @@ end
 function Element.setOptions(self: any, options: { any })
 	local spec = self.spec
 	spec.options = table.clone(options)
+	-- a pick shown as segments is built from its options
+	if self._relayout then
+		self._relayout()
+	end
 	if spec.multi then
 		if spec.keep then
 			for pick, on in self.value do

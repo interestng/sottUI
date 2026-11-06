@@ -197,181 +197,182 @@ function sync(o,p,q)o._el:on(function()o.Value=p(o._el)o:RunChanged()if q then o
 ._lib:_rulesChanged()end end)end function g.SetValue(o,p)if not o._el:set(p==
 true)then o:RunChanged()end for q,r in o._pickers do r._el.toggled=o.Value r.
 Toggled=o.Value end end function h.SetValue(o,p)o._el:set(p)end function h.
-SetMax(o,p)o.Max=p o._el.spec.max=p o._el:set(o._el.value)o._el:setLabel(o.Text)
-end function h.SetMin(o,p)o.Min=p o._el.spec.min=p o._el:set(o._el.value)o._el:
-setLabel(o.Text)end function i.SetValue(o,p)if not o._el:set(p)then o:
-RunChanged()end end function j.SetValue(o,p)if type(p)=='string'and o.
-SpecialType=='Player'then local q=b.service('Players'):FindFirstChild(p)p=q end
-if not o._el:set(p)then o:RunChanged()end end function j.SetValues(o,p)o._el:
-setOptions(p)o.Values=o._el.spec.options end function j.AddValues(o,p)local q=
-table.clone(o._el.spec.options)if type(p)=='table'then for r,s in p do table.
-insert(q,s)end else table.insert(q,p)end o:SetValues(q)end function j.
-GetActiveValues(o)if o.Multi then local p={}for q,r in o.Value do if r then
-table.insert(p,q)end end return p end return if o.Value then 1 else 0 end
-function k.SetValueRGB(o,p,q)local r=if o._hasAlpha then q or 0 else 0 if not o.
-_el:set({color=p,alpha=r})then o:RunChanged(o.Value)end end function k.SetValue(
-o,p,q)if typeof(p)=='Color3'then o:SetValueRGB(p,q)elseif type(p)=='table'then o
-:SetValueRGB(Color3.fromHSV(p[1],p[2],p[3]),q)end end function l.SetValue(o,p)if
-type(p)=='string'then p={p}end o._el:set({key=p[1],mode=p[2],modifiers=p[3]or{}}
-)end function l.GetState(o)return o._lib.window.keys:state(o._el)end function l.
-OnClick(o,p)o.Clicked=p end function m.SetText(o,p)o.Text=p o._el:setLabel(p)end
-function n.SetText(o,p)o.Text=p o._el:setLabel(p)end local o={}o.__index=o local 
-function register(p,q,r,s)p[q][r]=s s._idx=r if p._dialogIndexes then table.
-insert(p._dialogIndexes,{shelf=q,idx=r})end return s end local function common(p
-,q,r,s)return{Type=q,Text=s.Text,Disabled=s.Disabled==true,Visible=s.Visible~=
-false,Tooltip=s.Tooltip,Callback=s.Callback,Changed=s.Changed,_el=r,_lib=p}end
-local function tips(p,q)q.tip=p.Tooltip q.disabled=p.Disabled==true q.
-disabledTip=p.DisabledTooltip q.visible=p.Visible~=false return q end function o
-.AddToggle(p,q,r)local s=p._section local t=tips(r,{label=r.Text or q,default=r.
-Default==true})local u=#s.rows==0 and s._root==nil and s.title~=''local v if u
-and(r.Text=='Enabled'or r.Text==s.title)then t.label=s.title v=s:master(q,t)else
-v=s:toggle(q,t)end local w=(setmetatable(common(p._lib,'Toggle',v,r),g))w.Value=
-v.value w._pickers={}w._box=p sync(w,function(x)for y,z in w._pickers do z._el.
-toggled=x.value z.Toggled=x.value end return x.value end,true)return register(p.
-_lib,'Toggles',q,w)end o.AddCheckbox=o.AddToggle function o.AddSlider(p,q,r)
-local s=tonumber(r.Rounding)or 0 local t=r.FormatDisplayValue local u local v=
-tips(r,{label=r.Text or q,min=r.Min,max=r.Max,step=10^-s,decimals=s,suffix=r.
-Suffix,default=r.Default,format=if t then function(v,w)return t(u,w)end else nil
-})local w=p._section:slider(q,v)u=setmetatable(common(p._lib,'Slider',w,r),h)u.
-Value=w.value u.Min,u.Max,u.Rounding=r.Min,r.Max,s sync(u,function(x)return x.
-value end)return register(p._lib,'Options',q,u)end function o.AddInput(p,q,r)
-local s=p._section:input(q,tips(r,{label=r.Text or'',default=r.Default or'',
-placeholder=r.Placeholder,numeric=r.Numeric==true,finished=r.Finished==true or r
-.VerifyValue~=nil,maxLength=r.MaxLength,verify=r.VerifyValue}))local t=(
-setmetatable(common(p._lib,'Input',s,r),i))t.Value=s.value t.Numeric=r.Numeric==
-true sync(t,function(u)return u.value end)return register(p._lib,'Options',q,t)
-end local function playerList(p)local q=b.service('Players')local r={}for s,t in
-q:GetPlayers()do if not(p and t==q.LocalPlayer)then table.insert(r,t)end end
-return r end function o.AddDropdown(p,q,r)local s=r.SpecialType=='Player'local t
-=if s then playerList(r.ExcludeLocalPlayer==true)else(r.Values or{})local u=r.
-Multi==true local v=r.Default if type(v)=='number'then v=t[v]end if u and type(v
-)=='string'then v={v}end local w=r.FormatDisplayValue local x=p._section:
-dropdown(q,tips(r,{label=r.Text or q,options=t,multi=u,default=v,searchable=r.
-Searchable==true,allowNull=r.AllowNull==true or s,display=function(x)local y=if
-s then x.Name else x if w then local z,A=pcall(w,y)if z and A~=nil then return
-tostring(A)end end return tostring(y)end}))local y=(setmetatable(common(p._lib,
-'Dropdown',x,r),j))y.Value=x.value y.Values=x.spec.options y.Multi=u y.
-SpecialType=r.SpecialType sync(y,function(z)return z.value end,true)if s then
-local z=b.service('Players')local function refresh()y:SetValues(playerList(r.
-ExcludeLocalPlayer==true))end table.insert(p._lib._connections,z.PlayerAdded:
-Connect(refresh))table.insert(p._lib._connections,z.PlayerRemoving:Connect(
-function()task.defer(refresh)end))end return register(p._lib,'Options',q,y)end
-function o.AddButton(p,q,r)local s=if type(q)=='table'then q else{Text=q,Func=r}
-local t=p._section:button(s.Text or'',tips(s,{confirm=s.DoubleClick==true,danger
-=s.Risky==true}))local u=(setmetatable(common(p._lib,'Button',t,s),n))u.Func=s.
-Func t:on(function()protect(u.Func)end)return u end local function buildLabel(p,
-q,r)local s=if type(q)=='table'then q else{Text=q,DoesWrap=r}local t=p._section:
-label(tostring(s.Text or''),{wrap=s.DoesWrap==true or r==true})local u=(
-setmetatable(common(p._lib,'Label',t,s),m))u.TextLabel={}u._box=p return u end
-function o.AddLabel(p,q,r)if type(r)=='table'then local s=buildLabel(p,r)
-register(p._lib,'Options',q,s)return s end return buildLabel(p,q,r)end function
-o.AddStat(p,q,r)local s=p._section:stat(q,r)return{SetValue=function(t,u)s:set(u
-)end}end function o.AddDivider(p,q)local r=if type(q)=='table'then q.Text else q
-p._section:divider(r)end function o.AddBlank()end function o.AddDependencyBox(p)
-local q={}local r=p._lib p._section._page._guarded=true local s=p._section._root
-or p._section local t=p._section:when(function()for t,u in q do local v,w=u[1],u
-[2]if v._el==s.masterElement and w==true then continue end if v.Disabled then
-return false end local x=v.Value if v.Type=='Dropdown'and type(x)=='table'then
-if not x[w]then return false end elseif x~=w then return false end end return
-true end)local u=(setmetatable({_section=t,_lib=r},o))function u.
-SetupDependencies(v,w)q=w p._section._page:_invalidate()end return u end
-function o.SetCollapsed()end local function attachColor(p,q,r,s)local t=s.
-Transparency~=nil local u=q._box._section local v=u:addColor(q._el,r,{label=s.
-Title or q.Text or r,default=s.Default or Color3.new(1,1,1),alpha=t,alphaValue=
-if t then s.Transparency else 0})local w=(setmetatable(common(p,'ColorPicker',v,
-s),k))w.Value=v.value.color w.Transparency=v.value.alpha w._hasAlpha=t v:on(
-function()w.Value=v.value.color w.Transparency=v.value.alpha w:RunChanged(w.
-Value)end)return register(p,'Options',r,w)end local function keyArgument(p)local
-q=({MB1='MouseButton1',MB2='MouseButton2',MB3='MouseButton3'})[p]if q then
-return(Enum.UserInputType)[q]end local r,s=pcall(function()return(Enum.KeyCode)[
-p]end)return if r then s else nil end local function attachKey(p,q,r,s)local t=q
-._box._section local u=s.SyncToggleState==true local v=if u then{'Toggle','Hold'
-}else s.Modes or{'Always','Toggle','Hold'}local w=s.Mode or'Toggle'local x local
-y=t:addKey(q._el,r,{label=q._el.label or s.Text or r,default=s.Default or'None',
-mode=w,modes=v,modifiers=s.DefaultModifiers or{},chipless=s.NoUI==true,noMouse=
-false,onPress=function(y,z)if p.ToggleKeybind==x then p.window:toggle()return
-end if q.Type=='Toggle'and q.Disabled then y.toggled=q.Value return end x.
-Toggled=z local A=y.value.mode if u and q.Type=='Toggle'then if A=='Toggle'then
-q:SetValue(z)elseif A=='Hold'then q:SetValue(true)end end if A=='Toggle'or A==
-'Press'then protect(x.Clicked,z)protect(x.Callback,z)end end,onRelease=function(
-y)if u and q.Type=='Toggle'and y.value.mode=='Hold'and not q.Disabled then q:
-SetValue(false)end end})x=setmetatable(common(p,'KeyPicker',y,s),l)x.Value=y.
-value.key x.Mode=y.value.mode x.Modifiers=y.value.modifiers x.Modes=v x.
-SyncToggleState=u x.NoUI=s.NoUI==true x.Toggled=false x.ChangedCallback=s.
-ChangedCallback y:on(function()local z=y.value x.Value=z.key x.Mode=z.mode x.
-Modifiers=z.modifiers x:Update()local A=keyArgument(z.key)protect(x.
-ChangedCallback,A,z.modifiers)protect(x.Changed,A,z.modifiers)end)if q.Type==
-'Toggle'and u then table.insert(q._pickers,x)y.toggled=q.Value end return
-register(p,'Options',r,x)end function g.AddColorPicker(p,q,r)attachColor(p._lib,
-p,q,r)return p end function g.AddKeyPicker(p,q,r)attachKey(p._lib,p,q,r)return p
-end m.AddColorPicker=g.AddColorPicker m.AddKeyPicker=g.AddKeyPicker local p={}p.
-__index=p local function makeBox(q,r)return setmetatable({_section=r,_lib=q},o)
-end local function sectionBox(q,r)local s=q._page:section(r)local t=makeBox(q.
-_lib,s)return t end function p.AddLeftGroupbox(q,r)return sectionBox(q,r)end p.
-AddRightGroupbox=p.AddLeftGroupbox function p.AddGroupbox(q,r)return sectionBox(
-q,r.Name)end local function tabbox(q)local r=q._page:tabset()local s=q._lib
-return{AddTab=function(t,u)return makeBox(s,r:tab(u))end}end p.AddLeftTabbox=
-tabbox p.AddRightTabbox=tabbox local q={}q.__index=q function q.AddTab(r,s,t)
-local u=if type(s)=='table'then s.Name else s local v=r._lib.window:page(u)if u
-=='Home'then local w=b.service('Players').LocalPlayer if w then r._lib.Hero=v:
-hero({userId=w.UserId,title=w.DisplayName,text=r._footer})end end local w=
-setmetatable({_page=v,_lib=r._lib},p)r._lib.Tabs[u]=w return w end function q.
-OpenDialog(r,s,t)local u=r._lib local v=u.window local w=u._dialogIndexes return
-v:dialog({title=s.title,text=s.description,done=s.done,maxHeight=s.maxHeight,
-onClose=function()local x=u._dialogOwned for y,z in x or{}do u[z.shelf][z.idx]=
-nil end u._dialogOwned=nil if s.onClose then s.onClose()end end},function(x)u.
-_dialogIndexes={}t(makeBox(u,x))u._dialogOwned=u._dialogIndexes u._dialogIndexes
-=w end)end function e.new(r)local s=false local t=setmetatable({Toggles={},
-Options={},Tabs={},Toggled=false,ScreenGui=nil,Scheme={AccentColor=Color3.
-fromHex('7EE0C4'),BackgroundColor=Color3.fromHex('07100D'),MainColor=Color3.
-fromHex('141C18'),OutlineColor=Color3.fromHex('1A2D27'),FontColor=Color3.
-fromHex('EBE8DA')},ShowToggleFrameInKeybinds=true,IsSottUI=true,_connections={},
-_unloads={}},{})function t._rulesChanged(u)if s or u.window==nil then return end
-s=true task.defer(function()s=false if u.window==nil or u.window.destroyed then
-return end for v,w in u.window.pages do if w._guarded then w:_invalidate()end
-end end)end function t.CreateWindow(u,v)local w=r.window({title=v.Title,subtitle
-=v.Footer,folder=v.Folder,stateFile=v.StateFile,autoShow=v.AutoShow~=false})u.
-window=w u.ScreenGui=w._gui u.Toggled=v.AutoShow~=false w.visibilityChanged:
-connect(function(x)u.Toggled=x end)local x=setmetatable({_lib=u,_footer=v.Footer
-},q)u.Window=x return x end function t.Notify(u,v,w)if u.window==nil then return
-end if type(v)=='table'then u.window:notify({title=v.Title,text=v.Description,
-seconds=v.Time or w})else u.window:notify({text=tostring(v),seconds=w})end end
-function t.Toggle(u,v)if u.window then if v==nil then u.window:toggle()else u.
-window:setOpen(v)end end end function t.SafeCallback(u,v,...)protect(v,...)end
-function t.OnUnload(u,v)table.insert(u._unloads,v)end function t.Unload(u)for v,
-w in u._unloads do protect(w)end for v,w in u._connections do w:Disconnect()end
-u._connections={}if u.window then u.window:destroy()u.window=nil end u.ScreenGui
-=nil u.Toggled=false end getmetatable(t).__newindex=function(u,v,w)rawset(u,v,w)
-if v=='ToggleKeybind'and u.window and u.window.menuKey then u.window.keys:
-unregister(u.window.menuKey)end end return{Library=t,SaveManager=c.new(t),
-ThemeManager=d.new(t)}end return e end function a.e()local b=a.cache.e if not b
-then b={c=__modImpl()}a.cache.e=b end return b.c end end do local function 
-__modImpl()local b={Frame={BackgroundTransparency=1,BorderSizePixel=0},TextLabel
-={BackgroundTransparency=1,BorderSizePixel=0,TextXAlignment=Enum.TextXAlignment.
-Left},TextButton={BackgroundTransparency=1,BorderSizePixel=0,AutoButtonColor=
-false,Text=''},TextBox={BackgroundTransparency=1,BorderSizePixel=0,
-ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left},ScrollingFrame={
-BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=0,CanvasSize=UDim2
-.new(),ScrollingDirection=Enum.ScrollingDirection.Y}}local function make(c,d,e)
-local f=Instance.new(c)local g=b[c]if g then for h,i in g do f[h]=i end end
-local h=nil if d then for i,j in d do if i=='Parent'then h=j else f[i]=j end end
-end if e then for i,j in e do j.Parent=f end end if h then f.Parent=h end return
-f end return make end function a.f()local b=a.cache.f if not b then b={c=
-__modImpl()}a.cache.f=b end return b.c end end do local function __modImpl()
-local b=a.f()local c={}local d=256 local e=148 local f=14 local g=10 local h=12
-local i=(function()local i={}for j=0,6 do table.insert(i,ColorSequenceKeypoint.
-new(j/6,Color3.fromHSV((j/6)%1,1,1)))end return ColorSequence.new(i)end)()local 
-function hex(j)return string.format('%02X%02X%02X',math.round(j.R*255),math.
-round(j.G*255),math.round(j.B*255))end local function parseHex(j)local k=string.
-gsub(j,'#','')if not string.match(k,'^%x%x%x%x%x%x$')then return nil end return
-Color3.fromRGB((tonumber(string.sub(k,1,2),16)),(tonumber(string.sub(k,3,4),16))
-,(tonumber(string.sub(k,5,6),16)))end c.hex=hex c.parseHex=parseHex local 
-function open(j,k,l)local m=j.theme local n=k.spec.alpha==true local o=h+e+g+f+(
-if n then g+f else 0)+g+28+h j.popover:open(l,d,o,function(p,q)local r=k.value
-local s,t,u=r.color:ToHSV()local v=r.alpha local w=b('TextButton',{Position=
-UDim2.fromOffset(h,h),Size=UDim2.new(1,-2*h,0,e),BackgroundTransparency=0,Parent
-=p})b('UIGradient',{Transparency=NumberSequence.new(0,1),Color=ColorSequence.
-new(Color3.new(1,1,1)),Parent=b('Frame',{Size=UDim2.fromScale(1,1),
+SetMax(o,p)o.Max=p o._el.spec.max=p o._el:set(o._el.value)local q=o._el._view if
+q then q.refresh()end end function h.SetMin(o,p)o.Min=p o._el.spec.min=p o._el:
+set(o._el.value)local q=o._el._view if q then q.refresh()end end function i.
+SetValue(o,p)if not o._el:set(p)then o:RunChanged()end end function j.SetValue(o
+,p)if type(p)=='string'and o.SpecialType=='Player'then local q=b.service(
+'Players'):FindFirstChild(p)p=q end if not o._el:set(p)then o:RunChanged()end
+end function j.SetValues(o,p)o._el:setOptions(p)o.Values=o._el.spec.options end
+function j.AddValues(o,p)local q=table.clone(o._el.spec.options)if type(p)==
+'table'then for r,s in p do table.insert(q,s)end else table.insert(q,p)end o:
+SetValues(q)end function j.GetActiveValues(o)if o.Multi then local p={}for q,r
+in o.Value do if r then table.insert(p,q)end end return p end return if o.Value
+then 1 else 0 end function k.SetValueRGB(o,p,q)local r=if o._hasAlpha then q or
+0 else 0 if not o._el:set({color=p,alpha=r})then o:RunChanged(o.Value)end end
+function k.SetValue(o,p,q)if typeof(p)=='Color3'then o:SetValueRGB(p,q)elseif
+type(p)=='table'then o:SetValueRGB(Color3.fromHSV(p[1],p[2],p[3]),q)end end
+function l.SetValue(o,p)if type(p)=='string'then p={p}end o._el:set({key=p[1],
+mode=p[2],modifiers=p[3]or{}})end function l.GetState(o)return o._lib.window.
+keys:state(o._el)end function l.OnClick(o,p)o.Clicked=p end function m.SetText(o
+,p)o.Text=p o._el:setLabel(p)end function n.SetText(o,p)o.Text=p o._el:setLabel(
+p)end local o={}o.__index=o local function register(p,q,r,s)p[q][r]=s s._idx=r
+if p._dialogIndexes then table.insert(p._dialogIndexes,{shelf=q,idx=r})end
+return s end local function common(p,q,r,s)return{Type=q,Text=s.Text,Disabled=s.
+Disabled==true,Visible=s.Visible~=false,Tooltip=s.Tooltip,Callback=s.Callback,
+Changed=s.Changed,_el=r,_lib=p}end local function tips(p,q)q.tip=p.Tooltip q.
+disabled=p.Disabled==true q.disabledTip=p.DisabledTooltip q.visible=p.Visible~=
+false return q end function o.AddToggle(p,q,r)local s=p._section local t=tips(r,
+{label=r.Text or q,default=r.Default==true})local u=#s.rows==0 and s._root==nil
+and s.title~=''local v if u and(r.Text=='Enabled'or r.Text==s.title)then t.label
+=s.title v=s:master(q,t)else v=s:toggle(q,t)end local w=(setmetatable(common(p.
+_lib,'Toggle',v,r),g))w.Value=v.value w._pickers={}w._box=p sync(w,function(x)
+for y,z in w._pickers do z._el.toggled=x.value z.Toggled=x.value end return x.
+value end,true)return register(p._lib,'Toggles',q,w)end o.AddCheckbox=o.
+AddToggle function o.AddSlider(p,q,r)local s=tonumber(r.Rounding)or 0 local t=r.
+FormatDisplayValue local u local v=tips(r,{label=r.Text or q,min=r.Min,max=r.Max
+,step=10^-s,decimals=s,suffix=r.Suffix,default=r.Default,format=if t then
+function(v,w)return t(u,w)end else nil})local w=p._section:slider(q,v)u=
+setmetatable(common(p._lib,'Slider',w,r),h)u.Value=w.value u.Min,u.Max,u.
+Rounding=r.Min,r.Max,s sync(u,function(x)return x.value end)return register(p.
+_lib,'Options',q,u)end function o.AddInput(p,q,r)local s=p._section:input(q,
+tips(r,{label=r.Text or'',default=r.Default or'',placeholder=r.Placeholder,
+numeric=r.Numeric==true,finished=r.Finished==true or r.VerifyValue~=nil,
+maxLength=r.MaxLength,verify=r.VerifyValue}))local t=(setmetatable(common(p._lib
+,'Input',s,r),i))t.Value=s.value t.Numeric=r.Numeric==true sync(t,function(u)
+return u.value end)return register(p._lib,'Options',q,t)end local function 
+playerList(p)local q=b.service('Players')local r={}for s,t in q:GetPlayers()do
+if not(p and t==q.LocalPlayer)then table.insert(r,t)end end return r end
+function o.AddDropdown(p,q,r)local s=r.SpecialType=='Player'local t=if s then
+playerList(r.ExcludeLocalPlayer==true)else(r.Values or{})local u=r.Multi==true
+local v=r.Default if type(v)=='number'then v=t[v]end if u and type(v)=='string'
+then v={v}end local w=r.FormatDisplayValue local x=p._section:dropdown(q,tips(r,
+{label=r.Text or q,options=t,multi=u,default=v,searchable=r.Searchable==true,
+allowNull=r.AllowNull==true or s,display=function(x)local y=if s then x.Name
+else x if w then local z,A=pcall(w,y)if z and A~=nil then return tostring(A)end
+end return tostring(y)end}))local y=(setmetatable(common(p._lib,'Dropdown',x,r),
+j))y.Value=x.value y.Values=x.spec.options y.Multi=u y.SpecialType=r.SpecialType
+sync(y,function(z)return z.value end,true)if s then local z=b.service('Players')
+local function refresh()y:SetValues(playerList(r.ExcludeLocalPlayer==true))end
+table.insert(p._lib._connections,z.PlayerAdded:Connect(refresh))table.insert(p.
+_lib._connections,z.PlayerRemoving:Connect(function()task.defer(refresh)end))end
+return register(p._lib,'Options',q,y)end function o.AddButton(p,q,r)local s=if
+type(q)=='table'then q else{Text=q,Func=r}local t=p._section:button(s.Text or'',
+tips(s,{confirm=s.DoubleClick==true,danger=s.Risky==true}))local u=(
+setmetatable(common(p._lib,'Button',t,s),n))u.Func=s.Func t:on(function()
+protect(u.Func)end)return u end local function buildLabel(p,q,r)local s=if type(
+q)=='table'then q else{Text=q,DoesWrap=r}local t=p._section:label(tostring(s.
+Text or''),{wrap=s.DoesWrap==true or r==true})local u=(setmetatable(common(p.
+_lib,'Label',t,s),m))u.TextLabel={}u._box=p return u end function o.AddLabel(p,q
+,r)if type(r)=='table'then local s=buildLabel(p,r)register(p._lib,'Options',q,s)
+return s end return buildLabel(p,q,r)end function o.AddStat(p,q,r)local s=p.
+_section:stat(q,r)return{SetValue=function(t,u)s:set(u)end}end function o.
+AddDivider(p,q)local r=if type(q)=='table'then q.Text else q p._section:divider(
+r)end function o.AddBlank()end function o.AddDependencyBox(p)local q={}local r=p
+._lib p._section._page._guarded=true local s=p._section._root or p._section
+local t=p._section:when(function()for t,u in q do local v,w=u[1],u[2]if v._el==s
+.masterElement and w==true then continue end if v.Disabled then return false end
+local x=v.Value if v.Type=='Dropdown'and type(x)=='table'then if not x[w]then
+return false end elseif x~=w then return false end end return true end)local u=(
+setmetatable({_section=t,_lib=r},o))function u.SetupDependencies(v,w)q=w p.
+_section._page:_invalidate()end return u end function o.SetCollapsed()end local 
+function attachColor(p,q,r,s)local t=s.Transparency~=nil local u=q._box._section
+local v=u:addColor(q._el,r,{label=s.Title or q.Text or r,default=s.Default or
+Color3.new(1,1,1),alpha=t,alphaValue=if t then s.Transparency else 0})local w=(
+setmetatable(common(p,'ColorPicker',v,s),k))w.Value=v.value.color w.Transparency
+=v.value.alpha w._hasAlpha=t v:on(function()w.Value=v.value.color w.Transparency
+=v.value.alpha w:RunChanged(w.Value)end)return register(p,'Options',r,w)end
+local function keyArgument(p)local q=({MB1='MouseButton1',MB2='MouseButton2',MB3
+='MouseButton3'})[p]if q then return(Enum.UserInputType)[q]end local r,s=pcall(
+function()return(Enum.KeyCode)[p]end)return if r then s else nil end local 
+function attachKey(p,q,r,s)local t=q._box._section local u=s.SyncToggleState==
+true local v=if u then{'Toggle','Hold'}else s.Modes or{'Always','Toggle','Hold'}
+local w=s.Mode or'Toggle'local x local y=t:addKey(q._el,r,{label=q._el.label or
+s.Text or r,default=s.Default or'None',mode=w,modes=v,modifiers=s.
+DefaultModifiers or{},chipless=s.NoUI==true,noMouse=false,onPress=function(y,z)
+if p.ToggleKeybind==x then p.window:toggle()return end if q.Type=='Toggle'and q.
+Disabled then y.toggled=q.Value return end x.Toggled=z local A=y.value.mode if u
+and q.Type=='Toggle'then if A=='Toggle'then q:SetValue(z)elseif A=='Hold'then q:
+SetValue(true)end end if A=='Toggle'or A=='Press'then protect(x.Clicked,z)
+protect(x.Callback,z)end end,onRelease=function(y)if u and q.Type=='Toggle'and y
+.value.mode=='Hold'and not q.Disabled then q:SetValue(false)end end})x=
+setmetatable(common(p,'KeyPicker',y,s),l)x.Value=y.value.key x.Mode=y.value.mode
+x.Modifiers=y.value.modifiers x.Modes=v x.SyncToggleState=u x.NoUI=s.NoUI==true
+x.Toggled=false x.ChangedCallback=s.ChangedCallback y:on(function()local z=y.
+value x.Value=z.key x.Mode=z.mode x.Modifiers=z.modifiers x:Update()local A=
+keyArgument(z.key)protect(x.ChangedCallback,A,z.modifiers)protect(x.Changed,A,z.
+modifiers)end)if q.Type=='Toggle'and u then table.insert(q._pickers,x)y.toggled=
+q.Value end return register(p,'Options',r,x)end function g.AddColorPicker(p,q,r)
+attachColor(p._lib,p,q,r)return p end function g.AddKeyPicker(p,q,r)attachKey(p.
+_lib,p,q,r)return p end m.AddColorPicker=g.AddColorPicker m.AddKeyPicker=g.
+AddKeyPicker local p={}p.__index=p local function makeBox(q,r)return
+setmetatable({_section=r,_lib=q},o)end local function sectionBox(q,r)local s=q.
+_page:section(r)local t=makeBox(q._lib,s)return t end function p.AddLeftGroupbox
+(q,r)return sectionBox(q,r)end p.AddRightGroupbox=p.AddLeftGroupbox function p.
+AddGroupbox(q,r)return sectionBox(q,r.Name)end local function tabbox(q)local r=q
+._page:tabset()local s=q._lib return{AddTab=function(t,u)return makeBox(s,r:tab(
+u))end}end p.AddLeftTabbox=tabbox p.AddRightTabbox=tabbox local q={}q.__index=q
+function q.AddTab(r,s,t)local u=if type(s)=='table'then s.Name else s local v=r.
+_lib.window:page(u)if u=='Home'then local w=b.service('Players').LocalPlayer if
+w then r._lib.Hero=v:hero({userId=w.UserId,title=w.DisplayName,text=r._footer})
+end end local w=setmetatable({_page=v,_lib=r._lib},p)r._lib.Tabs[u]=w return w
+end function q.OpenDialog(r,s,t)local u=r._lib local v=u.window local w=u.
+_dialogIndexes return v:dialog({title=s.title,text=s.description,done=s.done,
+maxHeight=s.maxHeight,onClose=function()local x=u._dialogOwned for y,z in x or{}
+do u[z.shelf][z.idx]=nil end u._dialogOwned=nil if s.onClose then s.onClose()end
+end},function(x)u._dialogIndexes={}t(makeBox(u,x))u._dialogOwned=u.
+_dialogIndexes u._dialogIndexes=w end)end function e.new(r)local s=false local t
+=setmetatable({Toggles={},Options={},Tabs={},Toggled=false,ScreenGui=nil,Scheme=
+{AccentColor=Color3.fromHex('7EE0C4'),BackgroundColor=Color3.fromHex('07100D'),
+MainColor=Color3.fromHex('141C18'),OutlineColor=Color3.fromHex('1A2D27'),
+FontColor=Color3.fromHex('EBE8DA')},ShowToggleFrameInKeybinds=true,IsSottUI=true
+,_connections={},_unloads={}},{})function t._rulesChanged(u)if s or u.window==
+nil then return end s=true task.defer(function()s=false if u.window==nil or u.
+window.destroyed then return end for v,w in u.window.pages do if w._guarded then
+w:_invalidate()end end end)end function t.CreateWindow(u,v)local w=r.window({
+title=v.Title,subtitle=v.Footer,folder=v.Folder,stateFile=v.StateFile,autoShow=v
+.AutoShow~=false})u.window=w u.ScreenGui=w._gui u.Toggled=v.AutoShow~=false w.
+visibilityChanged:connect(function(x)u.Toggled=x end)local x=setmetatable({_lib=
+u,_footer=v.Footer},q)u.Window=x return x end function t.Notify(u,v,w)if u.
+window==nil then return end if type(v)=='table'then u.window:notify({title=v.
+Title,text=v.Description,seconds=v.Time or w})else u.window:notify({text=
+tostring(v),seconds=w})end end function t.Toggle(u,v)if u.window then if v==nil
+then u.window:toggle()else u.window:setOpen(v)end end end function t.
+SafeCallback(u,v,...)protect(v,...)end function t.OnUnload(u,v)table.insert(u.
+_unloads,v)end function t.Unload(u)for v,w in u._unloads do protect(w)end for v,
+w in u._connections do w:Disconnect()end u._connections={}if u.window then u.
+window:destroy()u.window=nil end u.ScreenGui=nil u.Toggled=false end
+getmetatable(t).__newindex=function(u,v,w)rawset(u,v,w)if v=='ToggleKeybind'and
+u.window and u.window.menuKey then u.window.keys:unregister(u.window.menuKey)end
+end return{Library=t,SaveManager=c.new(t),ThemeManager=d.new(t)}end return e end
+function a.e()local b=a.cache.e if not b then b={c=__modImpl()}a.cache.e=b end
+return b.c end end do local function __modImpl()local b={Frame={
+BackgroundTransparency=1,BorderSizePixel=0},TextLabel={BackgroundTransparency=1,
+BorderSizePixel=0,TextXAlignment=Enum.TextXAlignment.Left},TextButton={
+BackgroundTransparency=1,BorderSizePixel=0,AutoButtonColor=false,Text=''},
+TextBox={BackgroundTransparency=1,BorderSizePixel=0,ClearTextOnFocus=false,
+TextXAlignment=Enum.TextXAlignment.Left},ScrollingFrame={BackgroundTransparency=
+1,BorderSizePixel=0,ScrollBarThickness=0,CanvasSize=UDim2.new(),
+ScrollingDirection=Enum.ScrollingDirection.Y}}local function make(c,d,e)local f=
+Instance.new(c)local g=b[c]if g then for h,i in g do f[h]=i end end local h=nil
+if d then for i,j in d do if i=='Parent'then h=j else f[i]=j end end end if e
+then for i,j in e do j.Parent=f end end if h then f.Parent=h end return f end
+return make end function a.f()local b=a.cache.f if not b then b={c=__modImpl()}a
+.cache.f=b end return b.c end end do local function __modImpl()local b=a.f()
+local c={}local d=256 local e=148 local f=14 local g=10 local h=12 local i=(
+function()local i={}for j=0,6 do table.insert(i,ColorSequenceKeypoint.new(j/6,
+Color3.fromHSV((j/6)%1,1,1)))end return ColorSequence.new(i)end)()local function 
+hex(j)return string.format('%02X%02X%02X',math.round(j.R*255),math.round(j.G*255
+),math.round(j.B*255))end local function parseHex(j)local k=string.gsub(j,'#',''
+)if not string.match(k,'^%x%x%x%x%x%x$')then return nil end return Color3.
+fromRGB((tonumber(string.sub(k,1,2),16)),(tonumber(string.sub(k,3,4),16)),(
+tonumber(string.sub(k,5,6),16)))end c.hex=hex c.parseHex=parseHex local function 
+open(j,k,l)local m=j.theme local n=k.spec.alpha==true local o=h+e+g+f+(if n then
+g+f else 0)+g+28+h j.popover:open(l,d,o,function(p,q)local r=k.value local s,t,u
+=r.color:ToHSV()local v=r.alpha local w=b('TextButton',{Position=UDim2.
+fromOffset(h,h),Size=UDim2.new(1,-2*h,0,e),BackgroundTransparency=0,Parent=p})b(
+'UIGradient',{Transparency=NumberSequence.new(0,1),Color=ColorSequence.new(
+Color3.new(1,1,1)),Parent=b('Frame',{Size=UDim2.fromScale(1,1),
 BackgroundTransparency=0,BackgroundColor3=Color3.new(1,1,1),Parent=w,ZIndex=1})}
 )local x=b('Frame',{Size=UDim2.fromScale(1,1),BackgroundTransparency=0,
 BackgroundColor3=Color3.new(0,0,0),ZIndex=2,Parent=w})b('UIGradient',{Rotation=
@@ -390,7 +391,7 @@ Size=UDim2.new(0,3,1,0),BackgroundTransparency=0,BackgroundColor3=Color3.new(1,1
 ,1),ZIndex=2,Parent=C})b('UIGradient',{Transparency=NumberSequence.new(0,1),
 Parent=C})z+=f end z+=g local E=b('Frame',{Position=UDim2.fromOffset(h,z),Size=
 UDim2.fromOffset(44,28),BackgroundTransparency=0,Parent=p})local F=b('TextBox',{
-Position=UDim2.fromOffset(h+54,z),Size=UDim2.new(1,-(2*h+54),0,28),TextSize=18,
+Position=UDim2.fromOffset(h+54,z),Size=UDim2.new(1,-(2*h+54),0,28),TextSize=14,
 Parent=p})m:type(F,'text',true)m:paint(F,'TextColor3','text')local function draw
 ()local G=Color3.fromHSV(s,t,u)w.BackgroundColor3=Color3.fromHSV(s,1,1)y.
 Position=UDim2.fromScale(t,1-u)B.Position=UDim2.fromScale(s,0)E.BackgroundColor3
@@ -440,8 +441,8 @@ then table.insert(g,{item=i,score=j})end end table.sort(g,function(h,i)return h.
 score>i.score end)local h={}for i=1,math.min(f,#g)do h[i]=g[i].item end return h
 end return b end function a.h()local b=a.cache.h if not b then b={c=__modImpl()}
 a.cache.h=b end return b.c end end do local function __modImpl()local b=a.f()
-local c=a.h()local d={}local e=38 local f=8 local g=9 local h=46 local i=38
-local j=260 local k=17 local function isPicked(l,m)if l.spec.multi then return l
+local c=a.h()local d={}local e=34 local f=8 local g=9 local h=40 local i=34
+local j=220 local k=14 local function isPicked(l,m)if l.spec.multi then return l
 .value[m]==true end return l.value==m end function d.open(l,m,n)local o=m.spec
 local p=l.theme local q=o.display or tostring local r=o.searchable==true or#o.
 options>=g local s=o.multi==true local t=(if r then h else 0)+(if s then i else
@@ -588,10 +589,11 @@ MouseEnter:Connect(function()m.hover:enter(s)end)local t=nil q.InputBegan:
 Connect(function(u)local v=u.UserInputType if v==Enum.UserInputType.MouseButton1
 then if not n.disabled then s:pressed(true)end elseif v==Enum.UserInputType.
 Touch then if not n.disabled then s:pressed(true)end t=task.delay(j,function()t=
-nil local w=if n.disabled and n.disabledTip then n.disabledTip else n.tip if w
-and w~=''then m.tooltip:showAt(q,w)end end)end end)local u=m.input.pointerUp:
-connect(function()if s._press and s._press.target~=1 then s:pressed(false)end if
-t then task.cancel(t)t=nil end end)s:onCleanup(function()u()if t then task.
+nil s._tipShown=true local w=if n.disabled and n.disabledTip then n.disabledTip
+else n.tip if w and w~=''then m.tooltip:showAt(q,w)end end)end end)local u=m.
+input.pointerUp:connect(function()if s._press and s._press.target~=1 then s:
+pressed(false)end if t then task.cancel(t)t=nil end if s._tipShown then s.
+_tipShown=false m.tooltip:hide()end end)s:onCleanup(function()u()if t then task.
 cancel(t)end end)end s.destroy=function()m.hover:leave(s)for t,u in s._cleanups
 do pcall(u)end q:Destroy()end return s end return d end function a.l()local b=a.
 cache.l if not b then b={c=__modImpl()}a.cache.l=b end return b.c end end do
@@ -608,25 +610,27 @@ listed(T)local U=T._shownOn local V=U and U.sections[1]return V~=nil and V.flat
 U and U~=T then return U.label..' '..T.label end return T.label end local 
 function textWidth(T,U)return f.width('textMedium',(string.gsub(T,'<[^>]+>',''))
 ,U)end local function segmentsFit(T,U)local V=T.spec local W=#V.options if V.
-multi or T.value==nil or W<2 or W>K then return false end local X=V.display or
-tostring local Y=textWidth(T.label,m)+L+2*j for Z,_ in V.options do Y+=
-textWidth(X(_),J)+2*H end return Y<=U end function i.form(T)if T.kind~=
-'dropdown'then return nil end return segmentsFit(T,T._rowWidth or 0)end function
-i.measure(T,U)T._rowWidth=U local V=T.kind if V=='divider'then return if T.label
-==''then Q else P elseif V=='label'and not T.addons then if not T.spec.wrap then
-return O end if T._measured then return T._measured end local W=string.gsub(T.
-label,'<[^>]+>','')local X=math.max(math.floor(U/7),10)return math.ceil(#W/X)*N+
-8 end return l end local function formatted(T,U)local V=T.spec if V.format then
-local W,X=pcall(V.format,T,U)if W and X~=nil then return tostring(X)end end
-return string.format('%.'..(V.decimals or 0)..'f',U)..(V.suffix or'')end local 
-function readoutWidth(T)local U=T.spec local V=0 for W,X in{U.min,U.max,T.value}
-do V=math.max(V,f.width('textMedium',formatted(T,X),m))end return math.ceil(V)+4
-end local function addons(T,U,V,W)local X=W local Y={}local function reflow()
-local Z=W for _,aa in Y do aa.root.Position=UDim2.new(1,-(j+Z),0.5,0)Z+=aa.width
-+aa.gap end if T.onReserve then T.onReserve(Z)end end local function place(aa,Z)
-Z.root.AnchorPoint=Vector2.new(1,0.5)Z.root.Position=UDim2.new(1,-(j+X),0.5,0)Z.
-root.ZIndex=4 Z.root.Parent=T.root Z.gap=x Z.onFit=reflow X+=Z.width+Z.gap table
-.insert(Y,Z)aa._view=Z T.addonChips=T.addonChips or{}T.addonChips[aa]=Z table.
+multi or V.allowNull or T.value==nil or W<2 or W>K then return false end local X
+=V.display or tostring local Y=textWidth(T.label,m)+L+2*j for Z,_ in V.options
+do Y+=textWidth(X(_),J)+2*H end return Y<=U end function i.form(T)if T.kind~=
+'dropdown'then return nil end if not segmentsFit(T,T._rowWidth or 0)then return
+false end local U={}for V,W in T.spec.options do table.insert(U,tostring(W))end
+return table.concat(U,'\0')end function i.measure(T,U)T._rowWidth=U local V=T.
+kind if V=='divider'then return if T.label==''then Q else P elseif V=='label'and
+not T.addons then if not T.spec.wrap then return O end if T._measured then
+return T._measured end local W=string.gsub(T.label,'<[^>]+>','')local X=math.
+max(math.floor(U/7),10)return math.ceil(#W/X)*N+8 end return l end local 
+function formatted(T,U)local V=T.spec if V.format then local W,X=pcall(V.format,
+T,U)if W and X~=nil then return tostring(X)end end return string.format('%.'..(V
+.decimals or 0)..'f',U)..(V.suffix or'')end local function readoutWidth(T)local
+U=T.spec local V=0 for W,X in{U.min,U.max,T.value}do V=math.max(V,f.width(
+'textMedium',formatted(T,X),m))end return math.ceil(V)+4 end local function 
+addons(T,U,V,W)local X=W local Y={}local function reflow()local Z=W for _,aa in
+Y do aa.root.Position=UDim2.new(1,-(j+Z),0.5,0)Z+=aa.width+aa.gap end if T.
+onReserve then T.onReserve(Z)end end local function place(aa,Z)Z.root.
+AnchorPoint=Vector2.new(1,0.5)Z.root.Position=UDim2.new(1,-(j+X),0.5,0)Z.root.
+ZIndex=4 Z.root.Parent=T.root Z.gap=x Z.onFit=reflow X+=Z.width+Z.gap table.
+insert(Y,Z)aa._view=Z T.addonChips=T.addonChips or{}T.addonChips[aa]=Z table.
 insert(T.chips,Z)T:onCleanup(function()aa._view=nil Z.destroy()end)end for aa,Z
 in V.addons or{}do if Z.kind=='color'and not Z.spec.chipless then place(Z,b.
 swatch(U,Z))end end for aa,Z in V.addons or{}do if Z.kind=='key'and not Z.spec.
@@ -710,41 +714,44 @@ tostring local ac=aa.value if aa.spec.multi then local ad={}for ae,af in aa.spec
 af and not table.find(aa.spec.options,ae)then table.insert(ad,ab(ae))end end if#
 ad==0 then return'None',false end if#ad<=2 then return table.concat(ad,', '),
 true end return string.format('%s, %s +%d',ad[1],ad[2],#ad-2),true end if ac==
-nil then return'None',false end return ab(ac),true end local function segments(
-aa,ab)local ac=h.new(aa,ab,{inert=true})local ad=aa.theme ac.root.Active=true ad
-:paint(ac.name,'TextColor3','muted')if listed(ab)then ac.name.Text=shownLabel(ab
-)end local ae=ab.spec.display or tostring local af=0 local ag={}for ah,ai in ab.
-spec.options do local aj=math.ceil(textWidth(ae(ai),J))+2*H table.insert(ag,{
-option=ai,x=af,width=aj})af+=aj end local ah=e('Frame',{AnchorPoint=Vector2.new(
-1,0.5),Position=UDim2.new(1,-4,0.5,0),Size=UDim2.fromOffset(af,G),
-BackgroundTransparency=0,ZIndex=2,Parent=ac.root})e('UICorner',{CornerRadius=
-UDim.new(0,k),Parent=ah})ad:paint(ah,'BackgroundColor3','raised')local ai=e(
-'Frame',{BackgroundTransparency=0,ZIndex=2,Parent=ah})e('UICorner',{CornerRadius
-=UDim.new(0,k),Parent=ai})ad:paint(ai,'BackgroundColor3','accentDim')ac.name.
-Size=UDim2.new(1,-(j+af+L),1,0)local aj=ac:own(g.prop(ai,'Position',I))local ak=
-ac:own(g.prop(ai,'Size',I))for al,am in ag do local an=e('TextButton',{Position=
-UDim2.fromOffset(am.x,0),Size=UDim2.new(0,am.width,1,0),TextSize=J,Text=ae(am.
-option),ZIndex=3,TextXAlignment=Enum.TextXAlignment.Center,Parent=ah})ad:type(an
-,'text',true)am.button=an an.Activated:Connect(function()if not ab.disabled then
-ab:set(am.option)end end)end local function draw(al)for am,an in ag do local ao=
-ab.value==an.option ac:ink(an.button,if ab.disabled then'faint'elseif ao then
-'accent'else'muted',al)if ao then local T=UDim2.fromOffset(an.x,0)local U=UDim2.
-new(0,an.width,1,0)if al then aj:snap(T)ak:snap(U)else aj:to(T)ak:to(U)end end
-end end ac.refresh=function()draw(false)end draw(true)return ac end function S.
-dropdown(aa,ab)if i.form(ab)then return segments(aa,ab)end local ac=h.new(aa,ab,
-{flat=true})local ad=aa.theme local ae=ac.root ae.ClipsDescendants=true ad:
-paint(ac.name,'TextColor3','muted')if listed(ab)then ac.name.Text=shownLabel(ab)
-end ac.name.Size=UDim2.new(0.45,-j,1,0)local af=e('TextLabel',{Name='Value',
-AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-(j+M),0,0),Size=UDim2.new(
-0.55,-(j+M),1,0),TextSize=m,TextTruncate=Enum.TextTruncate.AtEnd,TextXAlignment=
-Enum.TextXAlignment.Right,ZIndex=3,Parent=ae})ad:type(af,'text',true)local ag=aa
-.glyph.chevron(ae,'muted')ag.AnchorPoint=Vector2.new(1,0.5)ag.Position=UDim2.
-new(1,-j,0.5,0)ag.ZIndex=3 ae.Activated:Connect(function()if not ab.disabled
-then c.open(aa,ab,ae)end end)ac.refresh=function()local ah,ai=pickText(ab)af.
-Text=ah ad:paint(af,'TextColor3',if ab.disabled or not ai then'faint'else'text')
-end ac.refresh()return ac end function S.input(aa,ab)local ac=h.new(aa,ab,{inert
-=true})local ad=aa.theme local ae=ab.spec ac.root.Active=true ac.name.Size=UDim2
-.new(0.38,-j,1,0)ad:paint(ac.name,'TextColor3','muted')local af=e('Frame',{
+nil then return'None',false end return ab(ac),true end local function 
+refreshCaption(aa,ab)aa:refreshName()if listed(ab)then aa.name.Text=shownLabel(
+ab)end end local function segments(aa,ab)local ac=h.new(aa,ab,{inert=true})local
+ad=aa.theme ac.root.Active=true ac.root.MouseEnter:Connect(function()aa.hover:
+enter(ac)end)ad:paint(ac.name,'TextColor3','muted')refreshCaption(ac,ab)local ae
+=ab.spec.display or tostring local af=0 local ag={}for ah,ai in ab.spec.options
+do local aj=math.ceil(textWidth(ae(ai),J))+2*H table.insert(ag,{option=ai,x=af,
+width=aj})af+=aj end local ah=e('Frame',{AnchorPoint=Vector2.new(1,0.5),Position
+=UDim2.new(1,-4,0.5,0),Size=UDim2.fromOffset(af,G),BackgroundTransparency=0,
+ZIndex=2,Parent=ac.root})e('UICorner',{CornerRadius=UDim.new(0,k),Parent=ah})ad:
+paint(ah,'BackgroundColor3','raised')local ai=e('Frame',{BackgroundTransparency=
+0,ZIndex=2,Parent=ah})e('UICorner',{CornerRadius=UDim.new(0,k),Parent=ai})ad:
+paint(ai,'BackgroundColor3','accentDim')ac.name.Size=UDim2.new(1,-(j+af+L),1,0)
+local aj=ac:own(g.prop(ai,'Position',I))local ak=ac:own(g.prop(ai,'Size',I))for
+al,am in ag do local an=e('TextButton',{Position=UDim2.fromOffset(am.x,0),Size=
+UDim2.new(0,am.width,1,0),TextSize=J,Text=ae(am.option),ZIndex=3,TextXAlignment=
+Enum.TextXAlignment.Center,Parent=ah})ad:type(an,'text',true)am.button=an an.
+Activated:Connect(function()if not ab.disabled then ab:set(am.option)end end)end
+local function draw(al)for am,an in ag do local ao=ab.value==an.option ac:ink(an
+.button,if ab.disabled then'faint'elseif ao then'accent'else'muted',al)if ao
+then local T=UDim2.fromOffset(an.x,0)local U=UDim2.new(0,an.width,1,0)if al then
+aj:snap(T)ak:snap(U)else aj:to(T)ak:to(U)end end end end ac.refresh=function()
+refreshCaption(ac,ab)draw(false)end draw(true)return ac end function S.dropdown(
+aa,ab)if i.form(ab)then return segments(aa,ab)end local ac=h.new(aa,ab,{flat=
+true})local ad=aa.theme local ae=ac.root ae.ClipsDescendants=true ad:paint(ac.
+name,'TextColor3','muted')if listed(ab)then ac.name.Text=shownLabel(ab)end ac.
+name.Size=UDim2.new(0.45,-j,1,0)local af=e('TextLabel',{Name='Value',AnchorPoint
+=Vector2.new(1,0),Position=UDim2.new(1,-(j+M),0,0),Size=UDim2.new(0.55,-(j+M),1,
+0),TextSize=m,TextTruncate=Enum.TextTruncate.AtEnd,TextXAlignment=Enum.
+TextXAlignment.Right,ZIndex=3,Parent=ae})ad:type(af,'text',true)local ag=aa.
+glyph.chevron(ae,'muted')ag.AnchorPoint=Vector2.new(1,0.5)ag.Position=UDim2.new(
+1,-j,0.5,0)ag.ZIndex=3 ae.Activated:Connect(function()if not ab.disabled then c.
+open(aa,ab,ae)end end)ac.refresh=function()refreshCaption(ac,ab)local ah,ai=
+pickText(ab)af.Text=ah ad:paint(af,'TextColor3',if ab.disabled or not ai then
+'faint'else'text')end ac.refresh()return ac end function S.input(aa,ab)local ac=
+h.new(aa,ab,{inert=true})local ad=aa.theme local ae=ab.spec ac.root.Active=true
+ac.root.MouseEnter:Connect(function()aa.hover:enter(ac)end)ac.name.Size=UDim2.
+new(0.38,-j,1,0)ad:paint(ac.name,'TextColor3','muted')local af=e('Frame',{
 AnchorPoint=Vector2.new(1,0.5),Position=UDim2.new(1,-4,0.5,0),Size=UDim2.new(
 0.62,-4,0,G),BackgroundTransparency=0,ZIndex=2,Parent=ac.root})e('UICorner',{
 CornerRadius=UDim.new(0,k),Parent=af})ad:paint(af,'BackgroundColor3','raised')
@@ -760,14 +767,14 @@ aj or not ab:set(ah.Text)then ah.Text=ab.value or''end end)ah:
 GetPropertyChangedSignal('Text'):Connect(function()if ac._applying or ae.
 finished then return end if not ab:set(ah.Text)and ah.Text~=ab.value then ac.
 _applying=true ah.Text=ab.value or''ac._applying=false end end)ac.refresh=
-function()ah.TextEditable=not ab.disabled if ah.Text~=(ab.value or'')then ac.
-_applying=true ah.Text=ab.value or''ac._applying=false end end return ac end
-function S.button(aa,ab)local ac=h.new(aa,ab)ac.name.TextXAlignment=Enum.
-TextXAlignment.Center local ad=nil local function draw()ac:refreshName()ac:ink(
-ac.name,if ab.disabled then'faint'elseif ab.spec.danger then'danger'else'text')
-end ac.refresh=draw draw()ac.root.Activated:Connect(function()if ab.disabled
-then return end if ab.spec.confirm and ad==nil then ac.name.Text=
-'Again to confirm'ac:flood(true)ac:ink(ac.name,'onAccent')ad=task.delay(2.5,
+function()refreshCaption(ac,ab)ah.TextEditable=not ab.disabled if ah.Text~=(ab.
+value or'')then ac._applying=true ah.Text=ab.value or''ac._applying=false end
+end return ac end function S.button(aa,ab)local ac=h.new(aa,ab)ac.name.
+TextXAlignment=Enum.TextXAlignment.Center local ad=nil local function draw()ac:
+refreshName()ac:ink(ac.name,if ab.disabled then'faint'elseif ab.spec.danger then
+'danger'else'text')end ac.refresh=draw draw()ac.root.Activated:Connect(function(
+)if ab.disabled then return end if ab.spec.confirm and ad==nil then ac.name.Text
+='Again to confirm'ac:flood(true)ac:ink(ac.name,'onAccent')ad=task.delay(2.5,
 function()ad=nil ac:flood(false)draw()end)return end if ad then task.cancel(ad)
 ad=nil ac:flood(false)draw()end ac:flash()ac:ink(ac.name,'onAccent')task.delay(
 0.28,function()if ac.root.Parent then draw()end end)ab:fire()end)ac:onCleanup(
@@ -866,50 +873,49 @@ end local ag=ae.host if ag and ag._view then ag._view.refresh()end end function
 ac.notify(ae)redraw(ae)ae.changed:fire(ae.value)end function ac.fire(ae)ae.
 changed:fire(ae.value)end function ac.on(ae,af)return ae.changed:connect(af)end
 function ac.setLabel(ae,af)if ae.label==af then return end ae.label=af if ae.
-kind=='label'then ae.value=af local ag=ae._relayout if ag then ag()end end if ae
-._onLabel then ae._onLabel()end redraw(ae)end function ac.setTip(ae,af)ae.tip=af
-end function ac.setDisabled(ae,af,ag)ae.disabled=af==true ae.disabledTip=ag or
-ae.disabledTip redraw(ae)end function ac.setVisible(ae,af)if ae.visible==af then
-return end ae.visible=af local ag=ae._relayout if ag then ag()end end function
-ac.setOptions(ae,af)local ag=ae.spec ag.options=table.clone(af)if ag.multi then
-if ag.keep then for ah,ai in ae.value do if ai and not table.find(ag.options,ah)
-then table.insert(ag.options,ah)end end else local ah=false for ai in ae.value
-do if not table.find(ag.options,ai)then ae.value[ai]=nil ah=true end end if ah
-then ae:notify()return end end elseif ae.value~=nil and not table.find(ag.
-options,ae.value)then if ag.keep then table.insert(ag.options,ae.value)else ae.
-value=nil ae:notify()return end end redraw(ae)end function ac.isModified(ae)if
-ae.kind=='button'or ae.kind=='label'or ae.kind=='divider'or ae.kind=='stat'then
-return false end local af,ag=ae.value,ae.default if af==nil or ag==nil then
-return af~=ag end return not equal(ae,af,ag)end function ac.attach(ae,af)local
-ag=ae.addons if ag==nil then ag={}ae.addons=ag end table.insert(ag,af)af.host=ae
-redraw(ae)end function ac.shown(ae)if not ae.visible or(ae.kind=='label'and ae.
-label=='')then return false end local af=ae.guard return af==nil or af()end
-return ab end function a.o()local aa=a.cache.o if not aa then aa={c=__modImpl()}
-a.cache.o=aa end return aa.c end end do local function __modImpl()local aa=a.o()
-local ab={}local ac={}ac.__index=ac local function add(ad,ae,af,ag,ah,ai)local
-aj=aa.new(ae,af or(ae..'#'..tostring(ad._page:nextId())),ag,ah,ai)aj.section=ad
-aj.guard=ad._guard ad._page:_register(aj,af~=nil)table.insert(ad.rows,aj)local
-ak=ad._root or ad if ak.masterElement then ak.hasOptions=true end ad._page:
-_invalidate()return aj end function ac.toggle(ad,ae,af)local ag=add(ad,'toggle',
-ae,af.label or ae,af,af.default==true)if af.onChanged then ag:on(af.onChanged)
-end return ag end function ac.master(ad,ae,af)af.primary=true local ag=ad:
-toggle(ae,af)ad.masterElement=ag local ah=ad._page ag:on(function()ah:
-_invalidate()end)return ag end function ac.slider(ad,ae,af)af.min=af.min or 0 af
-.max=af.max or 100 af.step=af.step or 1 if af.decimals==nil then local ag=string
-.format('%.10f',af.step)local ah=string.match(ag,'%.(%d-)0*$')af.decimals=if ah
-then#ah else 0 end local ag=add(ad,'slider',ae,af.label or ae,af,af.default or
-af.min)if af.onChanged then ag:on(af.onChanged)end return ag end function ac.
-dropdown(ad,ae,af)af.options=af.options or{}local ag=af.default if ag==nil and
-af.multi then ag={}end local ah=add(ad,'dropdown',ae,af.label or ae,af,ag)if af.
-onChanged then ah:on(af.onChanged)end return ah end function ac.input(ad,ae,af)
-local ag=add(ad,'input',ae,af.label or'',af,af.default or'')if af.onChanged then
-ag:on(af.onChanged)end return ag end function ac.key(ad,ae,af)local ag=add(ad,
-'key',ae,af.label or ae,af,{key=af.default or'None',mode=af.mode or'Toggle',
-modifiers=af.modifiers or{}})ad._page.window.keys:register(ag)return ag end
-function ac.color(ad,ae,af)local ag=add(ad,'color',ae,af.label or ae,af,{color=
-af.default or Color3.new(1,1,1),alpha=af.alphaValue or 0})if af.onChanged then
-ag:on(af.onChanged)end return ag end function ac.button(ad,ae,af)local ag=if
-type(af)=='function'then{onPressed=af}else af ag.saved=false local ah=add(ad,
+kind=='label'then ae.value=af local ag=ae._relayout if ag then ag()end end
+redraw(ae)end function ac.setTip(ae,af)ae.tip=af end function ac.setDisabled(ae,
+af,ag)ae.disabled=af==true ae.disabledTip=ag or ae.disabledTip redraw(ae)end
+function ac.setVisible(ae,af)if ae.visible==af then return end ae.visible=af
+local ag=ae._relayout if ag then ag()end end function ac.setOptions(ae,af)local
+ag=ae.spec ag.options=table.clone(af)if ae._relayout then ae._relayout()end if
+ag.multi then if ag.keep then for ah,ai in ae.value do if ai and not table.find(
+ag.options,ah)then table.insert(ag.options,ah)end end else local ah=false for ai
+in ae.value do if not table.find(ag.options,ai)then ae.value[ai]=nil ah=true end
+end if ah then ae:notify()return end end elseif ae.value~=nil and not table.
+find(ag.options,ae.value)then if ag.keep then table.insert(ag.options,ae.value)
+else ae.value=nil ae:notify()return end end redraw(ae)end function ac.isModified
+(ae)if ae.kind=='button'or ae.kind=='label'or ae.kind=='divider'or ae.kind==
+'stat'then return false end local af,ag=ae.value,ae.default if af==nil or ag==
+nil then return af~=ag end return not equal(ae,af,ag)end function ac.attach(ae,
+af)local ag=ae.addons if ag==nil then ag={}ae.addons=ag end table.insert(ag,af)
+af.host=ae redraw(ae)end function ac.shown(ae)if not ae.visible or(ae.kind==
+'label'and ae.label=='')then return false end local af=ae.guard return af==nil
+or af()end return ab end function a.o()local aa=a.cache.o if not aa then aa={c=
+__modImpl()}a.cache.o=aa end return aa.c end end do local function __modImpl()
+local aa=a.o()local ab={}local ac={}ac.__index=ac local function add(ad,ae,af,ag
+,ah,ai)local aj=aa.new(ae,af or(ae..'#'..tostring(ad._page:nextId())),ag,ah,ai)
+aj.section=ad aj.guard=ad._guard ad._page:_register(aj,af~=nil)table.insert(ad.
+rows,aj)ad._page:_invalidate()return aj end function ac.toggle(ad,ae,af)local ag
+=add(ad,'toggle',ae,af.label or ae,af,af.default==true)if af.onChanged then ag:
+on(af.onChanged)end return ag end function ac.master(ad,ae,af)af.primary=true
+local ag=ad:toggle(ae,af)ad.masterElement=ag local ah=ad._page ag:on(function()
+ah:_invalidate()end)return ag end function ac.slider(ad,ae,af)af.min=af.min or 0
+af.max=af.max or 100 af.step=af.step or 1 if af.decimals==nil then local ag=
+string.format('%.10f',af.step)local ah=string.match(ag,'%.(%d-)0*$')af.decimals=
+if ah then#ah else 0 end local ag=add(ad,'slider',ae,af.label or ae,af,af.
+default or af.min)if af.onChanged then ag:on(af.onChanged)end return ag end
+function ac.dropdown(ad,ae,af)af.options=af.options or{}local ag=af.default if
+ag==nil and af.multi then ag={}end local ah=add(ad,'dropdown',ae,af.label or ae,
+af,ag)if af.onChanged then ah:on(af.onChanged)end return ah end function ac.
+input(ad,ae,af)local ag=add(ad,'input',ae,af.label or'',af,af.default or'')if af
+.onChanged then ag:on(af.onChanged)end return ag end function ac.key(ad,ae,af)
+local ag=add(ad,'key',ae,af.label or ae,af,{key=af.default or'None',mode=af.mode
+or'Toggle',modifiers=af.modifiers or{}})ad._page.window.keys:register(ag)return
+ag end function ac.color(ad,ae,af)local ag=add(ad,'color',ae,af.label or ae,af,{
+color=af.default or Color3.new(1,1,1),alpha=af.alphaValue or 0})if af.onChanged
+then ag:on(af.onChanged)end return ag end function ac.button(ad,ae,af)local ag=
+if type(af)=='function'then{onPressed=af}else af ag.saved=false local ah=add(ad,
 'button',nil,ae,ag,nil)if ag.onPressed then ah:on(ag.onPressed)end return ah end
 function ac.label(ad,ae,af)local ag=af or{}ag.saved=false return add(ad,'label',
 nil,ae,ag,ae)end function ac.stat(ad,ae,af)return add(ad,'stat',nil,ae,{saved=
@@ -933,7 +939,7 @@ __modImpl()}a.cache.p=aa end return aa.c end end do local function __modImpl()
 local aa=a.m()local ab=a.f()local ac=a.j()local ad=a.b()local ae=a.p()local af={
 }local ag=26 local ah=36 function af.open(ai,aj,ak)if ai._dialogClose then ai.
 _dialogClose()end local al=ai.ctx local am=al.theme local an=ai._layer local ao=
-aj.width or 460 local b=aj.maxHeight or 340 local c=60 local d=ab('TextButton',{
+aj.width or 460 local b=aj.maxHeight or 340 local c=38 local d=ab('TextButton',{
 Size=UDim2.fromScale(1,1),BackgroundTransparency=1,BackgroundColor3=Color3.new(0
 ,0,0),ZIndex=50,Parent=an})local e=ad.prop(d,'BackgroundTransparency',22)e:to(
 0.4)local f=ab('Frame',{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.
@@ -943,7 +949,7 @@ ClipsDescendants=true,Active=true,ZIndex=51,Parent=an})am:paint(f,
 ab('UIScale',{Scale=al.uiScale(),Parent=f})local g=ab('UIStroke',{
 ApplyStrokeMode=Enum.ApplyStrokeMode.Border,Parent=f})am:paint(g,'Color',
 'lineStrong')local h=ab('TextLabel',{Position=UDim2.fromOffset(20,16),Size=UDim2
-.new(1,-40,0,40),TextSize=36,Text=aj.title or'',ZIndex=52,Parent=f})am:type(h,
+.new(1,-40,0,40),TextSize=20,Text=aj.title or'',ZIndex=52,Parent=f})am:type(h,
 'display')am:paint(h,'TextColor3','text')local i=60 local j=aj.text if j and j~=
 ''then local k=ab('TextLabel',{Position=UDim2.fromOffset(20,i),Size=UDim2.new(1,
 -40,0,22),AutomaticSize=Enum.AutomaticSize.Y,TextSize=16,TextWrapped=true,Text=j
@@ -1237,32 +1243,33 @@ local v=t.AbsoluteSize.X/u if v<1 then return end local w=v-2*ag local x=r.
 sections[1]~=nil and r.sections[1].flat==true local y=if w<ak or x then 1 else 2
 local z=(w-aj*(y-1))/y local A={}local B=ah if r._hero then table.insert(A,{hero
 =true,x=ag,y=B,width=w,height=e})B+=e+aj end local C=table.create(y,B)for D,E in
-r.sections do local F=if E.flat then nil else E.masterElement local G=F~=nil or(
-E.title~=nil and E.title~='')or E.tabNames~=nil local H=z-2*al local I={}local J
-=0 for K,L in E.rows do if L~=F and(E.flat or L:shown())then local M=aa.measure(
-L,H)table.insert(I,{el=L,height=M})J+=M+ao end end if#I==0 and not G then
-continue end local K=1 for L=2,y do if C[L]<C[K]-0.5 then K=L end end local L=ag
-+(K-1)*(z+aj)local M=C[K]local N=(if G then an else al)+J+(if#I>0 then al-ao
-else 0)table.insert(A,{card=E,x=L,y=M,width=z,height=N})if F then aa.measure(F,H
-)table.insert(A,{el=F,x=L+al,y=M,width=H,height=an})elseif G then table.insert(A
-,{section=E,x=L+al+12,y=M,width=z-2*(al+12),height=an})end local O=M+(if G then
-an else al)for P,Q in I do table.insert(A,{el=Q.el,x=L+al,y=O,width=H,height=Q.
-height})O+=Q.height+ao end C[K]=M+N+aj end local D=B for E,F in C do D=math.max(
+r.sections do local F=if E.flat then nil else E.masterElement local G=if F and F
+:shown()then F else nil local H=G~=nil or(E.title~=nil and E.title~='')or E.
+tabNames~=nil local I=z-2*al local J={}local K=0 for L,M in E.rows do if M~=F
+and(E.flat or M:shown())then local N=aa.measure(M,I)table.insert(J,{el=M,height=
+N})K+=N+ao end end if#J==0 and G==nil and E.tabNames==nil then continue end
+local L=1 for M=2,y do if C[M]<C[L]-0.5 then L=M end end local M=ag+(L-1)*(z+aj)
+local N=C[L]local O=(if H then an else al)+K+(if#J>0 then al-ao else 0)table.
+insert(A,{card=E,x=M,y=N,width=z,height=O})if G then aa.measure(G,I)table.
+insert(A,{el=G,x=M+al,y=N,width=I,height=an})elseif H then table.insert(A,{
+section=E,x=M+al+12,y=N,width=z-2*(al+12),height=an})end local P=N+(if H then an
+else al)for Q,R in J do table.insert(A,{el=R.el,x=M+al,y=P,width=I,height=R.
+height})P+=R.height+ao end C[L]=N+O+aj end local D=B for E,F in C do D=math.max(
 D,F)end D+=ai-aj t.CanvasSize=UDim2.fromOffset(0,D)r._contentHeight=D local E=
 math.max(D-t.AbsoluteSize.Y/u,0)if r._scrollTarget and r._scrollTarget>E then r.
-_scrollTarget=E end r._placements=A r:_applyPlacements()r:_materialize(true)r:
-_refreshThumb()r._live=false r._settled=r._settled or r.active end local 
-function setRect(r,s,t)local u=UDim2.fromOffset(s,t)if r._grow then r._grow:
-snap(u)else r.root.Size=u end end local function growTo(r,s,t,u)if r._grow==nil
-then r._grow=r:own(ad.prop(r.root,'Size',i))end r._grow:to(UDim2.fromOffset(s,t)
-,u)end function q._applyPlacements(r)local s={}local t={}for u,v in r.
-_placements do if v.hero then if r._heroView then r._heroView.root.Position=
-UDim2.fromOffset(v.x,v.y)r._heroView.root.Size=UDim2.fromOffset(v.width,v.height
-)end elseif v.card then t[v.card]=true local w=r._cards[v.card]if w then w.root.
-Visible=true local x=UDim2.fromOffset(v.x,v.y)local y=UDim2.fromOffset(v.width,v
-.height)if r._live then if w.at==nil then w.at=ad.prop(w.root,'Position',i)w.
-size=ad.prop(w.root,'Size',i)end w.at:to(x)w.size:to(y)elseif w.at then w.at:
-snap(x)w.size:snap(y)else w.root.Position=x w.root.Size=y end end elseif v.
+_scrollTarget=E r._scroll:snap(E)end r._placements=A r:_applyPlacements()r:
+_materialize(true)r:_refreshThumb()r._live=false r._settled=r._settled or r.
+active end local function setRect(r,s,t)local u=UDim2.fromOffset(s,t)if r._grow
+then r._grow:snap(u)else r.root.Size=u end end local function growTo(r,s,t,u)if
+r._grow==nil then r._grow=r:own(ad.prop(r.root,'Size',i))end r._grow:to(UDim2.
+fromOffset(s,t),u)end function q._applyPlacements(r)local s={}local t={}for u,v
+in r._placements do if v.hero then if r._heroView then r._heroView.root.Position
+=UDim2.fromOffset(v.x,v.y)r._heroView.root.Size=UDim2.fromOffset(v.width,v.
+height)end elseif v.card then t[v.card]=true local w=r._cards[v.card]if w then w
+.root.Visible=true local x=UDim2.fromOffset(v.x,v.y)local y=UDim2.fromOffset(v.
+width,v.height)if r._live then if w.at==nil then w.at=ad.prop(w.root,'Position',
+i)w.size=ad.prop(w.root,'Size',i)end w.at:to(x)w.size:to(y)elseif w.at then w.at
+:snap(x)w.size:snap(y)else w.root.Position=x w.root.Size=y end end elseif v.
 section then s[v.section]=true local w=r._headers[v.section]if w then w.Visible=
 true w.Position=UDim2.fromOffset(v.x,v.y)w.Size=UDim2.fromOffset(v.width,v.
 height)end else s[v.el]=true local w=r._views[v.el]if w and w.form~=aa.form(v.el
@@ -1373,61 +1380,61 @@ fonts.display=aj or ah.fonts.display for ak,al in ah._types do pcall(function()
 ak.FontFace=ah:face(al.family,al.medium)end)end end return ab end function a.A()
 local aa=a.cache.A if not aa then aa={c=__modImpl()}a.cache.A=aa end return aa.c
 end end do local function __modImpl()local aa=a.b()local ab={}local ac=26
-function ab.new(ad)local ae={}return function(af,ag,ah,ai)local aj=ae[af]if aj==
-nil then aj={}ae[af]=aj end local ak=aj[ag]if ak==nil then ak=aa.prop(af,ag,ai
-or ac)aj[ag]=ak end ak:to(ad.tokens[ah])end end return ab end function a.B()
-local aa=a.cache.B if not aa then aa={c=__modImpl()}a.cache.B=aa end return aa.c
-end end do local function __modImpl()local aa=a.q()local ab=a.a()local ac=a.r()
-local ad=a.s()local ae=a.u()local af=a.v()local ag=a.t()local ah=a.f()local ai=a
-.j()local aj=a.b()local ak=a.w()local al=a.x()local am=a.y()local an=a.h()local
-ao=a.p()local b=a.z()local c=a.n()local d=a.A()local e=a.B()local f={}local g=
-'main'local h=[[https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/]]
-local i={'glow.png','shadow.png'}local j=860 local k=560 local l=48 local m=14
-local n=16 local o=32 local p=0.35 local q=14 local r=14 local s=7 local t=15
-local u=17 local v=18 local w=168 local x=30 local y=30 local z=9 local A=2
-local B=22 local C=20 local D=26 local E=20 local F=24 local G=12 local H={}H.
-__index=H local function randomName()local I=table.create(G)for J=1,G do I[J]=
-string.char(math.random(97,122))end return table.concat(I)end local function 
-encode(I)return ab.service('HttpService'):JSONEncode(I)end local function decode
-(I)local J,K=pcall(function()return ab.service('HttpService'):JSONDecode(I)end)
-return if J then K else nil end function H._registerElement(I,J,K,L)if K==I.
-_resultsPage then return end J._pageName=K.name J._page=K if L then if I.
-elements[J.id]then error('sottUI: element id used twice: '..J.id,3)end I.
-elements[J.id]=J end if J.kind~='divider'and J.kind~='label'and J.kind~='stat'
-then table.insert(I.ordered,J)end if J.kind=='toggle'and J.spec.primary then J:
-on(function()I:_drawLamps()end)I:_drawLamps()end end function H._drawLamps(I)if
-I._lampsQueued or I.destroyed then return end I._lampsQueued=true task.defer(
-function()I._lampsQueued=false if I.destroyed then return end local J={}for K,L
-in I.ordered do if L.kind=='toggle'and L.spec.primary and L.value==true and not
-L.disabled then J[L._page]=true end end for K,L in I._tabs do local M=J[K]==true
-if L.on~=M then L.on=M L.glow:to(if M then 0.3 else 1)L.fade:to(if M then 0 else
-1)end end end)end function H._setPerson(I,J)I._person=J end function H._fit(I)
-local J=I._scale.Scale local K=I._gui.AbsoluteSize/J I._width=math.min(j,K.X-2*n
-)I._height=math.min(k,K.Y-2*n)I._body.Size=UDim2.new(1,0,0,I._height-l)I._size:
-snap(UDim2.fromOffset(I._width,if I.isOpen then I._height else 0))end function H
-._clamped(I,J)local K=I._scale.Scale local L=I._gui.AbsoluteSize local M,N=I.
-_width*K,I._height*K return Vector2.new(math.clamp(J.X,n,math.max(L.X-M-n,n)),
-math.clamp(J.Y,n,math.max(L.Y-N-n,n)))end function H._keepOnScreen(I,J)local K=I
-._at if K==nil then return end local L=I:_clamped(K)if L~=K then I._at=L if J
-then I._position:to(UDim2.fromOffset(L.X,L.Y))else I._position:snap(UDim2.
-fromOffset(L.X,L.Y))end end end function H._show(I,J,K)if I._showing==J then
-return end I.ctx.hover.clear()I.ctx.popover:close()I.keys:cancel()local L=I.
-_showing if L then L:setActive(false)end I._showing=J if J~=I._resultsPage then
-I._lastPage=J end J:setActive(true,K)J:adopt()I:_syncMarker(K)I:_saveState()end
-function H._syncMarker(I,J)local K=I.ctx.tint local L=nil for M,N in I._tabs do
-local O=I._showing==M K(N.button,'TextColor3',if O then'text'else'muted')if O
-then L=N.button end end if L==nil then I._markerSize:to(UDim2.fromOffset(0,A))
-return end local M=I._scale.Scale local N=(L.AbsolutePosition.X-I._top.
-AbsolutePosition.X)/M local O=UDim2.new(0,N+r,1,-A)local P=UDim2.fromOffset(L.
-AbsoluteSize.X/M-2*r,A)if J or I._markerSize.target==nil or I._markerSize.target
-.X.Offset==0 then I._markerAt:snap(O)I._markerSize:snap(P)else I._markerAt:to(O)
-I._markerSize:to(P)end end local function addTab(I,J,K,L)local M=I.ctx local N=M
-.theme local O=math.ceil(ai.width('textMedium',K,q))+2*r+t local P=ah(
-'TextButton',{Name=K,Size=UDim2.new(0,O,1,0),TextSize=q,Text=K,TextXAlignment=
-Enum.TextXAlignment.Left,LayoutOrder=L,ZIndex=3,Parent=I._row})ah('UIPadding',{
-PaddingLeft=UDim.new(0,r+t),Parent=P})N:type(P,'text',true)N:paint(P,
-'TextColor3','muted')local Q=ah('ImageLabel',{AnchorPoint=Vector2.new(0.5,0.5),
-Position=UDim2.new(0,-t+s/2,0.5,0),Size=UDim2.fromOffset(24,24),
+function ab.new(ad)local ae={}return function(af,ag,ah,ai)local aj=ad._paints[af
+]if aj==nil then aj={}ad._paints[af]=aj end aj[ag]=ah local ak=ae[af]if ak==nil
+then ak={}ae[af]=ak end local al=ak[ag]if al==nil then al=aa.prop(af,ag,ai or ac
+)ak[ag]=al end al:to(ad.tokens[ah])end end return ab end function a.B()local aa=
+a.cache.B if not aa then aa={c=__modImpl()}a.cache.B=aa end return aa.c end end
+do local function __modImpl()local aa=a.q()local ab=a.a()local ac=a.r()local ad=
+a.s()local ae=a.u()local af=a.v()local ag=a.t()local ah=a.f()local ai=a.j()local
+aj=a.b()local ak=a.w()local al=a.x()local am=a.y()local an=a.h()local ao=a.p()
+local b=a.z()local c=a.n()local d=a.A()local e=a.B()local f={}local g='main'
+local h=[[https://raw.githubusercontent.com/interestng/sottUI/%s/fonts/]]local i
+={'glow.png','shadow.png'}local j=860 local k=560 local l=48 local m=14 local n=
+16 local o=32 local p=0.35 local q=14 local r=14 local s=7 local t=15 local u=17
+local v=18 local w=168 local x=30 local y=30 local z=9 local A=2 local B=22
+local C=20 local D=26 local E=20 local F=24 local G=12 local H={}H.__index=H
+local function randomName()local I=table.create(G)for J=1,G do I[J]=string.char(
+math.random(97,122))end return table.concat(I)end local function encode(I)return
+ab.service('HttpService'):JSONEncode(I)end local function decode(I)local J,K=
+pcall(function()return ab.service('HttpService'):JSONDecode(I)end)return if J
+then K else nil end function H._registerElement(I,J,K,L)if K==I._resultsPage
+then return end J._pageName=K.name J._page=K if L then if I.elements[J.id]then
+error('sottUI: element id used twice: '..J.id,3)end I.elements[J.id]=J end if J.
+kind~='divider'and J.kind~='label'and J.kind~='stat'then table.insert(I.ordered,
+J)end if J.kind=='toggle'and J.spec.primary then J:on(function()I:_drawLamps()
+end)I:_drawLamps()end end function H._drawLamps(I)if I._lampsQueued or I.
+destroyed then return end I._lampsQueued=true task.defer(function()I.
+_lampsQueued=false if I.destroyed then return end local J={}for K,L in I.ordered
+do if L.kind=='toggle'and L.spec.primary and L.value==true and not L.disabled
+then J[L._page]=true end end for K,L in I._tabs do local M=J[K]==true if L.on~=M
+then L.on=M L.glow:to(if M then 0.3 else 1)L.fade:to(if M then 0 else 1)end end
+end)end function H._fit(I)local J=I._scale.Scale local K=I._gui.AbsoluteSize/J I
+._width=math.min(j,K.X-2*n)I._height=math.min(k,K.Y-2*n)I._body.Size=UDim2.new(1
+,0,0,I._height-l)I._size:snap(UDim2.fromOffset(I._width,if I.isOpen then I.
+_height else 0))end function H._clamped(I,J)local K=I._scale.Scale local L=I.
+_gui.AbsoluteSize local M,N=I._width*K,I._height*K return Vector2.new(math.
+clamp(J.X,n,math.max(L.X-M-n,n)),math.clamp(J.Y,n,math.max(L.Y-N-n,n)))end
+function H._keepOnScreen(I,J)local K=I._at if K==nil then return end local L=I:
+_clamped(K)if L~=K then I._at=L if J then I._position:to(UDim2.fromOffset(L.X,L.
+Y))else I._position:snap(UDim2.fromOffset(L.X,L.Y))end end end function H._show(
+I,J,K)if I._showing==J then return end I.ctx.hover.clear()I.ctx.popover:close()I
+.keys:cancel()local L=I._showing if L then L:setActive(false)end I._showing=J if
+J~=I._resultsPage then I._lastPage=J end J:setActive(true,K)J:adopt()I:
+_syncMarker(K)I:_saveState()end function H._syncMarker(I,J)local K=I.ctx.tint
+local L=nil for M,N in I._tabs do local O=I._showing==M K(N.button,'TextColor3',
+if O then'text'else'muted')if O then L=N.button end end if L==nil then I.
+_markerSize:to(UDim2.fromOffset(0,A))return end local M=I._scale.Scale local N=(
+L.AbsolutePosition.X-I._top.AbsolutePosition.X)/M local O=UDim2.new(0,N+r,1,-A)
+local P=UDim2.fromOffset(L.AbsoluteSize.X/M-2*r,A)if J or I._markerSize.target==
+nil or I._markerSize.target.X.Offset==0 then I._markerAt:snap(O)I._markerSize:
+snap(P)else I._markerAt:to(O)I._markerSize:to(P)end end local function addTab(I,
+J,K,L)local M=I.ctx local N=M.theme local O=math.ceil(ai.width('textMedium',K,q)
+)+2*r+t local P=ah('TextButton',{Name=K,Size=UDim2.new(0,O,1,0),TextSize=q,Text=
+K,TextXAlignment=Enum.TextXAlignment.Left,LayoutOrder=L,ZIndex=3,Parent=I._row})
+ah('UIPadding',{PaddingLeft=UDim.new(0,r+t),Parent=P})N:type(P,'text',true)N:
+paint(P,'TextColor3','muted')local Q=ah('ImageLabel',{AnchorPoint=Vector2.new(
+0.5,0.5),Position=UDim2.new(0,-t+s/2,0.5,0),Size=UDim2.fromOffset(24,24),
 BackgroundTransparency=1,BorderSizePixel=0,ImageTransparency=1,ZIndex=2,Parent=P
 })N:paint(Q,'ImageColor3','accent')M.art(Q,'glow.png')local R=ah('Frame',{
 AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0,-t+s/2,0.5,0),Size=UDim2.
@@ -1471,45 +1478,46 @@ I._gameCursor~=nil then K.MouseIconEnabled=I._gameCursor I._gameCursor=nil end
 end end function H.toggle(I)I:setOpen(not I.isOpen)end function H.notify(I,J)if
 I.destroyed then return end I.ctx.notify(J)end function H.setTheme(I,J)I.ctx.
 theme:apply(J)end function H.setScale(I,J)I._scale.Scale=math.clamp(J,0.7,1.5)I:
-_fit()I:_keepOnScreen(false)I:_saveState()end function H.setSubtitle(I,J)I.
-_subtitleText=J end function H._saveState(I)local J=I._files if J==nil or I.
-_stateFile==nil or I._stateQueued then return end I._stateQueued=true task.
-delay(0.5,function()I._stateQueued=false if not I.destroyed then local K=I._at
-local L=I._lastPage J.write(I._stateFile,encode({scale=I._scale.Scale,boxX=K and
-K.X,boxY=K and K.Y,page=L and L.name}))end end)end function H.dialog(I,J,K)if I.
-destroyed then return false end aa.open(I,J,K)return true end function H.find(I,
-J)return I.elements[J]end function H.snapshot(I)local J={}for K,L in I.elements
-do if L.saved then local M=L.value if L.kind=='color'then M={hex=M.color:ToHex()
-,alpha=M.alpha}elseif L.kind=='key'then M={key=M.key,mode=M.mode,modifiers=M.
-modifiers,toggled=L.toggled==true}end J[K]=M end end return J end function H.
-restore(I,J)for K,L in J do local M=I.elements[K]if M and M.saved then if M.kind
-=='color'and type(L)=='table'then M:set({color=Color3.fromHex(L.hex or'ffffff'),
-alpha=L.alpha})elseif M.kind=='key'and type(L)=='table'then M:set(L)M.toggled=L.
-toggled==true else M:set(L)end end end end function H.destroy(I)if I.destroyed
-then return end I.destroyed=true I:_guardCursor(false)I.ctx.notifications:
-destroy()for J,K in I.pages do K:destroy()end I._resultsPage:destroy()I.ctx.
-input:destroy()I._maid:clean()I.visibilityChanged:clear()if I._registry and I.
-_registry.current==I then I._registry.current=nil end end function f.new(I)local
-J=I._registry if J and J.current then J.current:destroy()end local K=ag.new()
-local L=d.new(I.theme)local M=ae.new()local N=ab.service('UserInputService')
-local O=I.touch==true or(N.TouchEnabled and not N.MouseEnabled)local P=ah(
-'ScreenGui',{Name=randomName(),IgnoreGuiInset=true,ResetOnSpawn=false,
-ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=I.displayOrder or 10000}
-)ab.protect(P)P.Parent=ab.guiParent()K:add(P)local Q=ab.files()local R=I.folder
-or'sottui_sections'local S=I.stateFile or(R..'/window.json')local T=nil if Q
-then Q.folder(R)local U=Q.read(S)T=U and decode(U)end if type(T)~='table'then T=
-{}end local U=ah('Frame',{Name='Root',Size=UDim2.fromScale(1,1),Visible=false,
-Parent=P})local V=tonumber(T.scale)or(if P.AbsoluteSize.X<800 then 0.8 else 1)
-local W=ah('Frame',{Name='Layer',Size=UDim2.fromScale(1,1),ZIndex=100,Parent=P})
-local X=ah('TextButton',{Name='Modal',Size=UDim2.fromOffset(0,0),Modal=true,
-Visible=false,Parent=U})local Y=ah('Frame',{Name='Assembly',Size=UDim2.
-fromOffset(0,0),ZIndex=3,Parent=U})local Z=ah('UIScale',{Scale=V,Parent=Y})local
-_=ah('ImageLabel',{Name='Shadow',Position=UDim2.fromOffset(-o,-o),Size=UDim2.
-new(1,2*o,1,2*o),BackgroundTransparency=1,BorderSizePixel=0,ImageColor3=Color3.
-new(0,0,0),ImageTransparency=1,ScaleType=Enum.ScaleType.Slice,SliceCenter=Rect.
-new(48,48,80,80),ZIndex=1,Parent=Y})local ap=ah('Frame',{Name='Box',Size=UDim2.
-fromScale(1,1),BackgroundTransparency=0,ClipsDescendants=true,Active=true,ZIndex
-=2,Parent=Y})ah('UICorner',{CornerRadius=UDim.new(0,m),Parent=ap})L:paint(ap,
+_fit()I:_keepOnScreen(false)local K=I._showing if K then K:scrollTo(K.
+_scrollTarget or 0,true)end I:_saveState()end function H._saveState(I)local J=I.
+_files if J==nil or I._stateFile==nil or I._stateQueued then return end I.
+_stateQueued=true task.delay(0.5,function()I._stateQueued=false if not I.
+destroyed then local K=I._at local L=I._lastPage J.write(I._stateFile,encode({
+scale=I._scale.Scale,boxX=K and K.X,boxY=K and K.Y,page=L and L.name}))end end)
+end function H.dialog(I,J,K)if I.destroyed then return false end aa.open(I,J,K)
+return true end function H.find(I,J)return I.elements[J]end function H.snapshot(
+I)local J={}for K,L in I.elements do if L.saved then local M=L.value if L.kind==
+'color'then M={hex=M.color:ToHex(),alpha=M.alpha}elseif L.kind=='key'then M={key
+=M.key,mode=M.mode,modifiers=M.modifiers,toggled=L.toggled==true}end J[K]=M end
+end return J end function H.restore(I,J)for K,L in J do local M=I.elements[K]if
+M and M.saved then if M.kind=='color'and type(L)=='table'then M:set({color=
+Color3.fromHex(L.hex or'ffffff'),alpha=L.alpha})elseif M.kind=='key'and type(L)
+=='table'then M:set(L)M.toggled=L.toggled==true else M:set(L)end end end end
+function H.destroy(I)if I.destroyed then return end I.destroyed=true I:
+_guardCursor(false)I.ctx.notifications:destroy()for J,K in I.pages do K:destroy(
+)end I._resultsPage:destroy()I.ctx.input:destroy()I._maid:clean()I.
+visibilityChanged:clear()if I._registry and I._registry.current==I then I.
+_registry.current=nil end end function f.new(I)local J=I._registry if J and J.
+current then J.current:destroy()end local K=ag.new()local L=d.new(I.theme)local
+M=ae.new()local N=ab.service('UserInputService')local O=I.touch==true or(N.
+TouchEnabled and not N.MouseEnabled)local P=ah('ScreenGui',{Name=randomName(),
+IgnoreGuiInset=true,ResetOnSpawn=false,ZIndexBehavior=Enum.ZIndexBehavior.
+Sibling,DisplayOrder=I.displayOrder or 10000})ab.protect(P)P.Parent=ab.
+guiParent()K:add(P)local Q=ab.files()local R=I.folder or'sottui_sections'local S
+=I.stateFile or(R..'/window.json')local T=nil if Q then Q.folder(R)local U=Q.
+read(S)T=U and decode(U)end if type(T)~='table'then T={}end local U=ah('Frame',{
+Name='Root',Size=UDim2.fromScale(1,1),Visible=false,Parent=P})local V=tonumber(T
+.scale)or(if P.AbsoluteSize.X<800 then 0.8 else 1)local W=ah('Frame',{Name=
+'Layer',Size=UDim2.fromScale(1,1),ZIndex=100,Parent=P})local X=ah('TextButton',{
+Name='Modal',Size=UDim2.fromOffset(0,0),Modal=true,Visible=false,Parent=U})local
+Y=ah('Frame',{Name='Assembly',Size=UDim2.fromOffset(0,0),ZIndex=3,Parent=U})
+local Z=ah('UIScale',{Scale=V,Parent=Y})local _=ah('ImageLabel',{Name='Shadow',
+Position=UDim2.fromOffset(-o,-o),Size=UDim2.new(1,2*o,1,2*o),
+BackgroundTransparency=1,BorderSizePixel=0,ImageColor3=Color3.new(0,0,0),
+ImageTransparency=1,ScaleType=Enum.ScaleType.Slice,SliceCenter=Rect.new(48,48,80
+,80),ZIndex=1,Parent=Y})local ap=ah('Frame',{Name='Box',Size=UDim2.fromScale(1,1
+),BackgroundTransparency=0,ClipsDescendants=true,Active=true,ZIndex=2,Parent=Y})
+ah('UICorner',{CornerRadius=UDim.new(0,m),Parent=ap})L:paint(ap,
 'BackgroundColor3','base')local aq=ah('UIStroke',{ApplyStrokeMode=Enum.
 ApplyStrokeMode.Border,Thickness=1,Parent=ap})L:paint(aq,'Color','line')local ar
 =ah('Frame',{Name='Top',Size=UDim2.new(1,0,0,l),Active=true,ZIndex=3,Parent=ap})
@@ -1518,14 +1526,14 @@ Size=UDim2.new(1,0,0,1),BackgroundTransparency=0,ZIndex=3,Parent=ar})L:paint(as,
 'BackgroundColor3','line')local at=ah('Frame',{Name='Row',Size=UDim2.fromScale(1
 ,1),ZIndex=3,Parent=ar})local au=ah('UIListLayout',{FillDirection=Enum.
 FillDirection.Horizontal,VerticalAlignment=Enum.VerticalAlignment.Center,
-SortOrder=Enum.SortOrder.LayoutOrder,Parent=at})local av=I.mark or'sottoro'local
-aw=math.ceil(ai.width('display',av,u))+2*v-8 local ax=ah('TextLabel',{Name=
-'Mark',Size=UDim2.new(0,aw,1,0),TextSize=u,Text=av,LayoutOrder=1,ZIndex=3,Parent
-=at})ah('UIPadding',{PaddingLeft=UDim.new(0,v),Parent=ax})L:type(ax,'display')L:
-paint(ax,'TextColor3','accent')local ay=ah('Frame',{Name='Right',AnchorPoint=
-Vector2.new(1,0),Position=UDim2.new(1,-z,0,0),Size=UDim2.new(0,w+y+6,1,0),ZIndex
-=3,Parent=ar})local az=ah('Frame',{Name='Field',AnchorPoint=Vector2.new(0,0.5),
-Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(w,x),
+SortOrder=Enum.SortOrder.LayoutOrder,Parent=at})local av=I.title or'sottoro'
+local aw=math.ceil(ai.width('display',av,u))+2*v-8 local ax=ah('TextLabel',{Name
+='Mark',Size=UDim2.new(0,aw,1,0),TextSize=u,Text=av,LayoutOrder=1,ZIndex=3,
+Parent=at})ah('UIPadding',{PaddingLeft=UDim.new(0,v),Parent=ax})L:type(ax,
+'display')L:paint(ax,'TextColor3','accent')local ay=ah('Frame',{Name='Right',
+AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-z,0,0),Size=UDim2.new(0,w+y+6
+,1,0),ZIndex=3,Parent=ar})local az=ah('Frame',{Name='Field',AnchorPoint=Vector2.
+new(0,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(w,x),
 BackgroundTransparency=0,ZIndex=3,Parent=ay})ah('UICorner',{CornerRadius=UDim.
 new(0,8),Parent=az})L:paint(az,'BackgroundColor3','raised')local aA=ah(
 'UIStroke',{ApplyStrokeMode=Enum.ApplyStrokeMode.Border,Thickness=1,Transparency
@@ -1540,40 +1548,37 @@ local aD=ah('Frame',{Name='Body',Position=UDim2.fromOffset(0,l),Size=UDim2.new(1
 ,0,0,k-l),ClipsDescendants=true,ZIndex=2,Parent=ap})local aE=setmetatable({ctx=
 nil,pages={},elements={},ordered={},isOpen=false,destroyed=false,
 visibilityChanged=c.new(),_maid=K,_gui=P,_root=U,_layer=W,_modal=X,_scale=Z,_box
-=aB,_body=aD,_top=ar,_row=at,_marker=aC,_tabs={},_at=if tonumber(T.boxX)and
-tonumber(T.boxY)then Vector2.new(T.boxX,T.boxY)else nil,_savedPage=T.page,
-_subtitleText=I.subtitle,_files=Q,_stateFile=S,_dialogIds=0,_registry=J},H)if J
-then J.current=aE end local aF={ready={},waiting={}}local aG={theme=L,input=M,
-touch=O,assets={},glyph=ad.new(L),tint=e.new(L),art=function(aG,aH)local aI=aF.
-ready[aH]if aI then aG.Image=aI return end aF.waiting[aH]=aF.waiting[aH]or{}
-table.insert(aF.waiting[aH],aG)end,uiScale=function()return Z.Scale end,
-popoverTop=function()return 8 end,dialogAt=function(aG)local aH=W.AbsoluteSize
-return UDim2.fromOffset(math.floor((aH.X-aG*Z.Scale)/2),math.floor(aH.Y*0.2))end
-,isShowing=function(aG)if not aE.isOpen then return false end if aG._page==nil
-and aG._shownOn==nil then return true end return aE._showing~=nil and(aG.
-_shownOn==aE._showing or aG._page==aE._showing)end,setScrollLocked=function(aG)
-local aH=aE._showing if aH and aH.frame and O then aH.frame.ScrollingEnabled=not
-aG end end}aE.ctx=aG aG.art(_,'shadow.png')local aH=al.popover(aG,W)aG.popover=
-aH aG.tooltip=al.tooltip(aG,W)aG.hover=al.hover(aG)aG.notifications=ak.new(aG,W)
-aG.notify=function(aI)aG.notifications:show(aI)end aE.keys=af.new(M,ab,function(
-)return aE.isOpen end)aG.keys=aE.keys aE._position=K:add(aj.prop(Y,'Position',C)
-)aE._size=K:add(aj.prop(Y,'Size',B))aE._shadowFade=K:add(aj.prop(_,
-'ImageTransparency',C))aE._markerAt=K:add(aj.prop(aC,'Position',D))aE.
-_markerSize=K:add(aj.prop(aC,'Size',D))aE:_fit()aE._resultsPage=am.new(aE,
-'Results')aE._resultsPage:mount(aD)local aI=ah('TextButton',{Name='Close',
-AnchorPoint=Vector2.new(1,0.5),Position=UDim2.fromScale(1,0.5),Size=UDim2.
-fromOffset(y,y),BackgroundTransparency=1,ZIndex=4,Parent=ay})ah('UICorner',{
-CornerRadius=UDim.new(0,8),Parent=aI})L:paint(aI,'BackgroundColor3','raised')
-local aJ=aG.glyph.cross(aI,'muted')aJ.AnchorPoint=Vector2.new(0.5,0.5)aJ.
-Position=UDim2.fromScale(0.5,0.5)aJ.ZIndex=5 local aK=K:add(aj.prop(aI,
-'BackgroundTransparency',D))aI.MouseEnter:Connect(function()aK:to(0)aG.tooltip:
-schedule(aI,'Close menu')end)aI.MouseLeave:Connect(function()aK:to(1)aG.tooltip:
-hide()end)aI.Activated:Connect(function()aE:setOpen(false)end)local aL=K:add(aj.
-prop(aA,'Transparency',D))aB.Focused:Connect(function()aL:to(0.2)end)aB.
-FocusLost:Connect(function()aL:to(1)end)aB:GetPropertyChangedSignal('Text'):
-Connect(function()aE:_query(aB.Text)end)ar.InputBegan:Connect(function(aM)local
-aN=aM.UserInputType if aN~=Enum.UserInputType.MouseButton1 and aN~=Enum.
-UserInputType.Touch then return end local aO=if aN==Enum.UserInputType.Touch
+=aB,_body=aD,_top=ar,_row=at,_tabs={},_at=if tonumber(T.boxX)and tonumber(T.boxY
+)then Vector2.new(T.boxX,T.boxY)else nil,_savedPage=T.page,_files=Q,_stateFile=S
+,_dialogIds=0,_registry=J},H)if J then J.current=aE end local aF={ready={},
+waiting={}}local aG={theme=L,input=M,touch=O,glyph=ad.new(L),tint=e.new(L),art=
+function(aG,aH)local aI=aF.ready[aH]if aI then aG.Image=aI return end aF.waiting
+[aH]=aF.waiting[aH]or{}table.insert(aF.waiting[aH],aG)end,uiScale=function()
+return Z.Scale end,popoverTop=function()return 8 end,isShowing=function(aG)if
+not aE.isOpen then return false end if aG._page==nil and aG._shownOn==nil then
+return true end return aE._showing~=nil and(aG._shownOn==aE._showing or aG._page
+==aE._showing)end,setScrollLocked=function(aG)local aH=aE._showing if aH and aH.
+frame and O then aH.frame.ScrollingEnabled=not aG end end}aE.ctx=aG aG.art(_,
+'shadow.png')local aH=al.popover(aG,W)aG.popover=aH aG.tooltip=al.tooltip(aG,W)
+aG.hover=al.hover(aG)aG.notifications=ak.new(aG,W)aG.notify=function(aI)aG.
+notifications:show(aI)end aE.keys=af.new(M,ab,function()return aE.isOpen end)aG.
+keys=aE.keys aE._position=K:add(aj.prop(Y,'Position',C))aE._size=K:add(aj.prop(Y
+,'Size',B))aE._shadowFade=K:add(aj.prop(_,'ImageTransparency',C))aE._markerAt=K:
+add(aj.prop(aC,'Position',D))aE._markerSize=K:add(aj.prop(aC,'Size',D))aE:_fit()
+aE._resultsPage=am.new(aE,'Results')aE._resultsPage:mount(aD)local aI=ah(
+'TextButton',{Name='Close',AnchorPoint=Vector2.new(1,0.5),Position=UDim2.
+fromScale(1,0.5),Size=UDim2.fromOffset(y,y),BackgroundTransparency=1,ZIndex=4,
+Parent=ay})ah('UICorner',{CornerRadius=UDim.new(0,8),Parent=aI})L:paint(aI,
+'BackgroundColor3','raised')local aJ=aG.glyph.cross(aI,'muted')aJ.AnchorPoint=
+Vector2.new(0.5,0.5)aJ.Position=UDim2.fromScale(0.5,0.5)aJ.ZIndex=5 local aK=K:
+add(aj.prop(aI,'BackgroundTransparency',D))aI.MouseEnter:Connect(function()aK:
+to(0)aG.tooltip:schedule(aI,'Close menu')end)aI.MouseLeave:Connect(function()aK:
+to(1)aG.tooltip:hide()end)aI.Activated:Connect(function()aE:setOpen(false)end)
+local aL=K:add(aj.prop(aA,'Transparency',D))aB.Focused:Connect(function()aL:to(
+0.2)end)aB.FocusLost:Connect(function()aL:to(1)end)aB:GetPropertyChangedSignal(
+'Text'):Connect(function()aE:_query(aB.Text)end)ar.InputBegan:Connect(function(
+aM)local aN=aM.UserInputType if aN~=Enum.UserInputType.MouseButton1 and aN~=Enum
+.UserInputType.Touch then return end local aO=if aN==Enum.UserInputType.Touch
 then M:at(aM)else M:pointer()local aP=aE._at if aP==nil then return end M:
 capture(function(aQ)aE._at=aE:_clamped(aP+(aQ-aO))aE._position:snap(UDim2.
 fromOffset(aE._at.X,aE._at.Y))end,function()aE:_saveState()end,if aN==Enum.
@@ -1582,38 +1587,38 @@ UserInputType.Touch then aM else nil)end)au:GetPropertyChangedSignal(
 destroyed then aE:_syncMarker(true)end end)end)K:add(P:GetPropertyChangedSignal(
 'AbsoluteSize'):Connect(function()aE:_fit()aE:_keepOnScreen(false)end))M.moved:
 connect(function(aM)aG.hover:verify(aM)end)M.wheel:connect(function(aM)if not aE
-.isOpen or aG.popover:isOpen()then return end local aN=aE._showing if aN==nil or
-aN.frame==nil then return end local aO=M:pointer()local aP,aQ=aN.frame.
-AbsolutePosition,aN.frame.AbsoluteSize if aO.X>=aP.X and aO.Y>=aP.Y and aO.X<=aP
-.X+aQ.X and aO.Y<=aP.Y+aQ.Y then aN:wheel(aM)end end)M.keyDown:connect(function(
-aM,aN)if aM.UserInputType~=Enum.UserInputType.Keyboard then return end local aO=
-aM.KeyCode.Name if aE.keys:swallowed(aO)then return end if aG.popover:key(aO)
-then return end if aO=='Escape'and aE._dialogClose then aE._dialogClose()return
-end if aO=='Escape'and aB.Text~=''then aB.Text=''return end if aN or M:typing()
-then return end if aE.isOpen and aO=='K'then if N:IsKeyDown(Enum.KeyCode.
-LeftControl)or N:IsKeyDown(Enum.KeyCode.RightControl)then aB:CaptureFocus()end
-end end)K:add(L.changed:connect(function()local aM=table.clone(aE.pages)table.
-insert(aM,aE._resultsPage)for aN,aO in aM do for aP,aQ in aO._views do pcall(
-function()if aQ.retint then aQ:retint()end aQ.refresh()end)end end end))local aM
-=ao.new({window=aE,nextId=function()return 0 end,_register=function(aM,aN,aO)if
-aO then aE.elements[aN.id]=aN end aN._pageName=''end,_invalidate=function()end},
-'')aE.menuKey=aM:key('__menu',{label='Menu',default=I.key or'RightShift',mode=
-'Toggle',saved=false,onPress=function()aE:toggle()end})local aN=ab.service(
-'RunService')aj.setAttach(function(aO)return aN.PreRender:Connect(aO)end)if I.
-fonts~=false and Q then K:add(task.defer(function()local aO=I.fontTag or g local
-aP=string.format(h,aO)local aQ=R..'/fonts-'..aO local aR=ac.load(aQ,aP,encode)if
-aE.destroyed then return end if aR.text or aR.display then L:setFonts(aR.text,aR
-.display)end for aS,aT in i do local aU=ac.image(aQ,aP,aT)if aE.destroyed then
-return end if aU then aF.ready[aT]=aU local aV=aF.waiting[aT]or{}for aW,aX in aV
-do aX.Image=aU end end aF.waiting[aT]=nil end end))end if O then aE._opener=b(P,
-L,function()aE:setOpen(true)end)end if I.autoShow~=false then task.defer(
-function()aE:setOpen(true)end)end return aE end function f.setVersion(ap)g=ap
-end return f end function a.C()local aa=a.cache.C if not aa then aa={c=
-__modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()local ab=a.b(
-)local ac=a.e()local ad=a.C()local ae='0.6.2-sections'local function registry()
-local af=aa.global('getgenv')local ag=if type(af)=='function'then af()else _G
-local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.__sottui=ah end
-return ah end local af={version=ae,motion=ab}ad.setVersion('v'..ae)function af.
-window(ag)local ah=table.clone(ag or{})ah._registry=registry()return ad.new(ah)
-end function af.current()return registry().current end function af.obsidian()
-return ac.new(af)end return af
+.isOpen or aG.popover:isOpen()or aE._dialogClose then return end local aN=aE.
+_showing if aN==nil or aN.frame==nil then return end local aO=M:pointer()local
+aP,aQ=aN.frame.AbsolutePosition,aN.frame.AbsoluteSize if aO.X>=aP.X and aO.Y>=aP
+.Y and aO.X<=aP.X+aQ.X and aO.Y<=aP.Y+aQ.Y then aN:wheel(aM)end end)M.keyDown:
+connect(function(aM,aN)if aM.UserInputType~=Enum.UserInputType.Keyboard then
+return end local aO=aM.KeyCode.Name if aE.keys:swallowed(aO)then return end if
+aG.popover:key(aO)then return end if aO=='Escape'and aE._dialogClose then aE.
+_dialogClose()return end if aO=='Escape'and aB.Text~=''then aB.Text=''return end
+if aN or M:typing()then return end if aE.isOpen and aO=='K'then if N:IsKeyDown(
+Enum.KeyCode.LeftControl)or N:IsKeyDown(Enum.KeyCode.RightControl)then aB:
+CaptureFocus()end end end)K:add(L.changed:connect(function()local aM=table.
+clone(aE.pages)table.insert(aM,aE._resultsPage)for aN,aO in aM do for aP,aQ in
+aO._views do pcall(function()if aQ.retint then aQ:retint()end aQ.refresh()end)
+end end end))local aM=ao.new({window=aE,nextId=function()return 0 end,_register=
+function(aM,aN,aO)if aO then aE.elements[aN.id]=aN end aN._pageName=''end,
+_invalidate=function()end},'')aE.menuKey=aM:key('__menu',{label='Menu',default=I
+.key or'RightShift',mode='Toggle',saved=false,onPress=function()aE:toggle()end})
+local aN=ab.service('RunService')aj.setAttach(function(aO)return aN.PreRender:
+Connect(aO)end)if I.fonts~=false and Q then K:add(task.defer(function()local aO=
+I.fontTag or g local aP=string.format(h,aO)local aQ=R..'/fonts-'..aO local aR=ac
+.load(aQ,aP,encode)if aE.destroyed then return end if aR.text or aR.display then
+L:setFonts(aR.text,aR.display)end for aS,aT in i do local aU=ac.image(aQ,aP,aT)
+if aE.destroyed then return end if aU then aF.ready[aT]=aU local aV=aF.waiting[
+aT]or{}for aW,aX in aV do aX.Image=aU end end aF.waiting[aT]=nil end end))end if
+O then aE._opener=b(P,L,function()aE:setOpen(true)end)end if I.autoShow~=false
+then task.defer(function()aE:setOpen(true)end)end return aE end function f.
+setVersion(ap)g=ap end return f end function a.C()local aa=a.cache.C if not aa
+then aa={c=__modImpl()}a.cache.C=aa end return aa.c end end end local aa=a.a()
+local ab=a.b()local ac=a.e()local ad=a.C()local ae='0.6.3-sections'local 
+function registry()local af=aa.global('getgenv')local ag=if type(af)=='function'
+then af()else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}
+ag.__sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion(
+'v'..ae)function af.window(ag)local ah=table.clone(ag or{})ah._registry=
+registry()return ad.new(ah)end function af.current()return registry().current
+end function af.obsidian()return ac.new(af)end return af
