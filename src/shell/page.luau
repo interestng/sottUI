@@ -200,7 +200,7 @@ function Page.layout(self: any, live: boolean?)
 	for _, section in self.sections do
 		local rows: { any } = {}
 		for _, el in section.rows do
-			if el:shown() then
+			if section.flat or el:shown() then
 				table.insert(rows, el)
 			end
 		end
@@ -235,6 +235,9 @@ function Page.layout(self: any, live: boolean?)
 	end
 
 	local contentHeight = y + BOTTOM
+	if self._emptyText then
+		contentHeight = math.max(contentHeight, 54)
+	end
 	frame.CanvasSize = UDim2.fromOffset(0, contentHeight)
 	-- a shorter page clamps the canvas at once; the scroll spring has to agree or the next wheel notch is swallowed
 	local limit = math.max(contentHeight - frame.AbsoluteSize.Y / scale, 0)
@@ -623,6 +626,40 @@ function Page.mount(self: any, host: any)
 			self:_refreshThumb()
 		end
 	end)
+end
+
+-- this page's rows are whatever it is handed, wherever they live: search results, what is on. a row found here is the
+-- same element as on its own page, with a view of its own
+function Page.showList(self: any, list: { any }, empty: string?)
+	self.sections = { { title = "", rows = list, flat = true } }
+	for _, el in list do
+		el._shownOn = self
+	end
+	self._emptyText = empty
+	if self.frame then
+		if self._empty == nil then
+			local theme = self.window.ctx.theme
+			self._empty = make("TextLabel", {
+				Position = UDim2.fromOffset(rowModule.PAD, 8),
+				Size = UDim2.new(1, -2 * rowModule.PAD, 0, 36),
+				TextSize = 17,
+				Parent = self.frame,
+			})
+			theme:type(self._empty, "text")
+			theme:paint(self._empty, "TextColor3", "faint")
+		end
+		self._empty.Text = empty or ""
+		self._empty.Visible = empty ~= nil
+	end
+	self:_invalidate()
+end
+
+-- a row's model redraws through one view; whichever page is showing owns it
+function Page.adopt(self: any)
+	for el, view in self._views do
+		el._view = view
+		el._shownOn = self
+	end
 end
 
 function Page.setActive(self: any, active: boolean)

@@ -37,6 +37,11 @@ local builders: { [string]: (ctx: any, el: any) -> any } = {}
 
 -- a row under a master hangs off it: indented, on a rail that lights with the master
 local function indentOf(el: any): number
+	-- out of its section, in a list of results, it hangs off nothing
+	local shownOn = el._shownOn
+	if shownOn and shownOn.sections[1] and shownOn.sections[1].flat then
+		return 0
+	end
 	local section = el.section
 	local owner = section and (section._root or section)
 	if owner and owner.masterElement and owner.masterElement ~= el then
