@@ -438,9 +438,14 @@ function Box.AddDependencyBox(self: any): any
 	local rules: { any } = {}
 	local lib = self._lib
 	self._section._page._guarded = true
+	local owner = self._section._root or self._section
 	local child = self._section:when(function(): boolean
 		for _, rule in rules do
 			local element, expected = rule[1], rule[2]
+			-- the master's own fold already decides this; a rule on it would keep a peek empty
+			if element._el == owner.masterElement and expected == true then
+				continue
+			end
 			if element.Disabled then
 				return false
 			end
@@ -504,7 +509,7 @@ local function attachKey(lib: any, owner: any, idx: string, info: any): any
 	local mode = info.Mode or "Toggle"
 	local proxy: any
 	local el = section:addKey(owner._el, idx, {
-		label = info.Text or owner.Text or idx,
+		label = owner._el.label or info.Text or idx,
 		default = info.Default or "None",
 		mode = mode,
 		modes = modes,

@@ -36,12 +36,25 @@ local builders: { [string]: (ctx: any, el: any) -> any } = {}
 -- colour dots then key chips, right to left from inner. returns the room taken
 local function addons(view: any, ctx: any, el: any, inner: number): number
 	local used = inner
+	local placed: { any } = {}
+	-- a chip's width changes with what it shows ("Press a key"), which moves its neighbours and the name's limit
+	local function reflow()
+		local offset = inner
+		for _, chip in placed do
+			chip.root.Position = UDim2.new(1, -(PAD + offset), 0.5, 0)
+			offset += chip.width + chip.gap
+		end
+		view.name.Size = UDim2.new(1, -(2 * PAD + offset), 1, 0)
+	end
 	local function place(addon: any, chip: any)
 		chip.root.AnchorPoint = Vector2.new(1, 0.5)
 		chip.root.Position = UDim2.new(1, -(PAD + used), 0.5, 0)
 		chip.root.ZIndex = 4
 		chip.root.Parent = view.root
+		chip.gap = if addon.kind == "key" then 6 else 0
+		chip.onFit = reflow
 		used += chip.width
+		table.insert(placed, chip)
 		addon._view = chip
 		table.insert(view.chips, chip)
 		view:onCleanup(function()
@@ -95,7 +108,7 @@ function builders.toggle(ctx: any, el: any): any
 	local chevronDown: any = nil
 	local chevronUp: any = nil
 	local inner = markSize + 12
-	if master and el.section.hasOptions then
+	if master then
 		peek = make("TextButton", {
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, -(PAD + markSize + 4), 0, 0),
@@ -142,7 +155,7 @@ function builders.toggle(ctx: any, el: any): any
 		end
 		if peek then
 			-- on means the options are out anyway; the chevron is only for looking before enabling
-			peek.Visible = not on
+			peek.Visible = not on and el.section.hasOptions == true
 			chevronDown.Visible = not el.section.peeking
 			chevronUp.Visible = el.section.peeking == true
 		end
@@ -647,6 +660,7 @@ local function chipTile(ctx: any, el: any, chip: any, reserve: number, right: nu
 	chip.root.ZIndex = 4
 	chip.root.Parent = view.root
 	reserveRight(view, reserve)
+	table.insert(view.chips, chip)
 	view:onCleanup(chip.destroy)
 	view.refresh = function()
 		view:refreshName()
