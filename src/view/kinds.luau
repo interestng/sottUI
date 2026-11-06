@@ -17,10 +17,10 @@ local INDENT = 16
 local MASTER_HEIGHT = 62
 local MASTER_NAME = 25
 local SLIDER_HEIGHT = 62
-local RULER = 18
-local RULER_TICKS = 12
+local RULER = 12
+local RULER_TICKS = 3
 local RULER_TILE = 40
-local NEEDLE = 3
+local NEEDLE = 6
 local READOUT = 17
 local FILL_SPEED = 42
 local FILL_DRAG_SPEED = 90
@@ -154,7 +154,7 @@ function builders.toggle(ctx: any, el: any): any
 			ZIndex = 4,
 			Parent = view.root,
 		})
-		chevronDown = ctx.glyph.chevron(peek, "faint", "down")
+		chevronDown = ctx.glyph.chevron(peek, "muted", "down")
 		chevronUp = ctx.glyph.chevron(peek, "muted", "up")
 		for _, chevron in { chevronDown, chevronUp } do
 			chevron.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -179,7 +179,7 @@ function builders.toggle(ctx: any, el: any): any
 		state.Text = if on then "on" else "off"
 		view:ink(
 			state,
-			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "faint",
+			if el.disabled then "line" elseif flooded then "onAccent" elseif on then "accent" else "muted",
 			instant
 		)
 		for _, chip in view.chips do
@@ -454,7 +454,7 @@ function builders.dropdown(ctx: any, el: any): any
 		Parent = root,
 	})
 	theme:type(text, "text", true)
-	local chevron = ctx.glyph.chevron(root, "faint")
+	local chevron = ctx.glyph.chevron(root, "muted")
 	chevron.AnchorPoint = Vector2.new(1, 0.5)
 	chevron.Position = UDim2.new(1, -PAD, 0.5, 0)
 	chevron.ZIndex = 3
@@ -550,7 +550,7 @@ end
 function builders.button(ctx: any, el: any): any
 	local view: any = newRow(ctx, el)
 	local armed: thread? = nil
-	local mark = ctx.glyph.chevron(view.root, "faint", "right")
+	local mark = ctx.glyph.chevron(view.root, "muted", "right")
 	mark.AnchorPoint = Vector2.new(1, 0.5)
 	mark.Position = UDim2.new(1, -PAD, 0.5, 0)
 	mark.ZIndex = 3

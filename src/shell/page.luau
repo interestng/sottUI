@@ -13,8 +13,8 @@ local sectionModule = require("./section")
 local page = {}
 
 local TOP = 6
-local BOTTOM = 18
-local HEADER = 44
+local BOTTOM = 34
+local HEADER = 52
 local SECTION_GAP = 18
 local MASTER_GAP = 2
 local NEAR = 360
@@ -167,7 +167,7 @@ local function buildHeader(self: any, section: any): any
 		local title = make("TextLabel", {
 			Position = UDim2.fromOffset(rowModule.PAD, 0),
 			Size = UDim2.new(1, -2 * rowModule.PAD, 1, -6),
-			TextSize = 15,
+			TextSize = 23,
 			TextYAlignment = Enum.TextYAlignment.Bottom,
 			Text = section.title,
 			Parent = holder,
@@ -389,6 +389,8 @@ function Page._materialize(self: any, force: boolean?)
 					self._headers[item.section] = header
 				end
 			elseif self._views[item.el] == nil then
+				-- a search may have claimed it last, and the row is built differently on a flat list
+				item.el._shownOn = self
 				local ok, view = xpcall(kinds.build, debug.traceback, self.window.ctx, item.el)
 				if ok then
 					view.root.Position = UDim2.fromOffset(0, y)
@@ -435,7 +437,7 @@ function Page.expand(self: any, anchor: any, height: number, build: (content: an
 		ZIndex = 2,
 		Parent = self.canvas,
 	})
-	ctx.theme:paint(frame, "BackgroundColor3", "surface")
+	ctx.theme:paint(frame, "BackgroundColor3", "base")
 	local content = make("Frame", { Size = UDim2.new(1, 0, 0, height), Parent = frame })
 	local expansion: any = {
 		el = el,
@@ -659,6 +661,10 @@ function Page.adopt(self: any)
 	for el, view in self._views do
 		el._view = view
 		el._shownOn = self
+		-- flipped while another page's view owned it
+		if view.refresh then
+			view.refresh()
+		end
 	end
 end
 
