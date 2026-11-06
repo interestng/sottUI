@@ -22,8 +22,10 @@ local BOTTOM = 40
 local FLAT_BOTTOM = 16
 local EMPTY_HEIGHT = 60
 local FIT_PAD = 14
-local BOARD_TILE = 88
-local OPTIONS_GAP = 10
+local BOARD_TILE = 62
+local BOARD_TILE_KEYED = 88
+local DRAWER_PAD = 12
+local DRAWER_EDGE = 3
 local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
@@ -333,7 +335,7 @@ function Page.layout(self: any, live: boolean?)
 					y += height + TEXT_GAP
 				elseif el.spec.primary then
 					flush()
-					local height = BOARD_TILE
+					local height = BOARD_TILE_KEYED
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
 					y += height + GAP + AFTER_MASTER
 					previousMaster = true
@@ -364,6 +366,7 @@ function Page.layout(self: any, live: boolean?)
 	end
 
 	local board: { any } = {}
+	local drawer: any = nil
 	local function flushBoard()
 		if #board == 0 then
 			return
@@ -372,12 +375,22 @@ function Page.layout(self: any, live: boolean?)
 		local index = 1
 		while index <= #board do
 			local first, second = board[index], board[index + 1]
+			local function keyed(section: any): boolean
+				for _, addon in section.masterElement.addons or {} do
+					if not addon.spec.chipless then
+						return true
+					end
+				end
+				return false
+			end
+			local tall = keyed(first) or (second ~= nil and keyed(second))
+			local tileHeight = if tall then BOARD_TILE_KEYED else BOARD_TILE
 			table.insert(placements, {
 				el = first.masterElement,
 				x = SIDE,
 				y = y,
 				width = if second then half else inner,
-				height = BOARD_TILE,
+				height = tileHeight,
 			})
 			if second then
 				table.insert(placements, {
@@ -385,11 +398,11 @@ function Page.layout(self: any, live: boolean?)
 					x = SIDE + half + GAP,
 					y = y,
 					width = half,
-					height = BOARD_TILE,
+					height = tileHeight,
 				})
 			end
-			y += BOARD_TILE + GAP
-			for _, section in { first, second } do
+			y += tileHeight
+			for slot, section in { first, second } do
 				if section and section.peeking then
 					local options: { any } = {}
 					for _, el in section.rows do
@@ -397,10 +410,19 @@ function Page.layout(self: any, live: boolean?)
 							table.insert(options, el)
 						end
 					end
+					local top = y
+					y += DRAWER_PAD
 					placeRows(section, options)
-					y += OPTIONS_GAP
+					y += DRAWER_PAD - GAP
+					drawer = {
+						y = top,
+						height = y - top,
+						tabX = if slot == 1 then SIDE else SIDE + half + GAP,
+						tabWidth = if second then half else inner,
+					}
 				end
 			end
+			y += GAP
 			index += 2
 		end
 		table.clear(board)
@@ -446,6 +468,7 @@ function Page.layout(self: any, live: boolean?)
 		self._scrollTarget = limit
 	end
 	self._placements = placements
+	self:_placeDrawer(drawer, SIDE, inner)
 	-- pages lay themselves out in the background too; only the one on show may size the sheet
 	if self.active then
 		self.window:_contentChanged(contentHeight, live)
@@ -750,6 +773,31 @@ function Page.adopt(self: any)
 				chip.refresh()
 			end
 		end
+	end
+end
+
+function Page._placeDrawer(self: any, drawer: any, x: number, width: number)
+	if self._drawer == nil then
+		local theme = self.window.ctx.theme
+		local well = make("Frame", { Name = "Drawer", BackgroundTransparency = 0, ZIndex = 0, Parent = self.canvas })
+		theme:paint(well, "BackgroundColor3", "base")
+		local tab = make("Frame", {
+			Name = "Tab",
+			Size = UDim2.new(0, 0, 0, DRAWER_EDGE),
+			BackgroundTransparency = 0,
+			ZIndex = 1,
+			Parent = well,
+		})
+		theme:paint(tab, "BackgroundColor3", "accent")
+		self._drawer = well
+		self._drawerTab = tab
+	end
+	self._drawer.Visible = drawer ~= nil
+	if drawer then
+		self._drawer.Position = UDim2.fromOffset(x, drawer.y)
+		self._drawer.Size = UDim2.fromOffset(width, drawer.height)
+		self._drawerTab.Position = UDim2.fromOffset(drawer.tabX - x, 0)
+		self._drawerTab.Size = UDim2.new(0, drawer.tabWidth, 0, DRAWER_EDGE)
 	end
 end
 

@@ -23,11 +23,8 @@ local DRAG_START = 3
 local READOUT_GAP = 12
 local VALUE_SIZE = 17
 local CHEVRON = 22
-local MASTER_MARK = 16
 local TRACK = 1
-local BAR = 4
-local MARK = 11
-local MARK_GAP = 12
+local BAR = 3
 local SLIDER_BAR = 2
 local HEAD_WIDTH = 4
 local HEAD_HEIGHT = 12
@@ -35,7 +32,6 @@ local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local TEXT_ROW = 16
 local PEEK_WIDTH = 50
-local PEEK_HEIGHT = 44
 local POSTER_TOP = 8
 local POSTER_NAME = 36
 
@@ -124,40 +120,17 @@ end
 
 function builders.toggle(ctx: any, el: any): any
 	local master = el.spec.primary == true
-	local view: any = tileModule.new(ctx, el, { quiet = not master })
+	local view: any = tileModule.new(ctx, el)
 	local theme = ctx.theme
 	if not master then
-		local fill = baseline(view, ctx, if el.value == true then 1 else 0)
-		local fillSize: any = view:own(motion.prop(fill, "Size", FILL_SPEED))
-		local mark = make("Frame", {
-			Name = "Mark",
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -PAD, 0.5, 0),
-			Size = UDim2.fromOffset(MARK, MARK),
-			ZIndex = 3,
-			Parent = view.root,
-		})
-		local markLine = make("UIStroke", {
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-			Thickness = 1,
-			Parent = mark,
-		})
-		reserveRight(view, addons(view, ctx, el, MARK + MARK_GAP))
+		-- a switch is its fill: the same flood at every size, so on reads one way across the whole menu
+		reserveRight(view, addons(view, ctx, el, 0))
 		local function draw(instant: boolean)
 			local on = el.value == true
-			mark.BackgroundTransparency = if on then 0 else 1
-			theme:paint(mark, "BackgroundColor3", "accent")
-			theme:paint(markLine, "Color", if on then "accent" elseif el.disabled then "line" else "muted")
-			view:tint(on, instant)
-			view:ink(view.name, if el.disabled then "faint" elseif on then "accentHover" else "muted", instant)
-			local target = UDim2.new(if on then 1 else 0, 0, 0, BAR)
-			if instant or not ctx.isShowing(el) then
-				fillSize:snap(target)
-			else
-				fillSize:to(target)
-			end
+			view:flood(on, instant)
+			view:ink(view.name, if el.disabled then "faint" elseif on then "onAccent" else "text", instant)
 			for _, chip in view.chips do
-				chip.setInk(false)
+				chip.setInk(on)
 				if chip.setMuted then
 					chip.setMuted(not on)
 				end
@@ -175,7 +148,6 @@ function builders.toggle(ctx: any, el: any): any
 		draw(true)
 		return view
 	end
-	local markSize = MASTER_MARK
 	if master then
 		theme:type(view.name, "display")
 		view.name.TextSize = if el.value == true then MASTER_NAME_ON else MASTER_NAME_OFF
@@ -184,29 +156,22 @@ function builders.toggle(ctx: any, el: any): any
 	end
 
 	-- colour alone is not enough on a dim tile: off must read as off, not as unavailable or as a button
-	view.name.Position = UDim2.fromOffset(PAD, POSTER_TOP)
-	view.name.Size = UDim2.new(1, -(2 * PAD + markSize + 8), 0, POSTER_NAME)
-	local mark = make("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -PAD, 0, POSTER_TOP + (POSTER_NAME - markSize) / 2),
-		Size = UDim2.fromOffset(markSize, markSize),
-		ZIndex = 3,
-		Parent = view.root,
-	})
-	local outline = make("UIStroke", {
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Thickness = 2,
-		Parent = mark,
-	})
+	-- a key takes the line under the name; without one the tile is only as tall as the name needs
+	local keyed = false
+	for _, addon in el.addons or {} do
+		keyed = keyed or not addon.spec.chipless
+	end
+	view.name.Position = UDim2.fromOffset(PAD, if keyed then POSTER_TOP else 0)
+	view.name.Size = UDim2.new(1, -(2 * PAD + PEEK_WIDTH), if keyed then 0 else 1, if keyed then POSTER_NAME else 0)
 	local peek: any = nil
 	local chevronDown: any = nil
 	local chevronUp: any = nil
-	local inner = markSize + 12
+	local inner = 0
 	if master then
 		peek = make("TextButton", {
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.fromScale(1, 1),
-			Size = UDim2.fromOffset(PEEK_WIDTH, PEEK_HEIGHT),
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromScale(1, 0),
+			Size = UDim2.new(0, PEEK_WIDTH, 1, 0),
 			ZIndex = 4,
 			Parent = view.root,
 		})
@@ -238,18 +203,7 @@ function builders.toggle(ctx: any, el: any): any
 				view._nameSize:to(size)
 			end
 		end
-		view:ink(
-			view.name,
-			if el.disabled then "faint" elseif flooded then "onAccent" elseif on then "text" else "muted",
-			instant
-		)
-		mark.BackgroundTransparency = if on then 0 else 1
-		theme:paint(mark, "BackgroundColor3", if flooded then "onAccent" else "accent")
-		theme:paint(
-			outline,
-			"Color",
-			if flooded then "onAccent" elseif on then "accent" elseif el.disabled then "line" else "lineStrong"
-		)
+		view:ink(view.name, if el.disabled then "faint" elseif flooded then "onAccent" else "text", instant)
 		for _, chip in view.chips do
 			chip.setInk(flooded)
 		end

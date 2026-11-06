@@ -54,14 +54,17 @@ end
 
 function search.settings(query: string, items: { any }, limit: number): { any }
 	local hits = {}
-	for _, item in items do
+	for index, item in items do
 		local score = search.setting(query, item)
 		if score then
-			table.insert(hits, { item = item, score = score })
+			table.insert(hits, { item = item, score = score, index = index })
 		end
 	end
 	table.sort(hits, function(a, b)
-		return a.score > b.score
+		if a.score ~= b.score then
+			return a.score > b.score
+		end
+		return a.index < b.index
 	end)
 	-- a key or colour draws inside its host's row, so a hit on one is a hit on that row: listing it again gave "Walk speed" twice
 	local out, seen = {}, {}
