@@ -1484,12 +1484,12 @@ key('__menu',{label='Menu',default=J.key or'RightShift',mode='Toggle',saved=
 false,onPress=function()ah:toggle()end})local an=c.service('RunService')k.
 setAttach(function(ao)return an.PreRender:Connect(ao)end)if J.fonts~=false and R
 then L:add(task.defer(function()local ao=J.fontTag or u local ap=d.load(S..
-'/fonts',string.format(v,ao),encode)if not ah.destroyed and(ap.text or ap.
+'/fonts-'..ao,string.format(v,ao),encode)if not ah.destroyed and(ap.text or ap.
 display)then M:setFonts(ap.text,ap.display)end end))end if J.autoShow~=false
 then task.defer(function()ah:setOpen(true)end)end return ah end function t.
 setVersion(aa)u=aa end return t end function a.D()local aa=a.cache.D if not aa
 then aa={c=__modImpl()}a.cache.D=aa end return aa.c end end end local aa=a.a()
-local ab=a.b()local ac=a.e()local ad=a.D()local ae='0.1.4-stage'local function 
+local ab=a.b()local ac=a.e()local ad=a.D()local ae='0.1.5-stage'local function 
 registry()local af=aa.global('getgenv')local ag=if type(af)=='function'then af()
 else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.
 __sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion('v'..
