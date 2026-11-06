@@ -14,8 +14,8 @@ local kinds = {}
 
 local PAD = tileModule.PAD
 local READOUT = 17
-local MASTER_NAME_OFF = 24
-local MASTER_NAME_ON = 32
+local MASTER_NAME_OFF = 28
+local MASTER_NAME_ON = 28
 local MASTER_TYPE_SPEED = 28
 local FILL_SPEED = 42
 local FILL_DRAG_SPEED = 90
@@ -34,7 +34,7 @@ local HEAD_HEIGHT = 12
 local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local TEXT_ROW = 16
-local PEEK_WIDTH = 64
+local PEEK_WIDTH = 46
 
 local builders: { [string]: (ctx: any, el: any) -> any } = {}
 
@@ -245,7 +245,12 @@ function builders.toggle(ctx: any, el: any): any
 		if peek then
 			-- on means the options are out anyway; the chevron is only for looking before enabling
 			local listed = el._shownOn and el._shownOn.sections[1] and el._shownOn.sections[1].flat
-			peek.Visible = not on and el.section.hasOptions == true and not listed
+			peek.Visible = el.section.hasOptions == true and not listed
+			for _, chevron in { chevronDown, chevronUp } do
+				for _, line in chevron:GetChildren() do
+					theme:paint(line, "BackgroundColor3", if flooded then "onAccent" else "muted")
+				end
+			end
 			chevronDown.Visible = not el.section.peeking
 			chevronUp.Visible = el.section.peeking == true
 		end

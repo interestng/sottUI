@@ -22,13 +22,14 @@ local BOTTOM = 40
 local FLAT_BOTTOM = 16
 local EMPTY_HEIGHT = 60
 local FIT_PAD = 14
+local BOARD_TILE = 76
+local OPTIONS_GAP = 10
 local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
 -- a master is a modest word until it is on, then it takes the page: the size change is half of what makes on feel on
 local MASTER_OFF = 50
 local MASTER_ON = 64
-local MASTER_GAP = 0
 local AFTER_MASTER = 0
 local STAT_HEIGHT = 36
 local NEAR = 360
@@ -298,23 +299,10 @@ function Page.layout(self: any, live: boolean?)
 		y += HERO
 	end
 
-	local lastFolded = false
-	for _, section in self.sections do
-		local shown: { any } = {}
-		for _, el in section.rows do
-			if section.flat or el:shown() then
-				table.insert(shown, el)
-			end
-		end
-		if #shown > 0 or section.tabNames then
-			if (section.title ~= "" or section.tabNames) and not section.masterElement then
-				-- a heading after a stack of masters needs the air they do not
-				if lastFolded then
-					y += SECTION_GAP - MASTER_GAP
-				end
-				table.insert(placements, { section = section, x = SIDE, y = y, width = inner, height = HEADER })
-				y += HEADER
-			end
+	-- features are a wall of switches: each one a big tile, two to a row. what a feature's options are stays out of sight
+	-- until asked for, so a page is what you can turn on rather than a form of everything that could be adjusted
+	local function placeRows(section: any, shown: { any })
+		do
 			local previousMaster = false
 			local line: { any }, used = {}, 0
 			local function flush()
@@ -374,16 +362,77 @@ function Page.layout(self: any, live: boolean?)
 				end
 			end
 			flush()
-			-- folded masters stack as a list of words; only something with content under it needs air after it
-			local folded = section.masterElement ~= nil and #shown == 1
-			if folded then
-				y += MASTER_GAP - AFTER_MASTER
-			else
-				y += SECTION_GAP
-			end
-			lastFolded = folded
 		end
 	end
+
+	local board: { any } = {}
+	local function flushBoard()
+		if #board == 0 then
+			return
+		end
+		local half = (inner - GAP) / 2
+		local index = 1
+		while index <= #board do
+			local first, second = board[index], board[index + 1]
+			table.insert(placements, {
+				el = first.masterElement,
+				x = SIDE,
+				y = y,
+				width = if second then half else inner,
+				height = BOARD_TILE,
+			})
+			if second then
+				table.insert(placements, {
+					el = second.masterElement,
+					x = SIDE + half + GAP,
+					y = y,
+					width = half,
+					height = BOARD_TILE,
+				})
+			end
+			y += BOARD_TILE + GAP
+			for _, section in { first, second } do
+				if section and section.peeking then
+					local options: { any } = {}
+					for _, el in section.rows do
+						if el ~= section.masterElement and el:shown() then
+							table.insert(options, el)
+						end
+					end
+					placeRows(section, options)
+					y += OPTIONS_GAP
+				end
+			end
+			index += 2
+		end
+		table.clear(board)
+		y += SECTION_GAP - GAP
+	end
+
+	for _, section in self.sections do
+		if section.masterElement and not section.flat then
+			if section.masterElement:shown() then
+				table.insert(board, section)
+			end
+		else
+			flushBoard()
+			local shown: { any } = {}
+			for _, el in section.rows do
+				if section.flat or el:shown() then
+					table.insert(shown, el)
+				end
+			end
+			if #shown > 0 or section.tabNames then
+				if section.title ~= "" or section.tabNames then
+					table.insert(placements, { section = section, x = SIDE, y = y, width = inner, height = HEADER })
+					y += HEADER
+				end
+				placeRows(section, shown)
+				y += SECTION_GAP
+			end
+		end
+	end
+	flushBoard()
 
 	-- a result list ends at its last row; only a page that can scroll needs room for the fade
 	local flat = self.sections[1] and self.sections[1].flat

@@ -160,7 +160,10 @@ function Window._drawChips(self: any)
 			chip.MouseEnter:Connect(function()
 				self.ctx.tint(chip, "BackgroundColor3", "accent")
 				self.ctx.tint(chip, "TextColor3", "onAccent")
-				self.ctx.tooltip:schedule(chip, tip)
+				-- deferred: leaving a panel row clears the tip in the same step this asks for one
+				task.defer(function()
+					self.ctx.tooltip:schedule(chip, tip)
+				end)
 			end)
 			chip.MouseLeave:Connect(function()
 				self.ctx.tint(chip, "BackgroundColor3", "surface")
@@ -664,7 +667,7 @@ function window.new(options: { [string]: any }): any
 	maid:add(gui)
 
 	local files = env.files()
-	local folder = options.folder or "sottui_dockgrid"
+	local folder = options.folder or "sottui_board"
 	local stateFile = options.stateFile or (folder .. "/window.json")
 	local saved: any = nil
 	if files then

@@ -47,13 +47,17 @@ function Section.master(self: any, id: string, spec: Spec): any
 		if parent and not parent() then
 			return false
 		end
-		return el.value == true or self.peeking == true
+		return self.peeking == true
 	end
 	return el
 end
 
 function Section.togglePeek(self: any)
-	self.peeking = not self.peeking
+	local opening = not self.peeking
+	for _, other in self._page.sections do
+		other.peeking = false
+	end
+	self.peeking = opening
 	self._page:_invalidate()
 end
 
