@@ -312,7 +312,7 @@ function Page.layout(self: any, live: boolean?)
 				local x, tallest = SIDE, 0
 				-- a short row keeps its columns: stretched cells put thirds over halves and no gutter lined up
 				for _, entry in line do
-					local span = if narrow and #line == 1 then GRID else entry.span
+					local span = entry.span
 					local w = span * column + (span - 1) * GAP
 					local height = entry.height
 					tallest = math.max(tallest, height)
@@ -377,7 +377,7 @@ function Page.layout(self: any, live: boolean?)
 			local first, second = board[index], board[index + 1]
 			local function keyed(section: any): boolean
 				for _, addon in section.masterElement.addons or {} do
-					if not addon.spec.chipless then
+					if addon.kind == "key" and not addon.spec.chipless and addon.value.key ~= "None" then
 						return true
 					end
 				end

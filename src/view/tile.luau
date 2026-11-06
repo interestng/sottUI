@@ -23,6 +23,7 @@ local PRESS_SCALE = 0.965
 local FLOOD_REACH = 2.6
 local LONG_PRESS = 0.45
 local HOVER_TINT = 0.14
+local OFF_LIFT = 0.3
 
 export type Ctx = {
 	theme: any,
@@ -84,7 +85,9 @@ local function baseColor(self: any): Color3
 	if self._quiet then
 		return if self._hover then tokens.raised else tokens.surface
 	end
-	return if self._hover then tokens.accentDim else tokens.raised
+	-- a clear step above the panel: off has to look like a switch, not like an empty space
+	local rest = tokens.raised:Lerp(tokens.accentDim, OFF_LIFT)
+	return if self._hover then tokens.accentDim else rest
 end
 
 local function washTo(self: any)

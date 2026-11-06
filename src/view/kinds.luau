@@ -32,6 +32,8 @@ local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
 local TEXT_ROW = 16
 local PEEK_WIDTH = 50
+-- a key chip's box starts inside its hit area; this lines the box up with the name above it
+local CHIP_INSET = 3
 local POSTER_TOP = 8
 local POSTER_NAME = 36
 
@@ -46,7 +48,7 @@ local function addons(view: any, ctx: any, el: any, inner: number, poster: boole
 		local offset = inner
 		for _, chip in placed do
 			if poster then
-				chip.root.Position = UDim2.new(0, PAD + offset, 1, 0)
+				chip.root.Position = UDim2.new(0, PAD - CHIP_INSET + offset, 1, 0)
 			else
 				chip.root.Position = UDim2.new(1, -(PAD + offset), 0.5, 0)
 			end
@@ -58,7 +60,9 @@ local function addons(view: any, ctx: any, el: any, inner: number, poster: boole
 	end
 	local function place(addon: any, chip: any)
 		chip.root.AnchorPoint = if poster then Vector2.new(0, 1) else Vector2.new(1, 0.5)
-		chip.root.Position = if poster then UDim2.new(0, PAD + used, 1, 0) else UDim2.new(1, -(PAD + used), 0.5, 0)
+		chip.root.Position = if poster
+			then UDim2.new(0, PAD - CHIP_INSET + used, 1, 0)
+			else UDim2.new(1, -(PAD + used), 0.5, 0)
 		chip.root.ZIndex = 4
 		chip.root.Parent = view.root
 		chip.gap = if addon.kind == "key" then 6 else 0
@@ -159,7 +163,8 @@ function builders.toggle(ctx: any, el: any): any
 	-- a key takes the line under the name; without one the tile is only as tall as the name needs
 	local keyed = false
 	for _, addon in el.addons or {} do
-		keyed = keyed or not addon.spec.chipless
+		-- an unbound key only shows on hover, so it earns no line of its own
+		keyed = keyed or (addon.kind == "key" and not addon.spec.chipless and addon.value.key ~= "None")
 	end
 	view.name.Position = UDim2.fromOffset(PAD, if keyed then POSTER_TOP else 0)
 	view.name.Size = UDim2.new(1, -(2 * PAD + PEEK_WIDTH), if keyed then 0 else 1, if keyed then POSTER_NAME else 0)
@@ -187,7 +192,7 @@ function builders.toggle(ctx: any, el: any): any
 			view.refresh()
 		end)
 	end
-	addons(view, ctx, el, 0, true)
+	addons(view, ctx, el, if keyed then 0 else PEEK_WIDTH, keyed)
 
 	local function draw(instant: boolean)
 		local on = el.value == true
