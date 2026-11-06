@@ -563,7 +563,7 @@ fromOffset(g,0)else p)end function m.lit(n,o,p)local q=n._bar if q==nil then q=
 b('Frame',{Name='Bar',Size=UDim2.new(0,0,1,0),BackgroundTransparency=0,ZIndex=2,
 Parent=n.root})n.ctx.theme:paint(q,'BackgroundColor3','accent')n._bar=q n.
 _barSize=n:own(c.prop(q,'Size',k))end local r=if o and n.el.spec.primary then
-UDim2.new(1,0,1,-2)else UDim2.new(0,if o then l else 0,1,0)if p or not n.ctx.
+UDim2.new(1,-5,1,-2)else UDim2.new(0,if o then l else 0,1,0)if p or not n.ctx.
 isShowing(n.el)then n._barSize:snap(r)else n._barSize:to(r)end end function m.
 ink(n,o,p,q)local r=n.ctx.theme.tokens local s=n._inks[o]if q or not n.ctx.
 isShowing(n.el)then if s then s:snap(r[p])else o.TextColor3=r[p]end return end
@@ -1434,7 +1434,7 @@ if aa._registry and aa._registry.current==aa then aa._registry.current=nil end
 end function u.new(aa)local ab=aa._registry if ab and ab.current then ab.current
 :destroy()end local ac=h.new()local W=s.new(aa.theme)local X=f.new()local Y=c.
 service('UserInputService')local Z=aa.touch==true or(Y.TouchEnabled and not Y.
-MouseEnabled)local _=i('ScreenGui',{Name=randomName(),IgnoreGuiInset=true,
+MouseEnabled)local _=i('ScreenGui',{Name=randomName(),IgnoreGuiInset=false,
 ResetOnSpawn=false,ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=aa.
 displayOrder or 10000})c.protect(_)_.Parent=c.guiParent()ac:add(_)local ad=c.
 files()local ae=aa.folder or'sottui_edge'local af=aa.stateFile or(ae..
@@ -1562,7 +1562,7 @@ function()aK:setOpen(true)end)end if aa.autoShow~=false then task.defer(function
 ()aK:setOpen(true)end)else aH.Visible=true end return aK end function u.
 setVersion(aa)v=aa end return u end function a.D()local aa=a.cache.D if not aa
 then aa={c=__modImpl()}a.cache.D=aa end return aa.c end end end local aa=a.a()
-local ab=a.b()local ac=a.e()local ad=a.D()local ae='0.1.7-edge'local function 
+local ab=a.b()local ac=a.e()local ad=a.D()local ae='0.1.8-edge'local function 
 registry()local af=aa.global('getgenv')local ag=if type(af)=='function'then af()
 else _G local ah=ag.__sottui if type(ah)~='table'then ah={current=nil}ag.
 __sottui=ah end return ah end local af={version=ae,motion=ab}ad.setVersion('v'..

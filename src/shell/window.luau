@@ -550,7 +550,7 @@ function window.new(options: { [string]: any }): any
 
 	local gui = make("ScreenGui", {
 		Name = randomName(),
-		IgnoreGuiInset = true,
+		IgnoreGuiInset = false,
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = options.displayOrder or 10000,
