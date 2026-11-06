@@ -3,6 +3,7 @@
 
 local kinds = require("../view/kinds")
 local make = require("../core/make")
+local metrics = require("../core/metrics")
 local motion = require("../core/motion")
 local sectionModule = require("./section")
 
@@ -12,6 +13,10 @@ local SHUTTER_SPEED = 26
 local CLOSE_SPEED = 36
 
 function dialog.open(self: any, options: any, build: (section: any) -> ())
+	-- one at a time: a second would orphan the first's scrim and the elements it owns
+	if self._dialogClose then
+		self._dialogClose()
+	end
 	local ctx = self.ctx
 	local theme = ctx.theme
 	local layer = self._layer
@@ -106,7 +111,14 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 	for _, el in section.rows do
 		if el:shown() then
 			local view = kinds.build(ctx, el)
-			local height = if el.kind == "label" or el.kind == "divider" then 32 else TILE
+			local height = TILE
+			if el.kind == "divider" then
+				height = 28
+			elseif el.kind == "label" then
+				-- no page to correct it later, so wrapped text is measured here; a clipped explanation is no explanation
+				local lines = math.ceil(metrics.width("text", el.label, 16) / (width - 48))
+				height = if el.spec.wrap then lines * 21 + 12 else 32
+			end
 			view.root.Position = UDim2.fromOffset(0, stack)
 			view.root.Size = UDim2.new(1, 0, 0, height)
 			view.root.Parent = scroller
@@ -144,6 +156,12 @@ function dialog.open(self: any, options: any, build: (section: any) -> ())
 		for _, el in section.rows do
 			if self.elements[el.id] == el then
 				self.elements[el.id] = nil
+			end
+			for _, addon in el.addons or {} do
+				self.keys:unregister(addon)
+				if self.elements[addon.id] == addon then
+					self.elements[addon.id] = nil
+				end
 			end
 		end
 		if options.onClose then

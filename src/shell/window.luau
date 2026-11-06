@@ -205,6 +205,15 @@ function Window.reveal(self: any, el: any)
 	end
 	self:showPage(page.name)
 	local host = el.host or el
+	-- a setting folded under an off master has no place on the page until it is opened
+	local owner = el.section and (el.section._root or el.section)
+	if owner and owner.masterElement and owner.masterElement.value ~= true and host ~= owner.masterElement then
+		owner.peeking = true
+		local masterView = page:viewOf(owner.masterElement)
+		if masterView then
+			masterView.refresh()
+		end
+	end
 	page:layout()
 	local y = page:rowY(host)
 	if y then
@@ -233,6 +242,9 @@ function Window.setOpen(self: any, open: boolean)
 	self._palette.close()
 	self.ctx.tooltip:hide()
 	self.keys:cancel()
+	if not open and self._dialogClose then
+		self._dialogClose()
+	end
 	self._shutterEdge.Visible = true
 	if open then
 		self._root.Visible = true

@@ -328,12 +328,12 @@ function Page.layout(self: any, live: boolean?)
 			for _, el in shown do
 				local base = spanOf(el)
 				if base == nil then
-					flush(false)
+					flush(true)
 					local height = textHeight(el, inner)
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = height })
 					y += height + GAP
 				elseif el.spec.primary then
-					flush(false)
+					flush(true)
 					table.insert(placements, { el = el, x = SIDE, y = y, width = inner, height = PRIMARY_HEIGHT })
 					y += PRIMARY_HEIGHT + GAP
 				else

@@ -59,6 +59,9 @@ function keychip.build(ctx: any, el: any): any
 		local width = math.ceil(metrics.width("textMedium", shown, TEXT_SIZE)) + 16 + HIT_MARGIN
 		root.Size = UDim2.fromOffset(math.max(width, 44), 54)
 		chip.width = root.Size.X.Offset
+		if chip.onFit then
+			chip.onFit()
+		end
 	end
 
 	local hovering = false
