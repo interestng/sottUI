@@ -16,6 +16,10 @@ local function add(self: any, kind: element.Kind, id: string?, label: string, sp
 	el.guard = self._guard
 	self._page:_register(el, id ~= nil)
 	table.insert(self.rows, el)
+	local owner = self._root or self
+	if owner.masterElement then
+		owner.hasOptions = true
+	end
 	self._page:_invalidate()
 	return el
 end
@@ -26,6 +30,31 @@ function Section.toggle(self: any, id: string, spec: Spec): any
 		el:on(spec.onChanged)
 	end
 	return el
+end
+
+-- the section's own big word: it stands where the title would and is what turns the section on. everything added after
+-- it folds away while it is off, unless the user peeks. a page of masters is a few words, not a wall of settings
+function Section.master(self: any, id: string, spec: Spec): any
+	spec.primary = true
+	local el = self:toggle(id, spec)
+	self.masterElement = el
+	local page = self._page
+	el:on(function()
+		page:_invalidate()
+	end)
+	local parent = self._guard
+	self._guard = function(): boolean
+		if parent and not parent() then
+			return false
+		end
+		return el.value == true or self.peeking == true
+	end
+	return el
+end
+
+function Section.togglePeek(self: any)
+	self.peeking = not self.peeking
+	self._page:_invalidate()
 end
 
 function Section.slider(self: any, id: string, spec: Spec): any

@@ -22,7 +22,9 @@ local function display(el: any): string
 		table.insert(parts, modifier)
 	end
 	table.insert(parts, value.key)
-	return table.concat(parts, "+")
+	local shown = table.concat(parts, "+")
+	-- Toggle is what nearly every bind is, and only the exceptions need saying
+	return if value.mode and value.mode ~= "Toggle" then shown .. " " .. string.lower(value.mode) else shown
 end
 
 function keychip.build(ctx: any, el: any): any
@@ -59,9 +61,18 @@ function keychip.build(ctx: any, el: any): any
 		chip.width = root.Size.X.Offset
 	end
 
+	local hovering = false
+
 	local function ink()
 		theme:paint(text, "TextColor3", if listening then "accent" elseif inverted then "onAccent" else "muted")
 		theme:paint(outline, "Color", if listening then "accent" elseif inverted then "onAccent" else "lineStrong")
+		-- a wall of "Unset" reads as missing data, so an unbound chip only shows when the tile is under the pointer
+		face.Visible = listening or hovering or display(el) ~= "Unset"
+	end
+
+	chip.setHover = function(on: boolean)
+		hovering = on
+		ink()
 	end
 
 	chip.refresh = function()

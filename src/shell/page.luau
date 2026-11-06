@@ -18,10 +18,11 @@ local GAP = 3
 local SIDE = 20
 local TOP = 14
 local BOTTOM = 28
-local HEADER = 40
-local SECTION_GAP = 26
+local HEADER = 44
+local SECTION_GAP = 22
 local HERO = 148
-local PRIMARY_HEIGHT = 76
+local PRIMARY_HEIGHT = 84
+local MASTER_GAP = 5
 local STAT_HEIGHT = 66
 local NEAR = 360
 local WHEEL_STEP = 110
@@ -40,6 +41,26 @@ local SPANS: { [string]: number } = {
 	stat = 3,
 	input = 8,
 }
+
+-- px a tile wants so its name stays on one line: name, padding, and whatever sits to its right
+local function needs(el: any): number
+	local kind = el.kind
+	if kind == "stat" or kind == "input" then
+		return 0
+	end
+	local right = 26
+	if kind == "slider" then
+		right = kinds.readoutWidth(el) + 12
+	elseif kind == "dropdown" then
+		right = 96
+	end
+	for _, addon in el.addons or {} do
+		if not addon.spec.chipless then
+			right += if addon.kind == "key" then 58 else 14
+		end
+	end
+	return metrics.width("display", el.label, tileModule.NAME) * 1.05 + 2 * tileModule.PAD + right
+end
 
 local function spanOf(el: any): number?
 	if el.kind == "label" and el.addons then
@@ -233,12 +254,12 @@ local function buildHeader(self: any, section: any): any
 		end
 	else
 		local title = make("TextLabel", {
-			Size = UDim2.new(1, 0, 1, -8),
-			TextSize = 18,
+			Size = UDim2.new(1, 0, 1, -6),
+			TextSize = 28,
 			Text = section.title,
 			Parent = holder,
 		})
-		theme:type(title, "text", true)
+		theme:type(title, "display")
 		theme:paint(title, "TextColor3", "text")
 	end
 	return holder
@@ -273,7 +294,7 @@ function Page.layout(self: any)
 			end
 		end
 		if #shown > 0 or section.tabNames then
-			if section.title ~= "" or section.tabNames then
+			if (section.title ~= "" or section.tabNames) and not section.masterElement then
 				table.insert(placements, { section = section, x = SIDE, y = y, width = inner, height = HEADER })
 				y += HEADER
 			end
@@ -285,8 +306,9 @@ function Page.layout(self: any)
 				local x, tallest = SIDE, 0
 				for index, entry in line do
 					local span = entry.span
-					-- only text entry can leave a hole mid section, and a wider field is no loss. a final row stays as it is
-					if index == #line and not final and entry.el.kind == "input" then
+					-- a hole mid section is closed by widening the tile beside it. a final row stays as it is, a lone toggle
+					-- stretched across the page would read as a master
+					if index == #line and not final then
 						span += GRID - used
 					end
 					local w = span * column + (span - 1) * GAP
@@ -311,6 +333,10 @@ function Page.layout(self: any)
 					y += PRIMARY_HEIGHT + GAP
 				else
 					local span = math.min(if narrow then base * 2 else base, GRID)
+					-- a long name takes more columns instead of wrapping or shrinking beside its neighbours
+					while span < GRID and needs(el) > span * column + (span - 1) * GAP do
+						span += if narrow then GRID - span else 4
+					end
 					if used + span > GRID then
 						flush(false)
 					end
@@ -323,7 +349,8 @@ function Page.layout(self: any)
 				end
 			end
 			flush(true)
-			y += SECTION_GAP
+			-- folded masters stack as a list of words; only something with content under it needs air after it
+			y += if section.masterElement and #shown == 1 then MASTER_GAP else SECTION_GAP
 		end
 	end
 
@@ -397,12 +424,13 @@ function Page._materialize(self: any, force: boolean?)
 	if frame == nil or placements == nil or not self.active then
 		return
 	end
-	local top = frame.CanvasPosition.Y
+	-- CanvasPosition is in scaled screen pixels, everything here is in the tiles' own units
+	local scale = self.window.ctx.uiScale()
+	local top = frame.CanvasPosition.Y / scale
 	if not force and self._lastSync and math.abs(top - self._lastSync) < NEAR / 3 then
 		return
 	end
 	self._lastSync = top
-	local scale = self.window.ctx.uiScale()
 	local lo, hi = top - NEAR, top + frame.AbsoluteSize.Y / scale + NEAR
 	for _, item in placements do
 		local y = item.y
@@ -451,7 +479,7 @@ function Page._refreshThumb(self: any)
 	thumb.Visible = true
 	local height = math.max(viewport * viewport / content, 40)
 	local travel = viewport - height
-	local top = self.frame.CanvasPosition.Y / math.max(content - viewport, 1)
+	local top = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)
 	thumb.Size = UDim2.new(0, 3, 0, height)
 	thumb.Position = UDim2.new(1, -6, 0, top * travel)
 end
@@ -476,7 +504,8 @@ function Page.wheel(self: any, delta: number)
 	if self.frame == nil or self.frame.ScrollingEnabled then
 		return
 	end
-	self:scrollTo((self._scrollTarget or self.frame.CanvasPosition.Y) - delta * WHEEL_STEP)
+	local current = self._scrollTarget or self.frame.CanvasPosition.Y / self.window.ctx.uiScale()
+	self:scrollTo(current - delta * WHEEL_STEP)
 end
 
 function Page.rowY(self: any, el: any): number?
@@ -521,7 +550,7 @@ function Page.mount(self: any, host: any)
 	self.canvas = canvas
 	self.thumb = thumb
 	self._scroll = motion.new(0, SCROLL_SPEED, function(y: number)
-		frame.CanvasPosition = Vector2.new(0, y)
+		frame.CanvasPosition = Vector2.new(0, y * ctx.uiScale())
 	end)
 	frame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
 		self:_materialize()

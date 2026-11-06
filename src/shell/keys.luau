@@ -9,6 +9,12 @@ local MOUSE_NAMES: { [any]: string } = {
 	[Enum.UserInputType.MouseButton3] = "MB3",
 }
 
+local MOUSE_BUTTONS: { [string]: any } = {
+	MB1 = Enum.UserInputType.MouseButton1,
+	MB2 = Enum.UserInputType.MouseButton2,
+	MB3 = Enum.UserInputType.MouseButton3,
+}
+
 local MODIFIER_NAMES: { [any]: string } = {
 	[Enum.KeyCode.LeftAlt] = "LAlt",
 	[Enum.KeyCode.RightAlt] = "RAlt",
@@ -35,7 +41,7 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 	local bound: { any } = {}
 	local listener: ((string?, { string }?) -> ())? = nil
 	local listenerNoMouse = false
-	local held: { [string]: boolean } = {}
+	local pendingModifier: string? = nil
 	-- the press that finished a rebind must not also activate the new bind on the same event
 	local swallow: string? = nil
 
@@ -85,6 +91,7 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 	function api.cancel()
 		local fn = listener
 		listener = nil
+		pendingModifier = nil
 		if fn then
 			fn(nil)
 		end
@@ -101,17 +108,22 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 		if value.mode == "Toggle" then
 			return el.toggled == true
 		end
-		if value.key == "None" or listener ~= nil then
+		if value.key == "None" or listener ~= nil or router:typing() then
 			return false
 		end
-		-- a held mouse bind must not read as active while the player is clicking the menu
-		if menuOpen() and string.sub(value.key, 1, 2) == "MB" then
-			return false
+		local mouse = MOUSE_BUTTONS[value.key]
+		if mouse then
+			-- a held mouse bind must not read as active while the player is clicking the menu
+			return not menuOpen() and uis:IsMouseButtonPressed(mouse) and modifiersHeld(value.modifiers)
 		end
-		return held[value.key] == true and modifiersHeld(value.modifiers)
+		-- asked of the engine, not tracked: a focus change can swallow the key up and leave a tracked key held forever
+		local ok, down = pcall(function()
+			return uis:IsKeyDown((Enum.KeyCode :: any)[value.key])
+		end)
+		return ok and down and modifiersHeld(value.modifiers)
 	end
 
-	router.keyDown:connect(function(event: any, processed: boolean)
+	router.keyDown:connect(function(event: any)
 		local name = nameOf(event)
 		if name == nil then
 			return
@@ -121,23 +133,27 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 			if mouse and (listenerNoMouse or name == "MB1") then
 				return
 			end
+			-- a modifier may be the start of a combination: it only becomes the bind if released alone
+			if MODIFIER_NAMES[event.KeyCode] and not mouse then
+				pendingModifier = name
+				return
+			end
 			local fn = listener
 			listener = nil
+			pendingModifier = nil
 			swallow = name
 			if name == "Escape" then
 				(fn :: any)("None", {})
-			elseif MODIFIER_NAMES[event.KeyCode] and not mouse then
-				(fn :: any)(name, {})
 			else
 				(fn :: any)(name, heldModifiers(name))
 			end
 			return
 		end
-		held[name] = true
 		if swallow == name then
 			return
 		end
-		if processed or router:typing() then
+		-- typing only: a key the game also handles still has to fire, gameProcessed would kill binds on any game that sinks it
+		if router:typing() then
 			return
 		end
 		for _, el in bound do
@@ -159,7 +175,13 @@ function keys.new(router: any, env: any, menuOpen: () -> boolean): any
 		if name == nil then
 			return
 		end
-		held[name] = nil
+		if pendingModifier == name and listener then
+			local fn = listener
+			listener = nil
+			pendingModifier = nil
+			fn(name, {})
+			return
+		end
 		if swallow == name then
 			swallow = nil
 		end

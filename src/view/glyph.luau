@@ -21,10 +21,19 @@ end
 function glyph.new(theme: any)
 	local api = {}
 
-	function api.chevron(parent: any, token: string): any
+	-- drawn per direction: rotating the holder would turn its children in place rather than swing them around its centre
+	function api.chevron(parent: any, token: string, direction: string?): any
 		local holder = make("Frame", { Size = UDim2.fromOffset(12, 12), Parent = parent })
-		stroke(holder, theme, token, 7, 45, 3.6, 6)
-		stroke(holder, theme, token, 7, -45, 8.4, 6)
+		if direction == "right" then
+			stroke(holder, theme, token, 7, 45, 6, 3.6)
+			stroke(holder, theme, token, 7, -45, 6, 8.4)
+		elseif direction == "up" then
+			stroke(holder, theme, token, 7, -45, 3.6, 6)
+			stroke(holder, theme, token, 7, 45, 8.4, 6)
+		else
+			stroke(holder, theme, token, 7, 45, 3.6, 6)
+			stroke(holder, theme, token, 7, -45, 8.4, 6)
+		end
 		return holder
 	end
 

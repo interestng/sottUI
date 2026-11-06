@@ -58,13 +58,13 @@ function notify.new(ctx: any, layer: any): any
 			Position = UDim2.fromOffset(viewport.X + 8, viewport.Y - EDGE - 60),
 			Size = UDim2.fromOffset(WIDTH, 60),
 			BackgroundTransparency = 0,
-			ZIndex = 30,
+			ZIndex = 80,
 			Parent = layer,
 		})
 		theme:paint(frame, "BackgroundColor3", "surface")
 		local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = frame })
 		theme:paint(outline, "Color", "lineStrong")
-		local edge = make("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundTransparency = 0, ZIndex = 31, Parent = frame })
+		local edge = make("Frame", { Size = UDim2.new(0, 4, 1, 0), BackgroundTransparency = 0, ZIndex = 81, Parent = frame })
 		theme:paint(edge, "BackgroundColor3", "accent")
 		local y = 10
 		if options.title and options.title ~= "" then
@@ -74,7 +74,7 @@ function notify.new(ctx: any, layer: any): any
 				TextSize = 22,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Text = options.title,
-				ZIndex = 31,
+				ZIndex = 81,
 				Parent = frame,
 			})
 			theme:type(title, "display")
@@ -91,7 +91,7 @@ function notify.new(ctx: any, layer: any): any
 				TextYAlignment = Enum.TextYAlignment.Top,
 				RichText = true,
 				Text = options.text,
-				ZIndex = 31,
+				ZIndex = 81,
 				Parent = frame,
 			})
 			theme:type(body, "text")

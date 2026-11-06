@@ -82,11 +82,12 @@ local KeyPicker = class()
 local Label = class()
 local Button = class()
 
-local function sync(proxy: any, read: (el: any) -> any)
+-- only what a dependency box can read marks the rules dirty: a slider tick must not lay out every page each frame
+local function sync(proxy: any, read: (el: any) -> any, ruleSource: boolean?)
 	proxy._el:on(function()
 		proxy.Value = read(proxy._el)
 		proxy:RunChanged()
-		if proxy._lib then
+		if ruleSource then
 			proxy._lib:_rulesChanged()
 		end
 	end)
@@ -99,6 +100,7 @@ function Toggle.SetValue(self: any, value: any)
 	end
 	for _, picker in self._pickers do
 		picker._el.toggled = self.Value
+		picker.Toggled = self.Value
 	end
 end
 
@@ -241,7 +243,17 @@ local function tips(info: any, spec: any): any
 end
 
 function Box.AddToggle(self: any, idx: string, info: any): any
-	local el = self._section:toggle(idx, tips(info, { label = info.Text or idx, default = info.Default == true }))
+	local section = self._section
+	local spec = tips(info, { label = info.Text or idx, default = info.Default == true })
+	-- the hub's convention: a groupbox opening with "Enabled" is one feature with options, which is what a master is
+	local first = #section.rows == 0 and section._root == nil and section.title ~= ""
+	local el
+	if first and (info.Text == "Enabled" or info.Text == section.title) then
+		spec.label = section.title
+		el = section:master(idx, spec)
+	else
+		el = section:toggle(idx, spec)
+	end
 	local proxy = setmetatable(common(self._lib, "Toggle", el, info), Toggle) :: any
 	proxy.Value = el.value
 	proxy._pickers = {}
@@ -249,9 +261,10 @@ function Box.AddToggle(self: any, idx: string, info: any): any
 	sync(proxy, function(e: any)
 		for _, picker in proxy._pickers do
 			picker._el.toggled = e.value
+			picker.Toggled = e.value
 		end
 		return e.value
-	end)
+	end, true)
 	return register(self._lib, "Toggles", idx, proxy)
 end
 
@@ -358,7 +371,7 @@ function Box.AddDropdown(self: any, idx: string, info: any): any
 	proxy.SpecialType = info.SpecialType
 	sync(proxy, function(e: any)
 		return e.value
-	end)
+	end, true)
 	if special then
 		local players = env.service("Players")
 		local function refresh()
@@ -392,15 +405,23 @@ local function buildLabel(self: any, text: any, wrap: any): any
 	return proxy
 end
 
-function Box.AddLabel(self: any, a: any, b: any, c: any): any
-	-- AddLabel(idx, info) exists too; the plain text form is what the hub calls
+function Box.AddLabel(self: any, a: any, b: any): any
 	if type(b) == "table" then
 		local proxy = buildLabel(self, b)
 		register(self._lib, "Options", a, proxy)
 		return proxy
 	end
-	local _ = c
 	return buildLabel(self, a, b)
+end
+
+-- not an obsidian method: a host that knows it is on sottUI uses it for live figures
+function Box.AddStat(self: any, label: string, value: any): any
+	local el = self._section:stat(label, value)
+	return {
+		SetValue = function(_: any, next: any)
+			el:set(next)
+		end,
+	}
 end
 
 function Box.AddDivider(self: any, info: any)
@@ -413,6 +434,7 @@ function Box.AddBlank() end
 function Box.AddDependencyBox(self: any): any
 	local rules: { any } = {}
 	local lib = self._lib
+	self._section._page._guarded = true
 	local child = self._section:when(function(): boolean
 		for _, rule in rules do
 			local element, expected = rule[1], rule[2]
@@ -487,20 +509,28 @@ local function attachKey(lib: any, owner: any, idx: string, info: any): any
 		chipless = info.NoUI == true,
 		noMouse = false,
 		onPress = function(element: any, toggled: boolean)
-			proxy.Toggled = toggled
 			if lib.ToggleKeybind == proxy then
 				lib.window:toggle()
 				return
 			end
-			if sync_ and owner.Type == "Toggle" and not owner.Disabled then
-				if element.value.mode == "Toggle" then
+			if owner.Type == "Toggle" and owner.Disabled then
+				-- obsidian ignores a bind whose parent is disabled, the state must not drift from what is shown
+				element.toggled = owner.Value
+				return
+			end
+			proxy.Toggled = toggled
+			local mode = element.value.mode
+			if sync_ and owner.Type == "Toggle" then
+				if mode == "Toggle" then
 					owner:SetValue(toggled)
-				elseif element.value.mode == "Hold" then
+				elseif mode == "Hold" then
 					owner:SetValue(true)
 				end
 			end
-			protect(proxy.Clicked, toggled)
-			protect(proxy.Callback, toggled)
+			if mode == "Toggle" or mode == "Press" then
+				protect(proxy.Clicked, toggled)
+				protect(proxy.Callback, toggled)
+			end
 		end,
 		onRelease = function(element: any)
 			if sync_ and owner.Type == "Toggle" and element.value.mode == "Hold" and not owner.Disabled then
@@ -589,7 +619,7 @@ function Window.AddTab(self: any, info: any, _icon: any): any
 	if name == "Home" then
 		local player = env.service("Players").LocalPlayer
 		if player then
-			page:hero({ userId = player.UserId, title = player.DisplayName, text = self._footer })
+			self._lib.Hero = page:hero({ userId = player.UserId, title = player.DisplayName, text = self._footer })
 		end
 	end
 	local tab = setmetatable({ _page = page, _lib = self._lib }, Tab)
@@ -1148,7 +1178,7 @@ function obsidian.new(sottui: any): { Library: any, SaveManager: any, ThemeManag
 		_unloads = {},
 	}, {})
 
-	-- dependency sources are every element, so a change marks once and the page lays out at most once a frame
+	-- a change marks once and each page with rules lays out at most once a frame
 	function Library._rulesChanged(self: any)
 		if rulesDirty or self.window == nil then
 			return
@@ -1160,7 +1190,9 @@ function obsidian.new(sottui: any): { Library: any, SaveManager: any, ThemeManag
 				return
 			end
 			for _, page in self.window.pages do
-				page:_invalidate()
+				if page._guarded then
+					page:_invalidate()
+				end
 			end
 		end)
 	end

@@ -52,11 +52,11 @@ local DEFAULT: Tokens = {
 	line = rgb(0x1A2D27),
 	lineStrong = rgb(0x2F4A40),
 	text = rgb(0xEBE8DA),
-	muted = rgb(0x9DB0A5),
+	muted = rgb(0xB4C2B8),
 	faint = rgb(0x5F756B),
 	accent = rgb(0x7EE0C4),
 	accentHover = rgb(0x9BEBD4),
-	accentDim = rgb(0x16362D),
+	accentDim = rgb(0x1F4A3E),
 	onAccent = rgb(0x0B1A13),
 	danger = rgb(0xE5604D),
 }
@@ -80,11 +80,29 @@ function theme.new(overrides: { [string]: Color3 }?): Theme
 		tokens = tokens,
 		fonts = { text = FALLBACK_TEXT, display = FALLBACK_DISPLAY },
 		changed = signal.new(),
-		-- weak keys: a destroyed tile must not be kept alive by its paint
-		_paints = setmetatable({}, { __mode = "k" }),
-		_types = setmetatable({}, { __mode = "k" }),
+		-- strong keys: a weak key can drop while the instance lives on once its Lua wrapper is collected, and the hairline
+		-- would miss every later theme change. dead instances are swept when the table has grown
+		_paints = {},
+		_types = {},
+		_count = 0,
 	}
 	return (setmetatable(self, Theme) :: any) :: Theme
+end
+
+local SWEEP_EVERY = 2000
+
+local function sweep(self: any)
+	for instance in self._paints do
+		if instance.Parent == nil then
+			self._paints[instance] = nil
+			self._types[instance] = nil
+		end
+	end
+	for instance in self._types do
+		if instance.Parent == nil then
+			self._types[instance] = nil
+		end
+	end
 end
 
 function Theme.paint(self: any, instance: any, property: string, token: string)
@@ -92,6 +110,11 @@ function Theme.paint(self: any, instance: any, property: string, token: string)
 	if list == nil then
 		list = {}
 		self._paints[instance] = list
+		self._count += 1
+		if self._count % SWEEP_EVERY == 0 then
+			-- a tile not yet parented is still being built by the caller; the deferred sweep sees it placed
+			task.defer(sweep, self)
+		end
 	end
 	list[property] = token
 	instance[property] = self.tokens[token]

@@ -40,6 +40,8 @@ function overlay.popover(ctx: any, layer: any): any
 		close()
 		local viewport = layer.AbsoluteSize
 		local anchorPos, anchorSize = anchor.AbsolutePosition, anchor.AbsoluteSize
+		width = math.min(width, viewport.X - 2 * MARGIN)
+		height = math.min(height, viewport.Y - 2 * MARGIN)
 		local x = math.clamp(anchorPos.X, MARGIN, viewport.X - width - MARGIN)
 		local below = anchorPos.Y + anchorSize.Y + 2
 		local flip = below + height + MARGIN > viewport.Y and anchorPos.Y - height - 2 > MARGIN
@@ -48,7 +50,7 @@ function overlay.popover(ctx: any, layer: any): any
 		local catcher = make("TextButton", {
 			Name = "Catcher",
 			Size = UDim2.fromScale(1, 1),
-			ZIndex = 10,
+			ZIndex = 60,
 			Parent = layer,
 		})
 		local frame = make("Frame", {
@@ -57,7 +59,7 @@ function overlay.popover(ctx: any, layer: any): any
 			Size = UDim2.fromOffset(width, 0),
 			BackgroundTransparency = 0,
 			ClipsDescendants = true,
-			ZIndex = 11,
+			ZIndex = 61,
 			Active = true,
 			Parent = layer,
 		})
@@ -128,7 +130,7 @@ function overlay.tooltip(ctx: any, layer: any): any
 		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundTransparency = 0,
 		Visible = false,
-		ZIndex = 20,
+		ZIndex = 70,
 		Parent = layer,
 	})
 	theme:paint(frame, "BackgroundColor3", "raised")
@@ -145,7 +147,7 @@ function overlay.tooltip(ctx: any, layer: any): any
 		AutomaticSize = Enum.AutomaticSize.XY,
 		TextSize = 16,
 		TextWrapped = true,
-		ZIndex = 21,
+		ZIndex = 71,
 		Parent = frame,
 	})
 	make("UISizeConstraint", { MaxSize = Vector2.new(TIP_WIDTH, 400), Parent = text })

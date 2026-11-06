@@ -11,13 +11,14 @@ local input = {}
 export type Router = {
 	pointer: (self: Router) -> Vector2,
 	at: (self: Router, event: any) -> Vector2,
-	capture: (self: Router, move: (at: Vector2) -> (), finish: ((at: Vector2) -> ())?) -> (),
+	capture: (self: Router, move: (at: Vector2) -> (), finish: ((at: Vector2) -> ())?, finger: any?) -> (),
 	release: (self: Router) -> (),
 	typing: (self: Router) -> boolean,
 	keyDown: signal.Signal,
 	keyUp: signal.Signal,
 	wheel: signal.Signal,
 	moved: signal.Signal,
+	pointerUp: signal.Signal,
 	destroy: (self: Router) -> (),
 }
 
@@ -36,16 +37,19 @@ function Router.at(self: any, event: any): Vector2
 	return Vector2.new(position.X + inset.X, position.Y + inset.Y)
 end
 
-function Router.capture(self: any, move: (at: Vector2) -> (), finish: ((at: Vector2) -> ())?)
+-- finger is the touch that started it: a thumb resting on the joystick must not move or end a slider drag
+function Router.capture(self: any, move: (at: Vector2) -> (), finish: ((at: Vector2) -> ())?, finger: any?)
 	self:release()
 	self._move = move
 	self._finish = finish
+	self._finger = finger
 end
 
 function Router.release(self: any)
 	local finish = self._finish
 	self._move = nil
 	self._finish = nil
+	self._finger = nil
 	if finish then
 		task.spawn(finish, self:pointer())
 	end
@@ -63,6 +67,7 @@ function Router.destroy(self: any)
 	self.keyUp:clear()
 	self.wheel:clear()
 	self.moved:clear()
+	self.pointerUp:clear()
 end
 
 function input.new(): Router
@@ -78,6 +83,7 @@ function input.new(): Router
 		keyUp = signal.new(),
 		wheel = signal.new(),
 		moved = signal.new(),
+		pointerUp = signal.new(),
 	}, Router)
 
 	maid:add(uis.InputChanged:Connect(function(event: any)
@@ -89,7 +95,7 @@ function input.new(): Router
 			end
 			self.moved:fire(at)
 		elseif kind == Enum.UserInputType.Touch then
-			if self._move then
+			if self._move and (self._finger == nil or self._finger == event) then
 				self._move(self:at(event))
 			end
 		elseif kind == Enum.UserInputType.MouseWheel then
@@ -99,15 +105,17 @@ function input.new(): Router
 	maid:add(uis.InputEnded:Connect(function(event: any, processed: boolean)
 		local kind = event.UserInputType
 		if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch then
-			if self._move then
+			if self._move and (kind ~= Enum.UserInputType.Touch or self._finger == nil or self._finger == event) then
 				local at = if kind == Enum.UserInputType.Touch then self:at(event) else self:pointer()
 				local finish = self._finish
 				self._move = nil
 				self._finish = nil
+				self._finger = nil
 				if finish then
 					finish(at)
 				end
 			end
+			self.pointerUp:fire()
 		end
 		self.keyUp:fire(event, processed)
 	end))

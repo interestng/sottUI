@@ -157,6 +157,7 @@ function Window.show(self: any, index: number, instant: boolean?)
 	end
 	self.ctx.hover.clear()
 	self.ctx.popover:close()
+	self.keys:cancel()
 	local tint = self.ctx.tint
 	local previous = self.pages[self.current]
 	if previous then
@@ -231,6 +232,7 @@ function Window.setOpen(self: any, open: boolean)
 	self.ctx.popover:close()
 	self._palette.close()
 	self.ctx.tooltip:hide()
+	self.keys:cancel()
 	self._shutterEdge.Visible = true
 	if open then
 		self._root.Visible = true
@@ -827,6 +829,14 @@ function window.new(options: { [string]: any }): any
 		uiScale = function(): number
 			return scale.Scale
 		end,
+		isShowing = function(el: any): boolean
+			if not self.isOpen then
+				return false
+			end
+			local page = el._page or (el.host and el.host._page)
+			-- no page means a dialog, which is only ever built open
+			return page == nil or page == self.pages[self.current]
+		end,
 		setScrollLocked = function(locked: boolean)
 			local page = self.pages[self.current]
 			if page and page.frame and touch then
@@ -1019,7 +1029,10 @@ function window.new(options: { [string]: any }): any
 	maid:add(theme.changed:connect(function()
 		for _, page in self.pages do
 			for _, view in page._views do
-				pcall(view.refresh)
+				pcall(function()
+					view:retint()
+					view.refresh()
+				end)
 			end
 		end
 	end))

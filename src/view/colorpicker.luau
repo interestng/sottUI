@@ -186,7 +186,7 @@ local function open(ctx: any, el: any, anchor: any)
 					update(ctx.input:at(event))
 					ctx.input:capture(update, function()
 						ctx.setScrollLocked(false)
-					end)
+					end, event)
 				end
 			end)
 		end
@@ -223,19 +223,30 @@ local function open(ctx: any, el: any, anchor: any)
 	end)
 end
 
+-- a flush strip down the tile's edge: a square on a toggle reads as an unticked checkbox. the button is wider than what it
+-- draws, ten pixels is not something to aim at
+colorpicker.STRIP_WIDTH = 16
+
+local STRIP_DRAWN = 10
+
 function colorpicker.swatch(ctx: any, el: any): any
 	local root = make("TextButton", {
 		Name = "Swatch",
-		Size = UDim2.fromOffset(20, 20),
-		BackgroundTransparency = 0,
-		ZIndex = 2,
+		Size = UDim2.new(0, colorpicker.STRIP_WIDTH, 1, 0),
+		ZIndex = 4,
 	})
-	local outline = make("UIStroke", { ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = root })
-	ctx.theme:paint(outline, "Color", "lineStrong")
-	local chip: any = { root = root, width = 20 }
+	local band = make("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.new(0, STRIP_DRAWN, 1, 0),
+		BackgroundTransparency = 0,
+		ZIndex = 4,
+		Parent = root,
+	})
+	local chip: any = { root = root, width = colorpicker.STRIP_WIDTH }
 	chip.refresh = function()
-		root.BackgroundColor3 = el.value.color
-		root.BackgroundTransparency = el.value.alpha * 0.8
+		band.BackgroundColor3 = el.value.color
+		band.BackgroundTransparency = el.value.alpha * 0.8
 	end
 	chip.refresh()
 	chip.open = function()
@@ -244,9 +255,7 @@ function colorpicker.swatch(ctx: any, el: any): any
 		end
 	end
 	root.Activated:Connect(chip.open)
-	chip.setInk = function(on: boolean)
-		ctx.theme:paint(outline, "Color", if on then "onAccent" else "lineStrong")
-	end
+	chip.setInk = function() end
 	chip.destroy = function()
 		root:Destroy()
 	end

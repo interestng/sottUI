@@ -4,17 +4,13 @@
 -- clipped by the tile; it and the springs are built on first use, most tiles are never touched
 
 local make = require("../core/make")
-local metrics = require("../core/metrics")
 local motion = require("../core/motion")
 
 local tile = {}
 
 tile.PAD = 14
 tile.HEIGHT = 60
-tile.NAME = 24
-tile.NAME_SMALL = 19
-tile.NAME_SMALLEST = 16
-tile.VALUE = 15
+tile.NAME = 22
 
 local WASH_SPEED = 30
 local PRESS_SPEED = 40
@@ -39,7 +35,10 @@ export type Ctx = {
 	uiScale: () -> number,
 	notify: (notice: any) -> (),
 	setScrollLocked: (locked: boolean) -> (),
+	isShowing: (el: any) -> boolean,
 }
+
+
 
 export type Tile = {
 	root: any,
@@ -80,7 +79,7 @@ local function baseColor(self: any): Color3
 		return if self._hover then tokens.accentHover else tokens.accent
 	end
 	if face == "action" then
-		return if self._hover then tokens.lineStrong else tokens.raised
+		return if self._hover then tokens.raised else tokens.base
 	end
 	return if self._hover then tokens.raised else tokens.surface
 end
@@ -107,6 +106,11 @@ function Tile.onHover(self: any, on: boolean)
 		return
 	end
 	self._hover = hovering
+	for _, chip in self.chips do
+		if chip.setHover then
+			chip.setHover(hovering)
+		end
+	end
 	-- mid flood the circle owns the look; the base catches up when it lands
 	if not (self._floodFrame and self._floodFrame.Visible) then
 		washTo(self)
@@ -128,7 +132,7 @@ function Tile.flood(self: any, on: boolean, instant: boolean?)
 	self._floodOn = on
 	local root = self.root
 	local size = root.AbsoluteSize
-	if instant or size.X < 1 or not root.Visible then
+	if instant or size.X < 1 or not root.Visible or not self.ctx.isShowing(self.el) then
 		self._lit = on
 		if self._floodFrame then
 			self._floodFrame.Visible = false
@@ -199,7 +203,8 @@ end
 function Tile.ink(self: any, instance: any, token: string, instant: boolean?)
 	local tokens = self.ctx.theme.tokens
 	local spring = self._inks[instance]
-	if instant then
+	-- a config load flips tiles nobody can see; those must not each start a flood and an ink spring
+	if instant or not self.ctx.isShowing(self.el) then
 		if spring then
 			spring:snap(tokens[token])
 		else
@@ -214,26 +219,11 @@ function Tile.ink(self: any, instance: any, token: string, instant: boolean?)
 	spring:to(tokens[token])
 end
 
--- one line at full size when it fits, else two smaller, else two smaller still; the row height never changes, so a long
--- label costs nothing around it. the fit is arithmetic on real glyph widths
-function tile.fitName(name: any, text: string, width: number)
-	local full = metrics.width("display", text, tile.NAME)
-	if full <= width then
-		name.TextSize = tile.NAME
-		name.TextWrapped = false
-		name.LineHeight = 1
-		return
-	end
-	name.TextWrapped = true
-	name.LineHeight = 0.95
-	-- word wrap leaves the end of each line short, so two lines hold a little under twice the width
-	local twoLines = width * 1.8
-	name.TextSize = if metrics.width("display", text, tile.NAME_SMALL) <= twoLines
-		then tile.NAME_SMALL
-		else tile.NAME_SMALLEST
+-- strikethrough rather than just dimmer: off and unavailable must not look alike at a glance
+function Tile.retint(self: any)
+	snapBase(self)
 end
 
--- strikethrough rather than just dimmer: off and unavailable must not look alike at a glance
 function Tile.refreshName(self: any)
 	local el = self.el
 	if el.disabled then
@@ -259,7 +249,10 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, face: string?, 
 		Position = UDim2.fromOffset(tile.PAD, 0),
 		Size = UDim2.new(1, -2 * tile.PAD, 1, 0),
 		TextSize = tile.NAME,
+		-- two lines at one size: a shrunken label among full ones reads as a mistake
+		TextWrapped = true,
 		TextTruncate = Enum.TextTruncate.AtEnd,
+		LineHeight = 0.95,
 		Text = el.label,
 		ZIndex = 3,
 		Parent = root,
@@ -312,19 +305,18 @@ function tile.new(ctx: Ctx, el: any, options: { height: number?, face: string?, 
 				end)
 			end
 		end)
-		root.InputEnded:Connect(function(event: any)
-			local kind = event.UserInputType
-			if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch then
-				if self._press then
-					self:pressed(false)
-				end
-				if longPress then
-					task.cancel(longPress)
-					longPress = nil
-				end
+		-- the release can land anywhere; InputEnded on the tile misses one dragged off it and leaves it squashed
+		local disconnect = ctx.input.pointerUp:connect(function()
+			if self._press and self._press.target ~= 1 then
+				self:pressed(false)
+			end
+			if longPress then
+				task.cancel(longPress)
+				longPress = nil
 			end
 		end)
 		self:onCleanup(function()
+			disconnect()
 			if longPress then
 				task.cancel(longPress)
 			end

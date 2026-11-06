@@ -52,6 +52,10 @@ function palette.new(ctx: any, layer: any, elements: () -> { any }, reveal: (el:
 	end
 
 	local function draw()
+		-- a row entered during the close animation must not retarget the shutter away from closing
+		if not open then
+			return
+		end
 		for i, item in pool do
 			local el = results[i]
 			if el then

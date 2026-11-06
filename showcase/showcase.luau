@@ -26,7 +26,7 @@ server:button("Rejoin", function() end)
 server:button("Copy join link", function() end)
 
 local farm = main:section("Auto farm")
-local enabled = farm:toggle("farm.enabled", { label = "Auto farm", primary = true, tip = "Runs the dungeon loop until you turn it off" })
+local enabled = farm:master("farm.enabled", { label = "Auto farm", default = true, tip = "Runs the dungeon loop until you turn it off" })
 farm:addKey(enabled, "farm.key", { default = "F" })
 local stay = farm:toggle("farm.stay", { label = "Stay at cast range", default = true })
 farm:toggle("farm.dodge", { label = "Dodge telegraphed hits", default = true })
@@ -44,6 +44,14 @@ local stayOn = farm:when(function()
 	return stay.value
 end, { stay })
 stayOn:slider("farm.margin", { label = "Extra margin", min = 0, max = 4, step = 0.1, default = 1.5, suffix = " st" })
+
+local aura = main:section("Kill aura")
+aura:master("aura.enabled", { label = "Kill aura" })
+aura:slider("aura.range", { label = "Range", min = 5, max = 40, default = 18, suffix = " st" })
+aura:toggle("aura.bosses", { label = "Bosses only" })
+local bring = main:section("Bring mobs")
+bring:master("bring.enabled", { label = "Bring mobs" })
+bring:slider("bring.distance", { label = "Hold at", min = 2, max = 20, default = 6, suffix = " st" })
 
 local loot = main:section("Loot")
 loot:toggle("loot.collect", { label = "Collect chests", default = true })
