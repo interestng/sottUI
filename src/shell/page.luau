@@ -21,7 +21,7 @@ local TOP = 14
 local BOTTOM = 40
 local FLAT_BOTTOM = 16
 local EMPTY_HEIGHT = 60
-local THUMB_LINGER = 0.9
+local FIT_PAD = 14
 local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
@@ -30,7 +30,7 @@ local MASTER_OFF = 60
 local MASTER_ON = 84
 local MASTER_GAP = 0
 local AFTER_MASTER = 0
-local STAT_HEIGHT = 66
+local STAT_HEIGHT = 36
 local NEAR = 360
 local WHEEL_STEP = 110
 local SCROLL_SPEED = 24
@@ -398,11 +398,11 @@ function Page.layout(self: any, live: boolean?)
 	if self._scrollTarget and self._scrollTarget > limit then
 		self._scrollTarget = limit
 	end
+	self._placements = placements
 	-- pages lay themselves out in the background too; only the one on show may size the sheet
 	if self.active then
 		self.window:_contentChanged(contentHeight, live)
 	end
-	self._placements = placements
 	self:_applyPlacements()
 	self:_materialize(true)
 	self:_refreshThumb()
@@ -568,19 +568,8 @@ function Page._refreshThumb(self: any)
 		thumb.Visible = false
 		return
 	end
-	-- shows while the page is moving, then gets out of the way
-	local position = self.frame.CanvasPosition.Y
-	if position ~= self._thumbAt then
-		self._thumbAt = position
-		thumb.Visible = true
-		self._thumbStamp = (self._thumbStamp or 0) + 1
-		local stamp = self._thumbStamp
-		task.delay(THUMB_LINGER, function()
-			if self._thumbStamp == stamp and not self.destroyed then
-				thumb.Visible = false
-			end
-		end)
-	end
+	-- always there on a page that scrolls: with whole rows at rest it is the only sign there is more below
+	thumb.Visible = true
 	local height = math.max(viewport * viewport / content, 40)
 	local travel = viewport - height
 	local top = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)
@@ -715,6 +704,20 @@ function Page.adopt(self: any)
 			end
 		end
 	end
+end
+
+-- the tallest height at or under limit that ends between rows, so nothing rests sliced in half against the strip
+function Page.fitHeight(self: any, limit: number): number
+	local best = 0
+	for _, item in self._placements or {} do
+		if item.el then
+			local bottom = item.y + item.height
+			if bottom + FIT_PAD <= limit and bottom > best then
+				best = bottom
+			end
+		end
+	end
+	return if best > 0 then best + FIT_PAD else limit
 end
 
 function Page.setActive(self: any, active: boolean)

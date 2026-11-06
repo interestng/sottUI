@@ -253,9 +253,20 @@ function colorpicker.swatch(ctx: any, el: any): any
 		local transparency = el.value.alpha * 0.8
 		band.BackgroundTransparency = if muted then math.max(transparency, MUTED_SWATCH) else transparency
 	end
+	-- a colour for something that is off is hidden until the row is under the pointer: a column of dim bars read as
+	-- dead controls. no hover on touch, so there it stays
+	local hovered = false
+	local function reach()
+		root.Visible = not muted or hovered or ctx.touch
+	end
 	chip.setMuted = function(on: boolean)
 		muted = on
 		chip.refresh()
+		reach()
+	end
+	chip.setHover = function(on: boolean)
+		hovered = on
+		reach()
 	end
 	chip.refresh()
 	chip.open = function()

@@ -42,7 +42,6 @@ local SEARCH = 124
 local SEARCH_HEIGHT = 40
 local CLOSE = 44
 local RULE_HEIGHT = 28
-local FADE = 34
 local EDGE = 12
 local MAX_PANEL = 600
 local MAX_SHEET = 760
@@ -141,7 +140,7 @@ function Window._drawChips(self: any)
 		local function widthOf(text: string): number
 			return math.ceil(metrics.width("textMedium", text, CHIP)) + 2 * CHIP_PAD
 		end
-		local function add(text: string, order: number, onPress: () -> ())
+		local function add(text: string, order: number, tip: string, onPress: () -> ())
 			local width = widthOf(text)
 			local chip = make("TextButton", {
 				Name = "Chip",
@@ -161,10 +160,12 @@ function Window._drawChips(self: any)
 			chip.MouseEnter:Connect(function()
 				self.ctx.tint(chip, "BackgroundColor3", "accent")
 				self.ctx.tint(chip, "TextColor3", "onAccent")
+				self.ctx.tooltip:schedule(chip, tip)
 			end)
 			chip.MouseLeave:Connect(function()
 				self.ctx.tint(chip, "BackgroundColor3", "surface")
 				self.ctx.tint(chip, "TextColor3", "accent")
+				self.ctx.tooltip:hide()
 			end)
 			chip.Activated:Connect(onPress)
 			table.insert(self._chips, chip)
@@ -178,13 +179,13 @@ function Window._drawChips(self: any)
 			local rest = #running - index
 			local needed = widthOf(el.label) + (if rest > 0 then MORE_ROOM else 0)
 			if index > MAX_CHIPS or chipWidth + needed > room then
-				add("+" .. (rest + 1), 100 + index, function()
+				add("+" .. (rest + 1), 100 + index, "Show everything running", function()
 					self:_fillOn()
 					self:_show(self._onPage)
 				end)
 				break
 			end
-			add(el.label, 100 + index, function()
+			add(el.label, 100 + index, "Turn off " .. el.label, function()
 				el:set(false)
 			end)
 		end
@@ -204,8 +205,10 @@ function Window._contentChanged(self: any, content: number, live: boolean?)
 	local scale = self._scale.Scale
 	local available = self._sheetRoom / scale - EDGE
 	local height = math.min(content, MAX_PANEL, available)
+	if content > height then
+		height = self._showing:fitHeight(height)
+	end
 	local size = UDim2.new(0, self._sheetWidth, 0, height)
-	self._sheetFade.Visible = content > height
 	if live or self._sheetRise then
 		self._panelSize:to(size)
 	else
@@ -824,26 +827,6 @@ function window.new(options: { [string]: any }): any
 		Parent = root,
 	})
 	theme:paint(panel, "BackgroundColor3", "surface")
-	-- a long page dissolves into the strip instead of slicing a row in half
-	local fade = make("Frame", {
-		Name = "Fade",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, FADE),
-		BackgroundTransparency = 0,
-		Visible = false,
-		ZIndex = 20,
-		Parent = panel,
-	})
-	theme:paint(fade, "BackgroundColor3", "surface")
-	make("UIGradient", {
-		Rotation = 90,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(1, 0),
-		}),
-		Parent = fade,
-	})
 	local panelScale = make("UIScale", { Scale = startScale, Parent = panel })
 	local self: any = setmetatable({
 		ctx = nil,
@@ -866,7 +849,6 @@ function window.new(options: { [string]: any }): any
 		_dock = dock,
 		_row = row,
 		_marker = marker,
-		_sheetFade = fade,
 		_chipRow = chipRow,
 		_homeAvatar = avatar,
 		_chips = {},
@@ -999,6 +981,12 @@ function window.new(options: { [string]: any }): any
 	end)
 	close.Activated:Connect(function()
 		self:setOpen(false)
+	end)
+	close.MouseEnter:Connect(function()
+		ctx.tooltip:schedule(close, "Close menu")
+	end)
+	close.MouseLeave:Connect(function()
+		ctx.tooltip:hide()
 	end)
 
 	box:GetPropertyChangedSignal("Text"):Connect(function()

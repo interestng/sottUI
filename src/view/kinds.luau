@@ -26,12 +26,11 @@ local CHEVRON = 22
 local MASTER_MARK = 16
 local TRACK = 1
 local BAR = 4
+local SLIDER_BAR = 2
 local HEAD_WIDTH = 4
 local HEAD_HEIGHT = 12
 local INPUT_HEIGHT = 34
 local INPUT_TEXT = 17
-local STAT_VALUE = 34
-local STAT_CAPTION = 16
 local TEXT_ROW = 16
 local PEEK_WIDTH = 64
 
@@ -88,7 +87,7 @@ end
 
 -- every setting is a name over one line: a slider's line fills to its value, a toggle's is empty or full, a list's only
 -- marks the cell. the line is at the very bottom and thin, so nothing ever runs through the words
-local function baseline(view: any, ctx: any, ratio: number): any
+local function baseline(view: any, ctx: any, ratio: number, weight: number?): any
 	local track = make("Frame", {
 		Name = "Track",
 		AnchorPoint = Vector2.new(0, 1),
@@ -103,7 +102,7 @@ local function baseline(view: any, ctx: any, ratio: number): any
 		Name = "Fill",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(ratio, 0, 0, BAR),
+		Size = UDim2.new(ratio, 0, 0, weight or BAR),
 		BackgroundTransparency = 0,
 		ZIndex = 2,
 		Parent = view.root,
@@ -293,7 +292,7 @@ function builders.slider(ctx: any, el: any): any
 	})
 	theme:type(readout, "display")
 
-	local fill = baseline(view, ctx, ratio())
+	local fill = baseline(view, ctx, ratio(), SLIDER_BAR)
 	local head = make("Frame", {
 		Name = "Head",
 		AnchorPoint = Vector2.new(1, 1),
@@ -401,7 +400,7 @@ function builders.slider(ctx: any, el: any): any
 	view.refresh = function()
 		view:refreshName()
 		paintText()
-		fillSize:to(UDim2.new(ratio(), 0, 0, BAR))
+		fillSize:to(UDim2.new(ratio(), 0, 0, SLIDER_BAR))
 	end
 	paintText()
 	return view
@@ -628,25 +627,25 @@ end
 function builders.stat(ctx: any, el: any): any
 	local view: any = tileModule.new(ctx, el, { inert = true })
 	local theme = ctx.theme
-	view.name.Position = UDim2.new()
-	view.name.Size = UDim2.new(1, 0, 0, STAT_VALUE + 4)
-	view.name.TextSize = STAT_VALUE
+	view.name.Position = UDim2.fromOffset(PAD, 0)
+	view.name.Size = UDim2.new(0.5, -PAD, 1, 0)
 	view.name.TextWrapped = false
-	view.name.TextYAlignment = Enum.TextYAlignment.Top
-	theme:paint(view.name, "TextColor3", "text")
-	local caption = make("TextLabel", {
-		Position = UDim2.fromOffset(0, STAT_VALUE + 2),
-		Size = UDim2.new(1, 0, 0, STAT_CAPTION + 4),
-		TextSize = STAT_CAPTION,
+	theme:paint(view.name, "TextColor3", "muted")
+	local value = make("TextLabel", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -PAD, 0, 0),
+		Size = UDim2.new(0.5, -PAD, 1, 0),
+		TextSize = tileModule.NAME,
+		TextXAlignment = Enum.TextXAlignment.Right,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 3,
 		Parent = view.root,
 	})
-	theme:type(caption, "text")
-	theme:paint(caption, "TextColor3", "muted")
+	theme:type(value, "text", true)
+	theme:paint(value, "TextColor3", "text")
 	view.refresh = function()
-		view.name.Text = tostring(el.value)
-		caption.Text = el.label
+		view.name.Text = el.label
+		value.Text = tostring(el.value)
 	end
 	view.refresh()
 	return view
