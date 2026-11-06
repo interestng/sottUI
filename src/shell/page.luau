@@ -19,6 +19,7 @@ local TEXT_GAP = 2
 local SIDE = 20
 local TOP = 14
 local BOTTOM = 40
+local GRIP_ROOM = 16
 local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
@@ -548,7 +549,7 @@ function Page._refreshThumb(self: any)
 	end
 	thumb.Visible = true
 	local height = math.max(viewport * viewport / content, 40)
-	local travel = viewport - height
+	local travel = viewport - height - GRIP_ROOM
 	local top = self.frame.CanvasPosition.Y / scale / math.max(content - viewport, 1)
 	thumb.Size = UDim2.new(0, 3, 0, height)
 	thumb.Position = UDim2.new(1, -6, 0, top * travel)
