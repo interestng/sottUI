@@ -26,8 +26,8 @@ local HEADER = 40
 local SECTION_GAP = 22
 local HERO = 148
 -- a master is a modest word until it is on, then it takes the page: the size change is half of what makes on feel on
-local MASTER_OFF = 60
-local MASTER_ON = 84
+local MASTER_OFF = 50
+local MASTER_ON = 64
 local MASTER_GAP = 0
 local AFTER_MASTER = 0
 local STAT_HEIGHT = 36

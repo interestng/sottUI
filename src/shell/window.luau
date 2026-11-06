@@ -329,7 +329,7 @@ function Window._syncMarker(self: any, instant: boolean?)
 			active = item
 		end
 	end
-	if active == nil then
+	if active == nil or active == self._homeAvatar then
 		self._markerSize:to(UDim2.fromOffset(0, MARKER))
 		return
 	end

@@ -13,9 +13,9 @@ local tileModule = require("./tile")
 local kinds = {}
 
 local PAD = tileModule.PAD
-local READOUT = 22
-local MASTER_NAME_OFF = 28
-local MASTER_NAME_ON = 42
+local READOUT = 17
+local MASTER_NAME_OFF = 24
+local MASTER_NAME_ON = 32
 local MASTER_TYPE_SPEED = 28
 local FILL_SPEED = 42
 local FILL_DRAG_SPEED = 90
@@ -26,6 +26,8 @@ local CHEVRON = 22
 local MASTER_MARK = 16
 local TRACK = 1
 local BAR = 4
+local MARK = 11
+local MARK_GAP = 12
 local SLIDER_BAR = 2
 local HEAD_WIDTH = 4
 local HEAD_HEIGHT = 12
@@ -118,9 +120,25 @@ function builders.toggle(ctx: any, el: any): any
 	if not master then
 		local fill = baseline(view, ctx, if el.value == true then 1 else 0)
 		local fillSize: any = view:own(motion.prop(fill, "Size", FILL_SPEED))
-		reserveRight(view, addons(view, ctx, el, 0))
+		local mark = make("Frame", {
+			Name = "Mark",
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -PAD, 0.5, 0),
+			Size = UDim2.fromOffset(MARK, MARK),
+			ZIndex = 3,
+			Parent = view.root,
+		})
+		local markLine = make("UIStroke", {
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Thickness = 1,
+			Parent = mark,
+		})
+		reserveRight(view, addons(view, ctx, el, MARK + MARK_GAP))
 		local function draw(instant: boolean)
 			local on = el.value == true
+			mark.BackgroundTransparency = if on then 0 else 1
+			theme:paint(mark, "BackgroundColor3", "accent")
+			theme:paint(markLine, "Color", if on then "accent" elseif el.disabled then "line" else "muted")
 			view:tint(on, instant)
 			view:ink(view.name, if el.disabled then "faint" elseif on then "accentHover" else "muted", instant)
 			local target = UDim2.new(if on then 1 else 0, 0, 0, BAR)
@@ -262,7 +280,7 @@ function kinds.readoutWidth(el: any): number
 	local spec = el.spec
 	local widest = 0
 	for _, value in { spec.min, spec.max, el.value } do
-		widest = math.max(widest, metrics.width("display", formatted(el, value), READOUT))
+		widest = math.max(widest, metrics.width("textMedium", formatted(el, value), READOUT))
 	end
 	return math.ceil(widest * 1.05) + 2
 end
@@ -290,7 +308,7 @@ function builders.slider(ctx: any, el: any): any
 		ZIndex = 4,
 		Parent = root,
 	})
-	theme:type(readout, "display")
+	theme:type(readout, "text", true)
 
 	local fill = baseline(view, ctx, ratio(), SLIDER_BAR)
 	local head = make("Frame", {
@@ -655,7 +673,8 @@ function builders.label(ctx: any, el: any): any
 	local theme = ctx.theme
 	-- a line that carries a key or a color is a control, and gets a tile like one
 	if el.addons then
-		local view: any = tileModule.new(ctx, el)
+		local view: any = tileModule.new(ctx, el, { quiet = true })
+		baseline(view, ctx, 0)
 		theme:paint(view.name, "TextColor3", "muted")
 		view.name.RichText = true
 		reserveRight(view, addons(view, ctx, el, 0))
